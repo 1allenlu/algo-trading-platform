@@ -19,7 +19,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
-from app.api.routes import backtest, health, market_data, ml, strategies
+from app.api.routes import backtest, health, market_data, ml, risk, strategies
 from app.core.config import settings
 from app.core.logging import setup_logging
 from app.models.database import Base, engine
@@ -93,5 +93,8 @@ app.include_router(
     tags=["backtest"],
 )
 
-# Future routers (Phase 4+):
-# app.include_router(risk.router, prefix=f"{settings.API_V1_PREFIX}/risk", tags=["risk"])
+app.include_router(
+    risk.router,
+    prefix=f"{settings.API_V1_PREFIX}/risk",
+    tags=["risk"],
+)

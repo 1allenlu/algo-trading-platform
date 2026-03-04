@@ -29,7 +29,7 @@ const NAV_ITEMS = [
   { label: 'ML Models',   path: '/ml',         icon: <MLIcon />,          phase: '' },
   { label: 'Strategies',  path: '/strategies', icon: <StrategiesIcon />,  phase: '' },
   { label: 'Backtest',    path: '/backtest',   icon: <BacktestIcon />,    phase: '' },
-  { label: 'Risk',        path: '/risk',       icon: <RiskIcon />,        phase: 'Phase 4' },
+  { label: 'Risk',        path: '/risk',       icon: <RiskIcon />,        phase: '' },
   { label: 'Settings',    path: '/settings',   icon: <SettingsIcon />,    phase: '' },
 ]
 
@@ -120,10 +120,10 @@ export default function Sidebar({ width }: SidebarProps) {
       {/* ── Footer ──────────────────────────────────────────────────────── */}
       <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
         <Typography variant="caption" color="text.disabled" display="block">
-          Phase 3 — Quant Strategies
+          Phase 4 — Risk Management
         </Typography>
         <Typography variant="caption" color="text.disabled">
-          v0.3.0
+          v0.4.0
         </Typography>
       </Box>
     </Drawer>

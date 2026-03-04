@@ -201,6 +201,47 @@ export interface StrategiesResponse {
   strategies: StrategyInfo[]
 }
 
+// ── Risk types (mirrors backend app/models/schemas.py) ───────────────────────
+
+export interface AssetRiskMetrics {
+  symbol:        string
+  annual_return: number
+  annual_vol:    number
+  sharpe:        number
+  max_drawdown:  number
+  beta:          number
+  var_95:        number
+}
+
+export interface PortfolioRiskResponse {
+  symbols:               string[]
+  weights:               number[]
+  assets:                AssetRiskMetrics[]
+  correlation:           number[][]
+  portfolio_return:      number
+  portfolio_vol:         number
+  portfolio_sharpe:      number
+  portfolio_max_drawdown: number
+  portfolio_var_95:      number
+  portfolio_cvar_95:     number
+  n_days:                number
+}
+
+export interface FrontierPoint {
+  return_ann: number
+  volatility: number
+  sharpe:     number
+  weights?:   number[]
+}
+
+export interface EfficientFrontierResponse {
+  symbols:    string[]
+  random:     FrontierPoint[]
+  frontier:   FrontierPoint[]
+  max_sharpe: FrontierPoint | null
+  min_vol:    FrontierPoint | null
+}
+
 // ── API functions ─────────────────────────────────────────────────────────────
 
 export const api = {
@@ -260,6 +301,25 @@ export const api = {
     list: (limit = 20): Promise<BacktestListResponse> =>
       apiClient
         .get<BacktestListResponse>('/api/backtest/list', { params: { limit } })
+        .then((r) => r.data),
+  },
+
+  risk: {
+    getAnalysis: (symbols: string[], weights?: number[]): Promise<PortfolioRiskResponse> =>
+      apiClient
+        .get<PortfolioRiskResponse>('/api/risk/analysis', {
+          params: {
+            symbols: symbols.join(','),
+            ...(weights ? { weights: weights.join(',') } : {}),
+          },
+        })
+        .then((r) => r.data),
+
+    getFrontier: (symbols: string[]): Promise<EfficientFrontierResponse> =>
+      apiClient
+        .get<EfficientFrontierResponse>('/api/risk/frontier', {
+          params: { symbols: symbols.join(',') },
+        })
         .then((r) => r.data),
   },
 }

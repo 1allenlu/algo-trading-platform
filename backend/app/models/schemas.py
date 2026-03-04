@@ -223,3 +223,48 @@ class StrategyInfo(BaseModel):
 
 class StrategiesResponse(BaseModel):
     strategies: list[StrategyInfo]
+
+
+# ── Risk Management (Phase 4) ─────────────────────────────────────────────────
+
+class AssetRiskMetrics(BaseModel):
+    """Risk profile for a single asset."""
+    symbol:        str
+    annual_return: float        # Annualized expected return
+    annual_vol:    float        # Annualized volatility (σ)
+    sharpe:        float        # Sharpe ratio (vs 4% risk-free)
+    max_drawdown:  float        # Worst historical peak-to-trough (negative)
+    beta:          float        # Sensitivity to benchmark (1.0 = moves 1:1)
+    var_95:        float        # 1-day 95% historical VaR (positive fraction)
+
+
+class PortfolioRiskResponse(BaseModel):
+    """Complete portfolio risk analysis from GET /api/risk/analysis."""
+    symbols:             list[str]
+    weights:             list[float]
+    assets:              list[AssetRiskMetrics]
+    correlation:         list[list[float]]   # NxN pairwise correlation matrix
+    portfolio_return:    float               # Weighted annualized return
+    portfolio_vol:       float               # Portfolio annualized volatility
+    portfolio_sharpe:    float               # Portfolio Sharpe ratio
+    portfolio_max_drawdown: float            # Portfolio max drawdown
+    portfolio_var_95:    float               # 1-day portfolio VaR (95%)
+    portfolio_cvar_95:   float               # 1-day portfolio CVaR / Expected Shortfall
+    n_days:              int                 # Number of trading days in analysis
+
+
+class FrontierPoint(BaseModel):
+    """One portfolio on the efficient frontier or random cloud."""
+    return_ann: float
+    volatility: float
+    sharpe:     float
+    weights:    list[float] | None = None    # Only for frontier/optimal points
+
+
+class EfficientFrontierResponse(BaseModel):
+    """Efficient frontier data from GET /api/risk/frontier."""
+    symbols:    list[str]
+    random:     list[FrontierPoint]          # Monte Carlo cloud (no weights)
+    frontier:   list[FrontierPoint]          # Optimized frontier points (with weights)
+    max_sharpe: FrontierPoint | None         # Tangency portfolio
+    min_vol:    FrontierPoint | None         # Global minimum variance portfolio
