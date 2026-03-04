@@ -43,5 +43,53 @@ SELECT create_hypertable(
 CREATE INDEX IF NOT EXISTS ix_market_data_symbol_ts
     ON market_data (symbol, timestamp DESC);
 
--- ── Future tables (will be added via Alembic in later phases) ─────────────────
+-- ── Phase 2: ML Models & Predictions ─────────────────────────────────────────
+
+-- Trained model metadata (metrics + feature importance)
+CREATE TABLE IF NOT EXISTS ml_models (
+    id                 SERIAL PRIMARY KEY,
+    name               VARCHAR(100)     NOT NULL,        -- e.g. "SPY_xgboost_v1"
+    symbol             VARCHAR(20)      NOT NULL,
+    model_type         VARCHAR(50)      NOT NULL,        -- "xgboost" | "lstm"
+    version            INTEGER          NOT NULL DEFAULT 1,
+
+    -- Performance on held-out test set
+    accuracy           DOUBLE PRECISION,
+    f1_score           DOUBLE PRECISION,
+    roc_auc            DOUBLE PRECISION,
+
+    -- Dataset size
+    train_samples      INTEGER,
+    test_samples       INTEGER,
+    feature_count      INTEGER,
+
+    -- JSON blobs (TEXT for simplicity; use JSONB in production for indexing)
+    params             TEXT,                             -- Model hyperparameters
+    feature_importance TEXT,                             -- {feature_name: importance_score}
+
+    model_path         VARCHAR(500),                     -- Path to saved .joblib / .pt file
+    created_at         TIMESTAMPTZ      NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS ix_ml_models_symbol_type
+    ON ml_models (symbol, model_type);
+
+-- Pre-computed predictions (avoids loading the model on every API request)
+CREATE TABLE IF NOT EXISTS ml_predictions (
+    id             SERIAL PRIMARY KEY,
+    symbol         VARCHAR(20)      NOT NULL,
+    model_id       INTEGER          NOT NULL REFERENCES ml_models(id) ON DELETE CASCADE,
+    timestamp      TIMESTAMPTZ      NOT NULL,            -- Market date this prediction covers
+    predicted_dir  VARCHAR(10)      NOT NULL,            -- "up" | "down"
+    confidence     DOUBLE PRECISION NOT NULL,            -- P(predicted class) in [0.5, 1.0]
+    actual_return  DOUBLE PRECISION,                     -- Filled in after market close
+    created_at     TIMESTAMPTZ      DEFAULT NOW(),
+
+    UNIQUE (symbol, model_id, timestamp)
+);
+
+CREATE INDEX IF NOT EXISTS ix_ml_predictions_symbol_model
+    ON ml_predictions (symbol, model_id, timestamp DESC);
+
+-- ── Phase 3+ tables (added via Alembic) ───────────────────────────────────────
 -- strategies, backtest_results, positions, orders, portfolio_snapshots, etc.

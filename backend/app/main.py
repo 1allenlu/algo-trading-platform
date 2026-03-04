@@ -19,7 +19,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
-from app.api.routes import health, market_data
+from app.api.routes import health, market_data, ml
 from app.core.config import settings
 from app.core.logging import setup_logging
 from app.models.database import Base, engine
@@ -76,9 +76,13 @@ app.include_router(
     prefix=f"{settings.API_V1_PREFIX}/data",
     tags=["market-data"],
 )
+app.include_router(
+    ml.router,
+    prefix=f"{settings.API_V1_PREFIX}/ml",
+    tags=["ml"],
+)
 
-# Future routers (Phase 2+):
-# app.include_router(ml.router,         prefix=f"{settings.API_V1_PREFIX}/ml",        tags=["ml"])
+# Future routers (Phase 3+):
 # app.include_router(backtest.router,   prefix=f"{settings.API_V1_PREFIX}/backtest",  tags=["backtest"])
 # app.include_router(risk.router,       prefix=f"{settings.API_V1_PREFIX}/risk",      tags=["risk"])
 # app.include_router(strategies.router, prefix=f"{settings.API_V1_PREFIX}/strategies",tags=["strategies"])

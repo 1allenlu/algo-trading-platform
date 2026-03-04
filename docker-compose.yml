@@ -60,11 +60,14 @@ services:
       REDIS_URL: redis://redis:6379
       DEBUG: ${DEBUG:-false}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      # Phase 2: expose ml_engine package to Python import system
+      PYTHONPATH: /
     ports:
       - "8000:8000"
     volumes:
       - ./backend:/app          # Hot-reload: mount source code
-      - ./data:/data            # Data ingestion scripts
+      - ./data:/data            # Data ingestion scripts + model artifacts (/data/models/)
+      - ./ml-engine:/ml_engine  # Phase 2: ML training/prediction package
     depends_on:
       postgres:
         condition: service_healthy

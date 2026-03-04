@@ -8,7 +8,7 @@ Architecture note:
   - The SQLAlchemy models mirror the hypertable schema so the ORM can query them
 """
 
-from sqlalchemy import BigInteger, Column, DateTime, Float, Index, String
+from sqlalchemy import BigInteger, Column, DateTime, Float, Index, Integer, String, Text
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -73,3 +73,79 @@ class MarketData(Base):
 
     def __repr__(self) -> str:
         return f"<MarketData {self.symbol} @ {self.timestamp} close={self.close}>"
+
+
+# ── ML Models ─────────────────────────────────────────────────────────────────
+
+class MLModel(Base):
+    """
+    Trained ML model metadata.
+
+    Stores metrics, feature importance, and path to the model artifact.
+    The actual model file (.joblib or .pt) lives in /data/models/.
+
+    One row per training run. Version increments automatically per (symbol, model_type).
+    """
+
+    __tablename__ = "ml_models"
+
+    id            = Column(Integer,              primary_key=True, autoincrement=True)
+    name          = Column(String(100),          nullable=False)          # e.g. "SPY_xgboost_v1"
+    symbol        = Column(String(20),           nullable=False)
+    model_type    = Column(String(50),           nullable=False)          # "xgboost" | "lstm"
+    version       = Column(Integer,              nullable=False, default=1)
+
+    # Performance metrics (on held-out test set)
+    accuracy      = Column(Float,               nullable=True)
+    f1_score      = Column(Float,               nullable=True)
+    roc_auc       = Column(Float,               nullable=True)
+
+    # Dataset info
+    train_samples = Column(Integer,             nullable=True)
+    test_samples  = Column(Integer,             nullable=True)
+    feature_count = Column(Integer,             nullable=True)
+
+    # JSON blobs
+    params             = Column(Text, nullable=True)   # Hyperparameters (JSON)
+    feature_importance = Column(Text, nullable=True)   # {feature: importance} (JSON)
+
+    model_path    = Column(String(500),          nullable=True)           # Path to artifact file
+    created_at    = Column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        Index("ix_ml_models_symbol_type", "symbol", "model_type"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<MLModel {self.name} acc={self.accuracy}>"
+
+
+class MLPrediction(Base):
+    """
+    Stored predictions from a trained ML model.
+
+    Pre-computed predictions are stored here so the API can serve them
+    without loading the model at request time. The training script
+    populates this table after training completes.
+
+    One row per (symbol, model_id, date).
+    actual_return is filled in after the fact for performance tracking.
+    """
+
+    __tablename__ = "ml_predictions"
+
+    id            = Column(Integer,              primary_key=True, autoincrement=True)
+    symbol        = Column(String(20),           nullable=False)
+    model_id      = Column(Integer,              nullable=False)          # FK to ml_models.id
+    timestamp     = Column(DateTime(timezone=True), nullable=False)       # Market date
+    predicted_dir = Column(String(10),           nullable=False)          # "up" | "down"
+    confidence    = Column(Float,               nullable=False)           # P(predicted class)
+    actual_return = Column(Float,               nullable=True)            # Filled after market close
+    created_at    = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("ix_ml_predictions_symbol_model", "symbol", "model_id", "timestamp"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<MLPrediction {self.symbol} {self.timestamp} {self.predicted_dir} {self.confidence:.2f}>"

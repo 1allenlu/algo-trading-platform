@@ -32,10 +32,13 @@ loguru = "^0.7.0"
 # ── HTTP client ───────────────────────────────────────────────────────────────
 httpx = "^0.27.0"
 
-# ── Data (used by ingestion + future ML features) ────────────────────────────
+# ── Data & ML (Phase 2) ───────────────────────────────────────────────────────
 pandas = "^2.2.0"
 numpy = "^1.26.0"
 yfinance = "^0.2.37"
+scikit-learn = "^1.4.0"    # Preprocessing + metrics
+xgboost = "^2.0.0"         # Gradient boosting classifier
+joblib = "^1.3.0"          # Model serialization
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"

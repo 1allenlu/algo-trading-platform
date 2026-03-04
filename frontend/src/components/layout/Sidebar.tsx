@@ -12,6 +12,7 @@ import {
 import {
   Assessment as BacktestIcon,
   Dashboard as DashboardIcon,
+  Psychology as MLIcon,
   Settings as SettingsIcon,
   ShowChart as LogoIcon,
   TrendingUp as StrategiesIcon,
@@ -25,6 +26,7 @@ interface SidebarProps {
 
 const NAV_ITEMS = [
   { label: 'Dashboard',   path: '/dashboard',  icon: <DashboardIcon />,   phase: '' },
+  { label: 'ML Models',   path: '/ml',         icon: <MLIcon />,          phase: '' },
   { label: 'Strategies',  path: '/strategies', icon: <StrategiesIcon />,  phase: 'Phase 3' },
   { label: 'Backtest',    path: '/backtest',   icon: <BacktestIcon />,    phase: 'Phase 3' },
   { label: 'Risk',        path: '/risk',       icon: <RiskIcon />,        phase: 'Phase 4' },
@@ -118,10 +120,10 @@ export default function Sidebar({ width }: SidebarProps) {
       {/* ── Footer ──────────────────────────────────────────────────────── */}
       <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
         <Typography variant="caption" color="text.disabled" display="block">
-          Phase 1 — Foundation
+          Phase 2 — ML Pipeline
         </Typography>
         <Typography variant="caption" color="text.disabled">
-          v0.1.0
+          v0.2.0
         </Typography>
       </Box>
     </Drawer>

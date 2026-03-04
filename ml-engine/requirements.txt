@@ -1,0 +1,32 @@
+# ML Engine — Python dependencies
+# Install: pip install -r ml-engine/requirements.txt
+#
+# Note: PyTorch (for LSTM) is NOT included here — it's 2GB+ and optional.
+# Install separately if you want LSTM training:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+#
+# The XGBoost-only pipeline (default) works without PyTorch.
+
+# Data & feature engineering
+pandas>=2.2.0
+numpy>=1.26.0
+scikit-learn>=1.4.0
+
+# Gradient boosting
+xgboost>=2.0.0
+
+# Database
+asyncpg>=0.29.0
+psycopg2-binary>=2.9.9
+
+# Data download (for standalone ingestion)
+yfinance>=0.2.37
+
+# Model persistence
+joblib>=1.3.0
+
+# Optional: experiment tracking
+# mlflow>=2.11.0
+
+# Optional: model interpretability
+# shap>=0.44.0

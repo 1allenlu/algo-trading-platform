@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import Sidebar from '@/components/layout/Sidebar'
 import TopBar from '@/components/layout/TopBar'
 import Dashboard from '@/pages/Dashboard'
+import MLModels from '@/pages/MLModels'
 import Strategies from '@/pages/Strategies'
 import Backtest from '@/pages/Backtest'
 import Risk from '@/pages/Risk'
@@ -40,6 +41,7 @@ export default function App() {
           <Routes>
             <Route path="/"           element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard"  element={<Dashboard />} />
+            <Route path="/ml"         element={<MLModels />} />
             <Route path="/strategies" element={<Strategies />} />
             <Route path="/backtest"   element={<Backtest />} />
             <Route path="/risk"       element={<Risk />} />

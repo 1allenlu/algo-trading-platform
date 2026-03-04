@@ -1,8 +1,12 @@
-.PHONY: help up down logs shell-backend shell-db ingest migrate fmt lint test
+.PHONY: help up down logs shell-backend shell-db ingest migrate train predict train-all fmt lint test
 
 # ─── Colors ───────────────────────────────────────────────────────────────────
 CYAN  := \033[0;36m
 RESET := \033[0m
+
+# ─── Defaults ─────────────────────────────────────────────────────────────────
+symbol ?= SPY
+model  ?= xgboost
 
 help:
 	@echo ""
@@ -17,6 +21,12 @@ help:
 	@echo "  Data:"
 	@echo "    make ingest      Download 5yr OHLCV data (SPY, QQQ, top stocks)"
 	@echo "    make migrate     Run Alembic database migrations"
+	@echo ""
+	@echo "  ML (Phase 2):"
+	@echo "    make train           Train XGBoost model:  make train symbol=SPY"
+	@echo "    make train model=lstm  Train LSTM model:   make train symbol=SPY model=lstm"
+	@echo "    make predict         Recent predictions:   make predict symbol=SPY"
+	@echo "    make train-all       Train XGBoost for SPY, QQQ, AAPL, MSFT, NVDA"
 	@echo ""
 	@echo "  Development:"
 	@echo "    make shell-backend  Bash shell inside backend container"
@@ -49,6 +59,32 @@ ingest:
 
 migrate:
 	docker compose exec backend alembic upgrade head
+
+# ── ML (Phase 2) ──────────────────────────────────────────────────────────────
+train:
+	@echo "$(CYAN)Training $(model) for $(symbol)...$(RESET)"
+	docker compose exec -e PYTHONPATH=/ backend \
+		python /ml_engine/train.py \
+		--symbol $(symbol) \
+		--model $(model) \
+		--database-url postgresql://trading:trading@postgres:5432/trading_db \
+		--output-dir /data/models
+
+predict:
+	@echo "$(CYAN)Generating predictions for $(symbol)...$(RESET)"
+	docker compose exec -e PYTHONPATH=/ backend \
+		python /ml_engine/predict.py \
+		--symbol $(symbol) \
+		--model-type $(model) \
+		--database-url postgresql://trading:trading@postgres:5432/trading_db
+
+train-all:
+	@echo "$(CYAN)Training XGBoost for all default symbols...$(RESET)"
+	$(MAKE) train symbol=SPY   model=xgboost
+	$(MAKE) train symbol=QQQ   model=xgboost
+	$(MAKE) train symbol=AAPL  model=xgboost
+	$(MAKE) train symbol=MSFT  model=xgboost
+	$(MAKE) train symbol=NVDA  model=xgboost
 
 # ── Dev shells ────────────────────────────────────────────────────────────────
 shell-backend:
