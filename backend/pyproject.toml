@@ -39,6 +39,7 @@ yfinance = "^0.2.37"
 scikit-learn = "^1.4.0"    # Preprocessing + metrics
 xgboost = "^2.0.0"         # Gradient boosting classifier
 joblib = "^1.3.0"          # Model serialization
+statsmodels = "^0.14.0"    # Phase 3: cointegration tests (pairs trading)
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"

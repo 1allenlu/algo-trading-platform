@@ -67,7 +67,8 @@ services:
     volumes:
       - ./backend:/app          # Hot-reload: mount source code
       - ./data:/data            # Data ingestion scripts + model artifacts (/data/models/)
-      - ./ml-engine:/ml_engine  # Phase 2: ML training/prediction package
+      - ./ml-engine:/ml_engine      # Phase 2: ML training/prediction package
+      - ./quant-engine:/quant_engine # Phase 3: quant strategies + backtesting
     depends_on:
       postgres:
         condition: service_healthy

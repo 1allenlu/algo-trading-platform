@@ -27,8 +27,8 @@ interface SidebarProps {
 const NAV_ITEMS = [
   { label: 'Dashboard',   path: '/dashboard',  icon: <DashboardIcon />,   phase: '' },
   { label: 'ML Models',   path: '/ml',         icon: <MLIcon />,          phase: '' },
-  { label: 'Strategies',  path: '/strategies', icon: <StrategiesIcon />,  phase: 'Phase 3' },
-  { label: 'Backtest',    path: '/backtest',   icon: <BacktestIcon />,    phase: 'Phase 3' },
+  { label: 'Strategies',  path: '/strategies', icon: <StrategiesIcon />,  phase: '' },
+  { label: 'Backtest',    path: '/backtest',   icon: <BacktestIcon />,    phase: '' },
   { label: 'Risk',        path: '/risk',       icon: <RiskIcon />,        phase: 'Phase 4' },
   { label: 'Settings',    path: '/settings',   icon: <SettingsIcon />,    phase: '' },
 ]
@@ -120,10 +120,10 @@ export default function Sidebar({ width }: SidebarProps) {
       {/* ── Footer ──────────────────────────────────────────────────────── */}
       <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
         <Typography variant="caption" color="text.disabled" display="block">
-          Phase 2 — ML Pipeline
+          Phase 3 — Quant Strategies
         </Typography>
         <Typography variant="caption" color="text.disabled">
-          v0.2.0
+          v0.3.0
         </Typography>
       </Box>
     </Drawer>

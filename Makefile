@@ -1,4 +1,4 @@
-.PHONY: help up down logs shell-backend shell-db ingest migrate train predict train-all fmt lint test
+.PHONY: help up down logs shell-backend shell-db ingest migrate train predict train-all backtest fmt lint test
 
 # ─── Colors ───────────────────────────────────────────────────────────────────
 CYAN  := \033[0;36m
@@ -27,6 +27,11 @@ help:
 	@echo "    make train model=lstm  Train LSTM model:   make train symbol=SPY model=lstm"
 	@echo "    make predict         Recent predictions:   make predict symbol=SPY"
 	@echo "    make train-all       Train XGBoost for SPY, QQQ, AAPL, MSFT, NVDA"
+	@echo ""
+	@echo "  Quant (Phase 3):"
+	@echo "    make backtest                     Pairs backtest (SPY/QQQ)"
+	@echo "    make backtest strategy=momentum symbols='SPY QQQ AAPL MSFT NVDA'"
+	@echo "    make backtest strategy=mean_reversion symbols=SPY"
 	@echo ""
 	@echo "  Development:"
 	@echo "    make shell-backend  Bash shell inside backend container"
@@ -85,6 +90,22 @@ train-all:
 	$(MAKE) train symbol=AAPL  model=xgboost
 	$(MAKE) train symbol=MSFT  model=xgboost
 	$(MAKE) train symbol=NVDA  model=xgboost
+
+# ── Quant / Backtesting (Phase 3) ─────────────────────────────────────────────
+# Run a strategy backtest directly (bypasses the API).
+# Usage: make backtest strategy=pairs_trading symbols="SPY QQQ"
+#        make backtest strategy=momentum symbols="SPY QQQ AAPL MSFT NVDA"
+strategy ?= pairs_trading
+symbols  ?= SPY QQQ
+
+backtest:
+	@echo "$(CYAN)Running backtest: $(strategy) on $(symbols)...$(RESET)"
+	docker compose exec -e PYTHONPATH=/ backend \
+		python /quant_engine/backtest/runner.py \
+		--run-id 0 \
+		--strategy $(strategy) \
+		--symbols $(symbols) \
+		--database-url postgresql://trading:trading@postgres:5432/trading_db
 
 # ── Dev shells ────────────────────────────────────────────────────────────────
 shell-backend:

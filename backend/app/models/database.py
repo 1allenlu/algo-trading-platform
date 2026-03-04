@@ -8,7 +8,7 @@ Architecture note:
   - The SQLAlchemy models mirror the hypertable schema so the ORM can query them
 """
 
-from sqlalchemy import BigInteger, Column, DateTime, Float, Index, Integer, String, Text
+from sqlalchemy import BigInteger, Boolean, Column, DateTime, Float, Index, Integer, String, Text
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -149,3 +149,50 @@ class MLPrediction(Base):
 
     def __repr__(self) -> str:
         return f"<MLPrediction {self.symbol} {self.timestamp} {self.predicted_dir} {self.confidence:.2f}>"
+
+
+# ── Backtest Runs (Phase 3) ────────────────────────────────────────────────────
+
+class BacktestRun(Base):
+    """
+    A single backtest execution — strategy config + results.
+
+    The backend creates this row (status='running') before spawning the
+    runner subprocess. The runner updates it with results when done.
+    status lifecycle: 'running' → 'done' | 'failed'
+    """
+
+    __tablename__ = "backtest_runs"
+
+    id            = Column(Integer, primary_key=True, autoincrement=True)
+    strategy_name = Column(String(50),  nullable=False)   # "pairs_trading" | "momentum" | ...
+    symbols       = Column(Text,        nullable=False)   # Comma-separated: "SPY,QQQ"
+    params        = Column(Text,        nullable=True)    # JSON of strategy params
+
+    # Job state
+    status        = Column(String(20),  nullable=False, default="running")  # running|done|failed
+    error         = Column(Text,        nullable=True)
+
+    # Performance metrics (populated on completion)
+    total_return  = Column(Float, nullable=True)
+    cagr          = Column(Float, nullable=True)
+    sharpe_ratio  = Column(Float, nullable=True)
+    sortino_ratio = Column(Float, nullable=True)
+    max_drawdown  = Column(Float, nullable=True)
+    calmar_ratio  = Column(Float, nullable=True)
+    win_rate      = Column(Float, nullable=True)
+    num_trades    = Column(Integer, nullable=True)
+
+    # JSON blobs for chart data
+    equity_curve      = Column(Text, nullable=True)   # [{date, value, drawdown}]
+    benchmark_metrics = Column(Text, nullable=True)   # {sharpe, cagr, ...}
+    trades            = Column(Text, nullable=True)   # [{date, symbol, side, price, size}]
+
+    created_at    = Column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        Index("ix_backtest_runs_strategy", "strategy_name"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<BacktestRun id={self.id} strategy={self.strategy_name} status={self.status}>"

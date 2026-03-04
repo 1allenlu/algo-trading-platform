@@ -122,3 +122,104 @@ class TrainStatusResponse(BaseModel):
     status:  str          # "queued" | "running" | "done" | "failed"
     result:  dict[str, Any] | None = None    # Metrics when done
     error:   str | None = None
+
+
+# ── Backtest (Phase 3) ─────────────────────────────────────────────────────────
+
+class BacktestRequest(BaseModel):
+    """POST /api/backtest/run — kick off a backtest."""
+    strategy: str = Field(description="Strategy name: pairs_trading | momentum | mean_reversion")
+    symbols:  list[str] = Field(description="List of ticker symbols")
+    params:   dict[str, Any] = Field(default_factory=dict, description="Optional strategy params")
+
+
+class EquityPoint(BaseModel):
+    """One point on the equity curve (weekly sampled)."""
+    date:     str
+    value:    float
+    drawdown: float
+
+
+class TradeRecord(BaseModel):
+    """One trade in the trade log."""
+    date:   str
+    symbol: str
+    side:   str    # "buy" | "sell"
+    price:  float
+    size:   float
+
+
+class BacktestMetrics(BaseModel):
+    """Performance metrics for a strategy or benchmark."""
+    total_return:  float
+    cagr:          float
+    annual_vol:    float
+    sharpe_ratio:  float
+    sortino_ratio: float
+    max_drawdown:  float
+    calmar_ratio:  float
+    win_rate:      float
+
+
+class BacktestRunResponse(BaseModel):
+    """Full response for a completed backtest (GET /api/backtest/{run_id})."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id:            int
+    strategy_name: str
+    symbols:       list[str]
+    status:        str
+    error:         str | None = None
+
+    # Metrics (null when still running)
+    total_return:  float | None = None
+    cagr:          float | None = None
+    sharpe_ratio:  float | None = None
+    sortino_ratio: float | None = None
+    max_drawdown:  float | None = None
+    calmar_ratio:  float | None = None
+    win_rate:      float | None = None
+    num_trades:    int | None = None
+
+    equity_curve:      list[EquityPoint] | None = None
+    benchmark_metrics: BacktestMetrics | None = None
+    trades:            list[TradeRecord] | None = None
+
+    created_at: datetime
+
+
+class BacktestListItem(BaseModel):
+    """Summary row for the backtest history list."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id:            int
+    strategy_name: str
+    symbols:       list[str]
+    status:        str
+    sharpe_ratio:  float | None = None
+    total_return:  float | None = None
+    max_drawdown:  float | None = None
+    created_at:    datetime
+
+
+class BacktestListResponse(BaseModel):
+    runs:  list[BacktestListItem]
+    count: int
+
+
+# ── Strategies (Phase 3) ───────────────────────────────────────────────────────
+
+class StrategyInfo(BaseModel):
+    """Metadata about an available strategy (GET /api/strategies)."""
+    name:            str
+    description:     str
+    method:          str
+    default_symbols: list[str]
+    min_symbols:     int
+    max_symbols:     int
+    tags:            list[str]
+    default_params:  dict[str, Any]
+
+
+class StrategiesResponse(BaseModel):
+    strategies: list[StrategyInfo]

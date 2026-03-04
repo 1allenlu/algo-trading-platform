@@ -91,5 +91,40 @@ CREATE TABLE IF NOT EXISTS ml_predictions (
 CREATE INDEX IF NOT EXISTS ix_ml_predictions_symbol_model
     ON ml_predictions (symbol, model_id, timestamp DESC);
 
--- ── Phase 3+ tables (added via Alembic) ───────────────────────────────────────
--- strategies, backtest_results, positions, orders, portfolio_snapshots, etc.
+-- ── Phase 3: Backtest Runs ────────────────────────────────────────────────────
+-- Stores backtest configuration + results. The runner subprocess updates this
+-- row when the backtest completes (or fails).
+
+CREATE TABLE IF NOT EXISTS backtest_runs (
+    id                SERIAL PRIMARY KEY,
+    strategy_name     VARCHAR(50)       NOT NULL,         -- "pairs_trading" | "momentum" | ...
+    symbols           TEXT              NOT NULL,         -- Comma-separated tickers: "SPY,QQQ"
+    params            TEXT,                               -- JSON strategy parameters
+
+    -- Job state
+    status            VARCHAR(20)       NOT NULL DEFAULT 'running',  -- running|done|failed
+    error             TEXT,                               -- Error message if failed
+
+    -- Performance metrics (populated on completion)
+    total_return      DOUBLE PRECISION,
+    cagr              DOUBLE PRECISION,
+    sharpe_ratio      DOUBLE PRECISION,
+    sortino_ratio     DOUBLE PRECISION,
+    max_drawdown      DOUBLE PRECISION,
+    calmar_ratio      DOUBLE PRECISION,
+    win_rate          DOUBLE PRECISION,
+    num_trades        INTEGER,
+
+    -- JSON blobs for chart/table data
+    equity_curve      TEXT,                               -- [{date, value, drawdown}] weekly sampled
+    benchmark_metrics TEXT,                               -- {sharpe, cagr, max_drawdown, ...}
+    trades            TEXT,                               -- [{date, symbol, side, price, size}]
+
+    created_at        TIMESTAMPTZ       NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS ix_backtest_runs_strategy
+    ON backtest_runs (strategy_name, created_at DESC);
+
+-- ── Phase 4+ tables (added via Alembic) ───────────────────────────────────────
+-- positions, orders, portfolio_snapshots, risk_metrics, etc.

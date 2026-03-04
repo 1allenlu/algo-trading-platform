@@ -121,6 +121,86 @@ export interface FeatureImportanceResponse {
   count:      number
 }
 
+// ── Backtest types (mirrors backend app/models/schemas.py) ───────────────────
+
+export interface EquityPoint {
+  date:     string
+  value:    number
+  drawdown: number
+}
+
+export interface TradeRecord {
+  date:   string
+  symbol: string
+  side:   'buy' | 'sell'
+  price:  number
+  size:   number
+}
+
+export interface BacktestMetrics {
+  total_return:  number
+  cagr:          number
+  annual_vol:    number
+  sharpe_ratio:  number
+  sortino_ratio: number
+  max_drawdown:  number
+  calmar_ratio:  number
+  win_rate:      number
+}
+
+export interface BacktestRunResponse {
+  id:            number
+  strategy_name: string
+  symbols:       string[]
+  status:        'running' | 'done' | 'failed'
+  error:         string | null
+  total_return:  number | null
+  cagr:          number | null
+  sharpe_ratio:  number | null
+  sortino_ratio: number | null
+  max_drawdown:  number | null
+  calmar_ratio:  number | null
+  win_rate:      number | null
+  num_trades:    number | null
+  equity_curve:      EquityPoint[] | null
+  benchmark_metrics: BacktestMetrics | null
+  trades:            TradeRecord[] | null
+  created_at:    string
+}
+
+export interface BacktestListItem {
+  id:            number
+  strategy_name: string
+  symbols:       string[]
+  status:        string
+  sharpe_ratio:  number | null
+  total_return:  number | null
+  max_drawdown:  number | null
+  created_at:    string
+}
+
+export interface BacktestListResponse {
+  runs:  BacktestListItem[]
+  count: number
+}
+
+// ── Strategy types ────────────────────────────────────────────────────────────
+
+export interface StrategyInfo {
+  name:            string
+  description:     string
+  method:          string
+  default_symbols: string[]
+  min_symbols:     number
+  max_symbols:     number
+  tags:            string[]
+  default_params:  Record<string, unknown>
+}
+
+export interface StrategiesResponse {
+  strategies: StrategyInfo[]
+}
+
 // ── API functions ─────────────────────────────────────────────────────────────
 
 export const api = {
@@ -157,5 +237,29 @@ export const api = {
 
     getTrainStatus: (jobId: string): Promise<TrainStatusResponse> =>
       apiClient.get<TrainStatusResponse>(`/api/ml/status/${jobId}`).then((r) => r.data),
+  },
+
+  strategies: {
+    list: (): Promise<StrategiesResponse> =>
+      apiClient.get<StrategiesResponse>('/api/strategies').then((r) => r.data),
+  },
+
+  backtest: {
+    run: (
+      strategy: string,
+      symbols:  string[],
+      params:   Record<string, unknown> = {},
+    ): Promise<BacktestRunResponse> =>
+      apiClient
+        .post<BacktestRunResponse>('/api/backtest/run', { strategy, symbols, params })
+        .then((r) => r.data),
+
+    get: (runId: number): Promise<BacktestRunResponse> =>
+      apiClient.get<BacktestRunResponse>(`/api/backtest/${runId}`).then((r) => r.data),
+
+    list: (limit = 20): Promise<BacktestListResponse> =>
+      apiClient
+        .get<BacktestListResponse>('/api/backtest/list', { params: { limit } })
+        .then((r) => r.data),
   },
 }
