@@ -1,0 +1,6 @@
+# Standalone requirements for the data ingestion script.
+# These are a subset of the backend's pyproject.toml dependencies.
+# Install with: pip install -r data/ingestion/requirements.txt
+asyncpg>=0.29.0
+yfinance>=0.2.37
+pandas>=2.2.0
