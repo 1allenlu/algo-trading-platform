@@ -51,11 +51,11 @@ const FEATURE_GROUPS: Record<string, string> = {
 }
 
 const GROUP_COLORS: Record<string, string> = {
-  trend:      '#00b4d8',   // Cyan-blue
-  momentum:   '#9d4edd',   // Purple
-  volatility: '#f77f00',   // Orange
-  volume:     '#06d6a0',   // Teal-green
-  returns:    '#4cc9f0',   // Light blue
+  trend:      '#4A9EFF',   // Sky blue
+  momentum:   '#8B5CF6',   // Purple
+  volatility: '#F59E0B',   // Amber
+  volume:     '#00C896',   // Teal-green
+  returns:    '#7DBFFF',   // Light blue
 }
 
 // ── Custom tooltip ─────────────────────────────────────────────────────────────
@@ -124,11 +124,11 @@ export default function FeatureImportanceChart({
         layout="vertical"
         margin={{ top: 4, right: 16, left: 100, bottom: 4 }}
       >
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke="#1E2330" horizontal={false} />
 
         <XAxis
           type="number"
-          tick={{ fontSize: 11, fill: '#94a3b8' }}
+          tick={{ fontSize: 11, fill: '#9CA3AF' }}
           tickLine={false}
           axisLine={false}
           tickFormatter={(v: number) => `${(v * 100).toFixed(1)}%`}
@@ -137,7 +137,7 @@ export default function FeatureImportanceChart({
         <YAxis
           type="category"
           dataKey="name"
-          tick={{ fontSize: 11, fill: '#94a3b8', fontFamily: 'Roboto Mono, monospace' }}
+          tick={{ fontSize: 11, fill: '#9CA3AF', fontFamily: 'Roboto Mono, monospace' }}
           tickLine={false}
           axisLine={false}
           width={95}

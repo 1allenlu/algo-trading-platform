@@ -100,7 +100,7 @@ export default function PriceChart({ bars, symbol, height = 300 }: PriceChartPro
     return { data: points, isPositive: last >= first }
   }, [bars])
 
-  const color    = isPositive ? '#06d6a0' : '#ef476f'
+  const color    = isPositive ? '#00C896' : '#FF6B6B'
   const gradId   = `grad-${symbol}`
 
   return (
@@ -113,18 +113,18 @@ export default function PriceChart({ bars, symbol, height = 300 }: PriceChartPro
           </linearGradient>
         </defs>
 
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke="#1E2330" vertical={false} />
 
         <XAxis
           dataKey="date"
-          tick={{ fontSize: 11, fill: '#94a3b8' }}
+          tick={{ fontSize: 11, fill: '#9CA3AF' }}
           tickLine={false}
           axisLine={false}
           interval="preserveStartEnd"
         />
 
         <YAxis
-          tick={{ fontSize: 11, fill: '#94a3b8', fontFamily: 'Roboto Mono, monospace' }}
+          tick={{ fontSize: 11, fill: '#9CA3AF', fontFamily: 'Roboto Mono, monospace' }}
           tickLine={false}
           axisLine={false}
           tickFormatter={(v: number) => `$${v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v.toFixed(0)}`}

@@ -19,18 +19,17 @@ interface CorrelationHeatmapProps {
 // Map correlation [-1, 1] to a CSS color
 function corrToColor(value: number): string {
   if (value >= 0) {
-    // 0 → dark background, +1 → cyan
-    const intensity = Math.round(value * 180)
-    return `rgba(0, ${100 + intensity}, ${180 + Math.round(intensity * 0.4)}, ${0.2 + value * 0.75})`
+    // 0 → dark background, +1 → sky blue (#4A9EFF)
+    return `rgba(74, ${158 - Math.round(value * 60)}, ${255 - Math.round(value * 40)}, ${0.15 + value * 0.75})`
   } else {
-    // 0 → dark background, -1 → orange
-    const intensity = Math.abs(value)
-    return `rgba(247, ${127 - Math.round(intensity * 100)}, 0, ${0.2 + intensity * 0.75})`
+    // 0 → dark background, -1 → amber (#F59E0B)
+    const abs = Math.abs(value)
+    return `rgba(245, ${158 - Math.round(abs * 90)}, ${11 + Math.round(abs * 5)}, ${0.15 + abs * 0.75})`
   }
 }
 
 function corrToText(value: number): string {
-  const color = value > 0.3 ? '#e2e8f0' : value < -0.3 ? '#fed7aa' : '#94a3b8'
+  const color = value > 0.3 ? '#E8EAED' : value < -0.3 ? '#FFB020' : '#9CA3AF'
   return color
 }
 
@@ -116,12 +115,12 @@ export default function CorrelationHeatmap({ symbols, correlation }: Correlation
                     sx={{
                       width:      cellSize,
                       height:     cellSize,
-                      bgcolor:    isDiagonal ? 'rgba(0,180,216,0.3)' : bg,
+                      bgcolor:    isDiagonal ? 'rgba(74,158,255,0.25)' : bg,
                       borderRadius: 1,
                       display:    'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      border:     isDiagonal ? '1px solid rgba(0,180,216,0.5)' : '1px solid rgba(255,255,255,0.04)',
+                      border:     isDiagonal ? '1px solid rgba(74,158,255,0.5)' : '1px solid rgba(255,255,255,0.04)',
                       cursor:     'default',
                       transition: 'opacity 0.15s',
                       '&:hover':  { opacity: 0.8 },
@@ -147,7 +146,7 @@ export default function CorrelationHeatmap({ symbols, correlation }: Correlation
         <Box
           sx={{
             width: 100, height: 10, borderRadius: 1,
-            background: 'linear-gradient(to right, rgba(247,80,0,0.8), rgba(30,41,59,0.5), rgba(0,180,216,0.9))',
+            background: 'linear-gradient(to right, rgba(245,158,11,0.8), rgba(30,35,48,0.5), rgba(74,158,255,0.9))',
           }}
         />
         <Typography variant="caption" color="text.disabled">

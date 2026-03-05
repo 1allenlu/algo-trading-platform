@@ -8,9 +8,9 @@
  *   - Three stat rows: RSI, vs SMA50, vs SMA200
  *
  * Color mapping:
- *   score <= -0.4  → red   (#ef476f) — bearish
- *   score >= +0.4  → green (#06d6a0) — bullish
- *   else           → gray  (#94a3b8) — neutral
+ *   score <= -0.4  → red   (#FF6B6B) — bearish
+ *   score >= +0.4  → green (#00C896) — bullish
+ *   else           → gray  (#9CA3AF) — neutral
  */
 
 import { Box, Chip, Typography } from '@mui/material'
@@ -22,9 +22,9 @@ interface SentimentGaugeProps {
 
 // Map score [-1, +1] to label color
 function scoreColor(score: number): string {
-  if (score >= 0.4)  return '#06d6a0'   // Bullish green
-  if (score <= -0.4) return '#ef476f'   // Bearish red
-  return '#94a3b8'                       // Neutral gray
+  if (score >= 0.4)  return '#00C896'   // Bullish green
+  if (score <= -0.4) return '#FF6B6B'   // Bearish red
+  return '#9CA3AF'                       // Neutral gray
 }
 
 // Map score [-1, +1] to needle angle in degrees (0° = left, 180° = right)
@@ -92,7 +92,7 @@ export default function SentimentGauge({ data }: SentimentGaugeProps) {
         <path
           d={trackArc}
           fill="none"
-          stroke="rgba(255,255,255,0.08)"
+          stroke="#2D3548"
           strokeWidth={12}
           strokeLinecap="round"
         />
@@ -121,9 +121,9 @@ export default function SentimentGauge({ data }: SentimentGaugeProps) {
         <circle cx={cx} cy={cy} r={5} fill={color} />
 
         {/* Zone labels */}
-        <text x={14} y={cy + 4} fontSize={9} fill="#ef476f" fontWeight="bold">-1</text>
-        <text x={cx - 4} y={cy - R + 14} fontSize={9} fill="#94a3b8">0</text>
-        <text x={W - 22} y={cy + 4} fontSize={9} fill="#06d6a0" fontWeight="bold">+1</text>
+        <text x={14} y={cy + 4} fontSize={9} fill="#FF6B6B" fontWeight="bold">-1</text>
+        <text x={cx - 4} y={cy - R + 14} fontSize={9} fill="#9CA3AF">0</text>
+        <text x={W - 22} y={cy + 4} fontSize={9} fill="#00C896" fontWeight="bold">+1</text>
       </svg>
 
       {/* Score + label */}
@@ -150,17 +150,17 @@ export default function SentimentGauge({ data }: SentimentGaugeProps) {
         <StatRow
           label="RSI (14)"
           value={rsi_14.toFixed(1)}
-          color={rsi_14 > 70 ? '#ef476f' : rsi_14 < 30 ? '#06d6a0' : '#94a3b8'}
+          color={rsi_14 > 70 ? '#FF6B6B' : rsi_14 < 30 ? '#00C896' : '#9CA3AF'}
         />
         <StatRow
           label="vs SMA 50"
           value={`${price_vs_sma50 >= 0 ? '+' : ''}${(price_vs_sma50 * 100).toFixed(2)}%`}
-          color={price_vs_sma50 > 0 ? '#06d6a0' : '#ef476f'}
+          color={price_vs_sma50 > 0 ? '#00C896' : '#FF6B6B'}
         />
         <StatRow
           label="vs SMA 200"
           value={`${price_vs_sma200 >= 0 ? '+' : ''}${(price_vs_sma200 * 100).toFixed(2)}%`}
-          color={price_vs_sma200 > 0 ? '#06d6a0' : '#ef476f'}
+          color={price_vs_sma200 > 0 ? '#00C896' : '#FF6B6B'}
         />
       </Box>
     </Box>

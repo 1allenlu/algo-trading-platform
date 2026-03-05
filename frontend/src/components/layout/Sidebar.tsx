@@ -87,10 +87,10 @@ export default function Sidebar({ width }: SidebarProps) {
                   mb: 0.5,
                   borderRadius: 1.5,
                   '&.Mui-selected': {
-                    bgcolor: 'rgba(59, 130, 246, 0.12)',
+                    bgcolor: 'rgba(74, 158, 255, 0.12)',
                     color: 'primary.main',
                     '& .MuiListItemIcon-root': { color: 'primary.main' },
-                    '&:hover': { bgcolor: 'rgba(59, 130, 246, 0.18)' },
+                    '&:hover': { bgcolor: 'rgba(74, 158, 255, 0.18)' },
                   },
                 }}
               >

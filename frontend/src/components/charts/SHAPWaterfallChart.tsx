@@ -29,8 +29,8 @@ interface SHAPWaterfallChartProps {
   height?:  number
 }
 
-const UP_COLOR   = '#06d6a0'   // Teal-green — pushes toward UP
-const DOWN_COLOR = '#ef476f'   // Red-pink   — pushes toward DOWN
+const UP_COLOR   = '#00C896'   // Teal-green — pushes toward UP
+const DOWN_COLOR = '#FF6B6B'   // Coral-red  — pushes toward DOWN
 
 // ── Custom tooltip ─────────────────────────────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -103,12 +103,12 @@ export default function SHAPWaterfallChart({
         layout="vertical"
         margin={{ top: 4, right: 24, left: 110, bottom: 4 }}
       >
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke="#1E2330" horizontal={false} />
 
         <XAxis
           type="number"
           domain={[-maxAbs * 1.1, maxAbs * 1.1]}
-          tick={{ fontSize: 11, fill: '#94a3b8' }}
+          tick={{ fontSize: 11, fill: '#9CA3AF' }}
           tickLine={false}
           axisLine={false}
           tickFormatter={(v: number) => (v >= 0 ? `+${v.toFixed(3)}` : v.toFixed(3))}
@@ -117,7 +117,7 @@ export default function SHAPWaterfallChart({
         <YAxis
           type="category"
           dataKey="name"
-          tick={{ fontSize: 11, fill: '#94a3b8', fontFamily: 'Roboto Mono, monospace' }}
+          tick={{ fontSize: 11, fill: '#9CA3AF', fontFamily: 'Roboto Mono, monospace' }}
           tickLine={false}
           axisLine={false}
           width={105}
@@ -126,7 +126,7 @@ export default function SHAPWaterfallChart({
         <Tooltip content={<SHAPTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
 
         {/* Zero reference line — separates bullish vs bearish contributions */}
-        <ReferenceLine x={0} stroke="rgba(255,255,255,0.25)" strokeWidth={1.5} />
+        <ReferenceLine x={0} stroke="#4B5563" strokeWidth={1.5} />
 
         <Bar dataKey="shap_value" radius={[0, 3, 3, 0]} isAnimationActive={false}>
           {data.map((entry, i) => (

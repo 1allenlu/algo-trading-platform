@@ -84,14 +84,14 @@ export default function EfficientFrontierChart({
   )
 
   const frontierData = useMemo(
-    () => frontier.map((p) => ({ ...p, fill: '#00b4d8' })),
+    () => frontier.map((p) => ({ ...p, fill: '#4A9EFF' })),
     [frontier],
   )
 
   const specialPoints = useMemo(() => {
     const pts = []
-    if (maxSharpe) pts.push({ ...maxSharpe, fill: '#fbbf24', label: '★ Max Sharpe', r: 8 })
-    if (minVol)    pts.push({ ...minVol,    fill: '#818cf8', label: '● Min Vol',    r: 8 })
+    if (maxSharpe) pts.push({ ...maxSharpe, fill: '#F59E0B', label: '★ Max Sharpe', r: 8 })
+    if (minVol)    pts.push({ ...minVol,    fill: '#8B5CF6', label: '● Min Vol',    r: 8 })
     return pts
   }, [maxSharpe, minVol])
 
@@ -109,17 +109,17 @@ export default function EfficientFrontierChart({
     <Box>
       <ResponsiveContainer width="100%" height={height}>
         <ScatterChart margin={{ top: 4, right: 16, bottom: 4, left: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#1E2330" />
 
           <XAxis
             dataKey="volatility"
             type="number"
             name="Volatility"
             tickFormatter={fmt}
-            tick={{ fontSize: 11, fill: '#94a3b8' }}
+            tick={{ fontSize: 11, fill: '#9CA3AF' }}
             tickLine={false}
             axisLine={false}
-            label={{ value: 'Annual Volatility', position: 'insideBottom', offset: -2, fill: '#475569', fontSize: 11 }}
+            label={{ value: 'Annual Volatility', position: 'insideBottom', offset: -2, fill: '#4B5563', fontSize: 11 }}
           />
 
           <YAxis
@@ -127,19 +127,19 @@ export default function EfficientFrontierChart({
             type="number"
             name="Return"
             tickFormatter={fmt}
-            tick={{ fontSize: 11, fill: '#94a3b8' }}
+            tick={{ fontSize: 11, fill: '#9CA3AF' }}
             tickLine={false}
             axisLine={false}
-            label={{ value: 'Annual Return', angle: -90, position: 'insideLeft', offset: 8, fill: '#475569', fontSize: 11 }}
+            label={{ value: 'Annual Return', angle: -90, position: 'insideLeft', offset: 8, fill: '#4B5563', fontSize: 11 }}
           />
 
           <Tooltip content={<FrontierTooltip />} />
 
           {/* Random portfolio cloud */}
-          <Scatter data={randomData}   fill="#334155" opacity={0.45} r={2.5} isAnimationActive={false} />
+          <Scatter data={randomData}   fill="#2D3548" opacity={0.45} r={2.5} isAnimationActive={false} />
 
           {/* Efficient frontier line */}
-          <Scatter data={frontierData} fill="#00b4d8" opacity={0.85} r={3}   isAnimationActive={false} line={{ stroke: '#00b4d8', strokeWidth: 1.5 }} lineType="joint" />
+          <Scatter data={frontierData} fill="#4A9EFF" opacity={0.85} r={3}   isAnimationActive={false} line={{ stroke: '#4A9EFF', strokeWidth: 1.5 }} lineType="joint" />
 
           {/* Optimal points */}
           <Scatter data={specialPoints} isAnimationActive={false} r={7}
@@ -150,7 +150,7 @@ export default function EfficientFrontierChart({
                 <circle
                   cx={cx} cy={cy} r={7}
                   fill={payload.fill}
-                  stroke="#0f172a"
+                  stroke="#0A0E17"
                   strokeWidth={2}
                 />
               )
@@ -162,10 +162,10 @@ export default function EfficientFrontierChart({
       {/* Legend */}
       <Box sx={{ display: 'flex', gap: 3, justifyContent: 'center', mt: 1 }}>
         {[
-          { color: '#334155', label: 'Random portfolios', opacity: 0.7 },
-          { color: '#00b4d8', label: 'Efficient frontier' },
-          { color: '#fbbf24', label: 'Max Sharpe' },
-          { color: '#818cf8', label: 'Min Volatility' },
+          { color: '#2D3548', label: 'Random portfolios', opacity: 0.7 },
+          { color: '#4A9EFF', label: 'Efficient frontier' },
+          { color: '#F59E0B', label: 'Max Sharpe' },
+          { color: '#8B5CF6', label: 'Min Volatility' },
         ].map(({ color, label, opacity }) => (
           <Box key={label} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
             <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: color, opacity: opacity ?? 1 }} />

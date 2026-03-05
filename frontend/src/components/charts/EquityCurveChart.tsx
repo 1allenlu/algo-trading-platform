@@ -57,7 +57,7 @@ function EquityTooltip({ active, payload, label }: any) {
       {strategy && (
         <Typography variant="body2">
           Strategy:{' '}
-          <strong style={{ color: '#00b4d8' }}>
+          <strong style={{ color: '#4A9EFF' }}>
             ${strategy.value.toLocaleString('en-US', { maximumFractionDigits: 0 })}
           </strong>
         </Typography>
@@ -114,12 +114,12 @@ export default function EquityCurveChart({
   return (
     <ResponsiveContainer width="100%" height={height}>
       <ComposedChart data={data} margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+        <CartesianGrid strokeDasharray="3 3" stroke="#1E2330" />
 
         <XAxis
           dataKey="date"
           tickFormatter={formatXAxis}
-          tick={{ fontSize: 11, fill: '#94a3b8' }}
+          tick={{ fontSize: 11, fill: '#9CA3AF' }}
           tickLine={false}
           axisLine={false}
           interval="preserveStartEnd"
@@ -127,7 +127,7 @@ export default function EquityCurveChart({
 
         <YAxis
           tickFormatter={formatYAxis}
-          tick={{ fontSize: 11, fill: '#94a3b8' }}
+          tick={{ fontSize: 11, fill: '#9CA3AF' }}
           tickLine={false}
           axisLine={false}
           width={55}
@@ -153,7 +153,7 @@ export default function EquityCurveChart({
         <Line
           type="monotone"
           dataKey="value"
-          stroke="#00b4d8"
+          stroke="#4A9EFF"
           strokeWidth={2}
           dot={false}
           isAnimationActive={false}
