@@ -160,12 +160,15 @@ async def list_models(db: AsyncSession) -> list[MLModel]:
     )
     models = list(result.scalars().all())
 
-    # Parse JSON fields (SQLAlchemy stores them as Text)
+    # Parse JSON fields (SQLAlchemy stores them as Text).
+    # Expunge each model from the session after mutating so SQLAlchemy
+    # doesn't treat the dict assignment as a dirty DB write on commit.
     for m in models:
         if isinstance(m.feature_importance, str):
             m.feature_importance = _parse_json_field(m.feature_importance)
         if isinstance(m.params, str):
             m.params = _parse_json_field(m.params)
+        db.expunge(m)
 
     return models
 
@@ -182,8 +185,12 @@ async def get_latest_model(
         .limit(1)
     )
     model = result.scalar_one_or_none()
-    if model and isinstance(model.feature_importance, str):
-        model.feature_importance = _parse_json_field(model.feature_importance)
+    if model:
+        if isinstance(model.feature_importance, str):
+            model.feature_importance = _parse_json_field(model.feature_importance)
+        if isinstance(model.params, str):
+            model.params = _parse_json_field(model.params)
+        db.expunge(model)
     return model
 
 

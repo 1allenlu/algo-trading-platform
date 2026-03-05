@@ -1,38 +1,36 @@
 import { createTheme } from '@mui/material/styles'
 
 /**
- * Dark "terminal" theme — professional trading platform aesthetic.
+ * Clean dark theme — understated, professional.
  *
  * Color semantics:
- *   primary   (#00b4d8 cyan)   — interactive elements, links, active states
- *   secondary (#06d6a0 green)  — positive returns, profits, success
- *   error     (#ef476f red)    — negative returns, losses, alerts
- *   background.default         — main content area
- *   background.paper           — cards, sidebar, elevated surfaces
+ *   primary   (#3b82f6 blue)   — interactive elements, links, active states
+ *   secondary (#22c55e green)  — positive returns, profits, success
+ *   error     (#f87171 red)    — negative returns, losses, alerts
  */
 export const theme = createTheme({
   palette: {
     mode: 'dark',
     primary: {
-      main:  '#00b4d8',
-      dark:  '#0077b6',
-      light: '#90e0ef',
+      main:  '#3b82f6',
+      dark:  '#2563eb',
+      light: '#93c5fd',
     },
     secondary: {
-      main: '#06d6a0',  // Profit green
+      main: '#22c55e',
     },
     error: {
-      main: '#ef476f',  // Loss red
+      main: '#f87171',
     },
     background: {
-      default: '#0a0e1a',   // Near-black — main content
-      paper:   '#111827',   // Dark blue-gray — cards / sidebar
+      default: '#111113',   // Near-black — main content area
+      paper:   '#18181b',   // Slightly lighter — cards / sidebar
     },
     text: {
-      primary:   '#e2e8f0',
-      secondary: '#94a3b8',
+      primary:   '#f4f4f5',
+      secondary: '#a1a1aa',
     },
-    divider: 'rgba(255, 255, 255, 0.08)',
+    divider: 'rgba(255, 255, 255, 0.07)',
   },
 
   typography: {
@@ -49,7 +47,7 @@ export const theme = createTheme({
       styleOverrides: {
         root: {
           backgroundImage: 'none',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
+          border: '1px solid rgba(255, 255, 255, 0.07)',
         },
       },
     },
@@ -67,9 +65,9 @@ export const theme = createTheme({
       styleOverrides: {
         root: {
           '&.Mui-selected': {
-            backgroundColor: 'rgba(0, 180, 216, 0.15)',
-            color: '#00b4d8',
-            borderColor: '#00b4d8',
+            backgroundColor: 'rgba(59, 130, 246, 0.15)',
+            color: '#3b82f6',
+            borderColor: '#3b82f6',
           },
         },
       },

@@ -87,10 +87,10 @@ export default function Sidebar({ width }: SidebarProps) {
                   mb: 0.5,
                   borderRadius: 1.5,
                   '&.Mui-selected': {
-                    bgcolor: 'rgba(0, 180, 216, 0.12)',
+                    bgcolor: 'rgba(59, 130, 246, 0.12)',
                     color: 'primary.main',
                     '& .MuiListItemIcon-root': { color: 'primary.main' },
-                    '&:hover': { bgcolor: 'rgba(0, 180, 216, 0.18)' },
+                    '&:hover': { bgcolor: 'rgba(59, 130, 246, 0.18)' },
                   },
                 }}
               >
@@ -122,10 +122,10 @@ export default function Sidebar({ width }: SidebarProps) {
       {/* ── Footer ──────────────────────────────────────────────────────── */}
       <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
         <Typography variant="caption" color="text.disabled" display="block">
-          Phase 5 — Paper Trading
+          Phase 6 — Advanced ML
         </Typography>
         <Typography variant="caption" color="text.disabled">
-          v0.5.0
+          v0.6.0
         </Typography>
       </Box>
     </Drawer>

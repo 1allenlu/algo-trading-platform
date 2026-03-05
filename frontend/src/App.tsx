@@ -25,7 +25,6 @@ export default function App() {
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
-          ml: `${SIDEBAR_WIDTH}px`,
         }}
       >
         <TopBar />
