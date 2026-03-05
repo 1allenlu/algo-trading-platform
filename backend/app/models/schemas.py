@@ -406,3 +406,81 @@ class SignalResponse(BaseModel):
     score:       float        # Raw weighted composite in [-1, +1]
     reasoning:   list[str]    # Human-readable explanation bullet points
     sub_signals: SubSignals
+
+
+# ── Alerts (Phase 8) ──────────────────────────────────────────────────────────
+
+ALERT_CONDITIONS = {
+    "price_above",
+    "price_below",
+    "change_pct_above",   # threshold is a percent, e.g. 2.0 means +2%
+    "change_pct_below",   # threshold is a percent, e.g. -2.0 means -2%
+}
+
+
+class AlertRuleCreate(BaseModel):
+    """POST /api/alerts/rules — create a new alert rule."""
+    symbol:           str   = Field(description="Ticker, e.g. SPY")
+    condition:        str   = Field(description="price_above|price_below|change_pct_above|change_pct_below")
+    threshold:        float = Field(description="Trigger value (price in $ or percent for change_pct_*)")
+    cooldown_seconds: int   = Field(default=60, ge=10, description="Minimum seconds between firings")
+
+    model_config = ConfigDict(json_schema_extra={
+        "example": {"symbol": "SPY", "condition": "price_above", "threshold": 500.0}
+    })
+
+
+class AlertRuleResponse(BaseModel):
+    """A saved alert rule returned from the API."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id:               int
+    symbol:           str
+    condition:        str
+    threshold:        float
+    is_active:        bool
+    cooldown_seconds: int
+    last_triggered_at: datetime | None = None
+    created_at:       datetime
+
+
+class AlertRulesListResponse(BaseModel):
+    rules: list[AlertRuleResponse]
+    count: int
+
+
+class AlertEventResponse(BaseModel):
+    """A fired alert event returned from the API."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id:            int
+    rule_id:       int
+    symbol:        str
+    condition:     str
+    threshold:     float
+    current_value: float
+    message:       str
+    triggered_at:  datetime
+    acknowledged:  bool
+
+
+class AlertEventsListResponse(BaseModel):
+    events: list[AlertEventResponse]
+    count:  int
+
+
+class AlertEventWsMessage(BaseModel):
+    """
+    JSON payload sent over WS /ws/alerts when a rule fires.
+    Frontend uses `type == "alert"` to distinguish from price ticks.
+    """
+    type:          str = "alert"
+    id:            int
+    rule_id:       int
+    symbol:        str
+    condition:     str
+    threshold:     float
+    current_value: float
+    message:       str
+    triggered_at:  str    # ISO 8601
+

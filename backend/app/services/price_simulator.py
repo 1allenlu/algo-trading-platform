@@ -30,6 +30,7 @@ from sqlalchemy import select
 from app.models.database import AsyncSessionLocal, MarketData
 
 if TYPE_CHECKING:
+    from app.services.alert_service import AlertService
     from app.services.price_broadcaster import PriceConnectionManager
 
 # ── Simulation parameters ─────────────────────────────────────────────────────
@@ -118,10 +119,16 @@ def _make_state(bar: dict) -> _SymbolState:
 
 # ── Main simulator task ───────────────────────────────────────────────────────
 
-async def run_price_simulator(manager: "PriceConnectionManager") -> None:
+async def run_price_simulator(
+    manager:       "PriceConnectionManager",
+    alert_service: "AlertService | None" = None,
+) -> None:
     """
     Long-running asyncio task. Emits PriceTick to the connection manager
     every ~TICK_INTERVAL_S seconds for each symbol in DEFAULT_SYMBOLS.
+
+    If alert_service is provided, each tick is also checked against active
+    alert rules (Phase 8) — this is the hook that fires notifications.
 
     Start this via asyncio.create_task() in the FastAPI lifespan.
     Cancel it on shutdown — CancelledError is caught and re-raised cleanly.
@@ -185,6 +192,10 @@ async def run_price_simulator(manager: "PriceConnectionManager") -> None:
                     timestamp   = datetime.now(timezone.utc).isoformat(),
                 )
                 await manager.broadcast_tick(tick)
+
+                # Phase 8: check alert rules on each tick
+                if alert_service is not None:
+                    await alert_service.check_tick(tick)
 
             # Sleep until next tick, accounting for loop processing time
             elapsed = time.monotonic() - tick_start

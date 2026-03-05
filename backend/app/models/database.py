@@ -283,3 +283,65 @@ class PaperEquityHistory(Base):
 
     def __repr__(self) -> str:
         return f"<PaperEquityHistory {self.recorded_at} equity={self.equity:.2f}>"
+
+
+# ── Alerts (Phase 8) ──────────────────────────────────────────────────────────
+
+class AlertRule(Base):
+    """
+    A user-defined price alert rule.
+
+    Condition types:
+      price_above      — fires when tick.price >= threshold
+      price_below      — fires when tick.price <= threshold
+      change_pct_above — fires when tick.change_pct * 100 >= threshold  (e.g. +2%)
+      change_pct_below — fires when tick.change_pct * 100 <= threshold  (e.g. -2%)
+
+    cooldown_seconds prevents alert spam: a rule won't fire again until
+    at least `cooldown_seconds` have elapsed since the last firing.
+    """
+
+    __tablename__ = "alert_rules"
+
+    id              = Column(Integer,    primary_key=True, autoincrement=True)
+    symbol          = Column(String(20), nullable=False)
+    condition       = Column(String(30), nullable=False)   # see condition types above
+    threshold       = Column(Float,      nullable=False)
+    is_active       = Column(Boolean,    nullable=False, default=True)
+    cooldown_seconds = Column(Integer,   nullable=False, default=60)
+    last_triggered_at = Column(DateTime(timezone=True), nullable=True)
+    created_at      = Column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        Index("ix_alert_rules_symbol", "symbol"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<AlertRule {self.symbol} {self.condition} {self.threshold} active={self.is_active}>"
+
+
+class AlertEvent(Base):
+    """
+    A fired alert instance.  One row per rule trigger.
+    `acknowledged` is set to True when the user dismisses the notification.
+    """
+
+    __tablename__ = "alert_events"
+
+    id            = Column(Integer,    primary_key=True, autoincrement=True)
+    rule_id       = Column(Integer,    nullable=False)   # FK to alert_rules.id
+    symbol        = Column(String(20), nullable=False)
+    condition     = Column(String(30), nullable=False)
+    threshold     = Column(Float,      nullable=False)
+    current_value = Column(Float,      nullable=False)   # price or change_pct% at trigger time
+    message       = Column(Text,       nullable=False)
+    triggered_at  = Column(DateTime(timezone=True), nullable=False)
+    acknowledged  = Column(Boolean,    nullable=False, default=False)
+
+    __table_args__ = (
+        Index("ix_alert_events_rule", "rule_id"),
+        Index("ix_alert_events_triggered", "triggered_at"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<AlertEvent rule={self.rule_id} {self.symbol} {self.message[:40]}>"

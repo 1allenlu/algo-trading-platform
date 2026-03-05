@@ -378,7 +378,69 @@ export interface PriceTick {
 export const WS_PATHS = {
   allPrices:   '/ws/prices',
   symbolPrice: (symbol: string) => `/ws/prices/${symbol}`,
+  alerts:      '/ws/alerts',
 } as const
+
+// ── Alert types — Phase 8 ─────────────────────────────────────────────────────
+
+export type AlertCondition =
+  | 'price_above'
+  | 'price_below'
+  | 'change_pct_above'
+  | 'change_pct_below'
+
+export interface AlertRule {
+  id:               number
+  symbol:           string
+  condition:        AlertCondition
+  threshold:        number
+  is_active:        boolean
+  cooldown_seconds: number
+  last_triggered_at: string | null
+  created_at:       string
+}
+
+export interface AlertRulesListResponse {
+  rules: AlertRule[]
+  count: number
+}
+
+export interface AlertEvent {
+  id:            number
+  rule_id:       number
+  symbol:        string
+  condition:     AlertCondition
+  threshold:     number
+  current_value: number
+  message:       string
+  triggered_at:  string
+  acknowledged:  boolean
+}
+
+export interface AlertEventsListResponse {
+  events: AlertEvent[]
+  count:  number
+}
+
+export interface CreateAlertRuleRequest {
+  symbol:           string
+  condition:        AlertCondition
+  threshold:        number
+  cooldown_seconds?: number
+}
+
+/** Real-time alert payload pushed over /ws/alerts WebSocket. */
+export interface AlertWsMessage {
+  type:          'alert'
+  id:            number
+  rule_id:       number
+  symbol:        string
+  condition:     AlertCondition
+  threshold:     number
+  current_value: number
+  message:       string
+  triggered_at:  string
+}
 
 // ── API functions ─────────────────────────────────────────────────────────────
 
@@ -485,5 +547,31 @@ export const api = {
 
     reset: (): Promise<{ message: string }> =>
       apiClient.post<{ message: string }>('/api/paper/reset').then((r) => r.data),
+  },
+
+  alerts: {
+    listRules: (): Promise<AlertRulesListResponse> =>
+      apiClient.get<AlertRulesListResponse>('/api/alerts/rules').then((r) => r.data),
+
+    createRule: (req: CreateAlertRuleRequest): Promise<AlertRule> =>
+      apiClient.post<AlertRule>('/api/alerts/rules', req).then((r) => r.data),
+
+    toggleRule: (ruleId: number): Promise<AlertRule> =>
+      apiClient.patch<AlertRule>(`/api/alerts/rules/${ruleId}/toggle`).then((r) => r.data),
+
+    deleteRule: (ruleId: number): Promise<void> =>
+      apiClient.delete(`/api/alerts/rules/${ruleId}`).then(() => undefined),
+
+    listEvents: (limit = 100, unreadOnly = false): Promise<AlertEventsListResponse> =>
+      apiClient
+        .get<AlertEventsListResponse>('/api/alerts/events', {
+          params: { limit, unread_only: unreadOnly },
+        })
+        .then((r) => r.data),
+
+    acknowledgeAll: (): Promise<{ acknowledged: number }> =>
+      apiClient
+        .patch<{ acknowledged: number }>('/api/alerts/events/acknowledge')
+        .then((r) => r.data),
   },
 }

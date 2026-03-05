@@ -6,8 +6,9 @@ Startup sequence:
   2. Create database tables if they don't exist
      (TimescaleDB hypertable created by init.sql; ORM models mirror the schema)
   3. Start the WebSocket price simulator background task (Phase 7)
-  4. Register API routers
-  5. Configure CORS for frontend
+  4. Initialize alert service + alert WS manager (Phase 8)
+  5. Register API routers
+  6. Configure CORS for frontend
 
 Development: uvicorn app.main:app --reload
 Production:  uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
@@ -21,11 +22,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
-from app.api.routes import backtest, health, market_data, ml, paper_trading, risk, strategies
+from app.api.routes import alerts, backtest, health, market_data, ml, paper_trading, risk, strategies
 from app.api.routes import websocket as ws_routes
 from app.core.config import settings
 from app.core.logging import setup_logging
 from app.models.database import Base, engine
+from app.services.alert_service import get_alert_service
 from app.services.price_broadcaster import PriceConnectionManager
 from app.services.price_simulator import run_price_simulator
 
@@ -38,7 +40,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     # ── Startup ───────────────────────────────────────────────────────────────
     setup_logging()
-    logger.info(f"Starting {settings.APP_NAME} v0.7.0")
+    logger.info(f"Starting {settings.APP_NAME} v0.8.0")
     logger.info(f"Database: {settings.DATABASE_URL.split('@')[-1]}")
     logger.info(f"Debug mode: {settings.DEBUG}")
 
@@ -53,10 +55,24 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # run_price_simulator() emits ticks every ~1s for the full app lifetime.
     # asyncio.create_task is used (not BackgroundTasks) because the simulator
     # must outlive individual HTTP requests.
-    manager = PriceConnectionManager()
-    ws_routes.set_manager(manager)
+    price_manager = PriceConnectionManager()
+    ws_routes.set_manager(price_manager)
+
+    # ── Phase 8: Alert service setup ──────────────────────────────────────────
+    # AlertConnectionManager fans out fired-alert JSON to /ws/alerts clients.
+    # AlertService holds rules in memory and checks each price tick.
+    # It receives a broadcast callback so it can push to WS without knowing
+    # about the connection manager directly (clean dependency inversion).
+    alert_manager = ws_routes.AlertConnectionManager()
+    ws_routes.set_alert_manager(alert_manager)
+
+    alert_service = get_alert_service()
+    alert_service.set_ws_broadcast(alert_manager.broadcast)
+    await alert_service.refresh_rules()
+    logger.info("Alert service initialized")
+
     simulator_task = asyncio.create_task(
-        run_price_simulator(manager),
+        run_price_simulator(price_manager, alert_service),
         name="price_simulator",
     )
     logger.info("Price simulator background task started")
@@ -78,7 +94,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 app = FastAPI(
     title=settings.APP_NAME,
     description="Algorithmic Trading Platform — Quant + ML + Real-time",
-    version="0.7.0",
+    version="0.8.0",
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan,
@@ -125,8 +141,13 @@ app.include_router(
     prefix=f"{settings.API_V1_PREFIX}/paper",
     tags=["paper-trading"],
 )
+app.include_router(
+    alerts.router,
+    prefix=f"{settings.API_V1_PREFIX}/alerts",
+    tags=["alerts"],
+)
 
-# ── WebSocket routes (Phase 7) ────────────────────────────────────────────────
+# ── WebSocket routes (Phase 7 + 8) ───────────────────────────────────────────
 # Registered at /ws (no API version prefix — WS URLs are stable contracts)
 app.include_router(
     ws_routes.router,
