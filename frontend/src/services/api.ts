@@ -359,6 +359,27 @@ export interface OrderResponse {
   message:  string
 }
 
+// ── WebSocket types — Phase 7 ─────────────────────────────────────────────────
+
+export interface PriceTick {
+  symbol:     string
+  price:      number
+  open:       number
+  high:       number
+  low:        number
+  prev_close: number
+  change:     number
+  change_pct: number
+  volume:     number
+  timestamp:  string
+}
+
+/** WebSocket endpoint paths (relative to backend base URL). */
+export const WS_PATHS = {
+  allPrices:   '/ws/prices',
+  symbolPrice: (symbol: string) => `/ws/prices/${symbol}`,
+} as const
+
 // ── API functions ─────────────────────────────────────────────────────────────
 
 export const api = {

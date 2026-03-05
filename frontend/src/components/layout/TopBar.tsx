@@ -10,13 +10,17 @@ import {
 import { Circle as DotIcon, Refresh as RefreshIcon } from '@mui/icons-material'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/services/api'
+import { useLivePrices } from '@/hooks/useLivePrices'
+import TickerBar from '@/components/layout/TickerBar'
 
 export default function TopBar() {
   const { data: health, refetch, isFetching } = useQuery({
     queryKey: ['health'],
     queryFn: api.health.check,
-    refetchInterval: 30_000,  // Auto-poll every 30s
+    refetchInterval: 30_000,
   })
+
+  const { prices, status: wsStatus } = useLivePrices()
 
   const allHealthy = health?.database === 'healthy' && health?.redis === 'healthy'
   const dotColor = isFetching ? 'text.disabled' : allHealthy ? 'secondary.main' : 'error.main'
@@ -28,8 +32,8 @@ export default function TopBar() {
       sx={{ bgcolor: 'background.paper', borderBottom: '1px solid', borderColor: 'divider' }}
     >
       <Toolbar variant="dense" sx={{ gap: 1.5 }}>
-        {/* Spacer */}
-        <Box sx={{ flexGrow: 1 }} />
+        {/* Live price ticker (Phase 7) */}
+        <TickerBar prices={prices} status={wsStatus} />
 
         {/* System status indicator */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>

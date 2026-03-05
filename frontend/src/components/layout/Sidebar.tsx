@@ -122,10 +122,10 @@ export default function Sidebar({ width }: SidebarProps) {
       {/* ── Footer ──────────────────────────────────────────────────────── */}
       <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
         <Typography variant="caption" color="text.disabled" display="block">
-          Phase 6 — Advanced ML
+          Phase 7 — Real-time WebSocket
         </Typography>
         <Typography variant="caption" color="text.disabled">
-          v0.6.0
+          v0.7.0
         </Typography>
       </Box>
     </Drawer>

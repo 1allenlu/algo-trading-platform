@@ -7,9 +7,10 @@
  *   History      — equity curve (Recharts)
  *   Orders table — Recent orders with cancel button for open orders
  *
- * Data flow:
- *   - Polls GET /api/paper/state every 2 seconds (same pattern as Backtest page)
- *   - Orders fill immediately (market) or queue (limit) using latest DB close price
+ * Data flow (Phase 7 hybrid):
+ *   - REST polls GET /api/paper/state every 10s for account, orders, and history
+ *   - WebSocket /ws/prices delivers live prices every ~1s for the positions table
+ *   - Positions table shows live unrealized P&L derived from WebSocket prices
  *   - Order submissions call POST /api/paper/orders, then immediately re-fetches state
  *   - Reset button calls POST /api/paper/reset to wipe all state back to $100k
  */
@@ -58,10 +59,12 @@ import {
 } from 'recharts'
 import type { AccountInfo, PaperOrder, PaperPosition, PaperTradingState, SubmitOrderRequest } from '@/services/api'
 import { api } from '@/services/api'
+import { useLivePrices } from '@/hooks/useLivePrices'
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
-const POLL_INTERVAL_MS = 2000
+// REST poll slowed to 10s — WebSocket handles real-time price updates
+const POLL_INTERVAL_MS = 10_000
 const QUICK_SYMBOLS    = ['SPY', 'QQQ', 'AAPL', 'MSFT', 'NVDA', 'AMZN', 'GOOGL', 'TSLA', 'META', 'JPM']
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -77,8 +80,8 @@ function fmtPct(n: number, decimals = 2): string {
 }
 
 function pnlColor(n: number): string {
-  if (n > 0) return '#06d6a0'
-  if (n < 0) return '#ff6b6b'
+  if (n > 0) return '#00C896'
+  if (n < 0) return '#FF6B6B'
   return 'text.primary'
 }
 
@@ -169,7 +172,13 @@ function AccountBar({
 
 // ── Positions table ────────────────────────────────────────────────────────────
 
-function PositionsTable({ positions }: { positions: PaperPosition[] }) {
+function PositionsTable({
+  positions,
+  livePrices,
+}: {
+  positions:  PaperPosition[]
+  livePrices: Record<string, number>
+}) {
   return (
     <Card sx={{ border: '1px solid', borderColor: 'divider', height: '100%' }}>
       <CardContent>
@@ -186,7 +195,7 @@ function PositionsTable({ positions }: { positions: PaperPosition[] }) {
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  {['Symbol', 'Qty', 'Avg Cost', 'Current', 'Mkt Value', 'Unrealized P&L'].map((h) => (
+                  {['Symbol', 'Qty', 'Avg Cost', 'Live Price', 'Mkt Value', 'Unrealized P&L'].map((h) => (
                     <TableCell key={h} sx={{ fontWeight: 700, fontSize: '0.72rem', color: 'text.secondary' }}>
                       {h}
                     </TableCell>
@@ -194,30 +203,40 @@ function PositionsTable({ positions }: { positions: PaperPosition[] }) {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {positions.map((pos) => (
-                  <TableRow key={pos.symbol} hover>
-                    <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontWeight: 700, color: 'primary.main' }}>
-                      {pos.symbol}
-                    </TableCell>
-                    <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.8rem' }}>
-                      {pos.qty}
-                    </TableCell>
-                    <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.8rem' }}>
-                      {fmt$(pos.avg_entry_price)}
-                    </TableCell>
-                    <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.8rem' }}>
-                      {fmt$(pos.current_price)}
-                    </TableCell>
-                    <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.8rem' }}>
-                      {fmt$(pos.market_value)}
-                    </TableCell>
-                    <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.8rem' }}>
-                      <Box sx={{ color: pnlColor(pos.unrealized_pnl) }}>
-                        {fmt$(pos.unrealized_pnl)} ({fmtPct(pos.unrealized_pnl_pct)})
-                      </Box>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {positions.map((pos) => {
+                  // Use live WebSocket price if available, otherwise fall back to DB price
+                  const livePrice     = livePrices[pos.symbol] ?? pos.current_price
+                  const liveValue     = livePrice * pos.qty
+                  const liveUnrealized = liveValue - pos.avg_entry_price * pos.qty
+                  const liveUnrPct    = pos.avg_entry_price > 0
+                    ? liveUnrealized / (pos.avg_entry_price * pos.qty)
+                    : 0
+
+                  return (
+                    <TableRow key={pos.symbol} hover>
+                      <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontWeight: 700, color: 'primary.main' }}>
+                        {pos.symbol}
+                      </TableCell>
+                      <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.8rem' }}>
+                        {pos.qty}
+                      </TableCell>
+                      <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.8rem' }}>
+                        {fmt$(pos.avg_entry_price)}
+                      </TableCell>
+                      <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.8rem', color: 'primary.main' }}>
+                        {fmt$(livePrice)}
+                      </TableCell>
+                      <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.8rem' }}>
+                        {fmt$(liveValue)}
+                      </TableCell>
+                      <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.8rem' }}>
+                        <Box sx={{ color: pnlColor(liveUnrealized) }}>
+                          {fmt$(liveUnrealized)} ({fmtPct(liveUnrPct)})
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           </TableContainer>
@@ -282,7 +301,7 @@ function OrderForm({
                   sx={{
                     fontFamily: 'Roboto Mono, monospace',
                     fontSize: '0.65rem',
-                    bgcolor:     symbol === s ? 'rgba(0,180,216,0.15)' : 'transparent',
+                    bgcolor:     symbol === s ? 'rgba(74,158,255,0.15)' : 'transparent',
                     color:       symbol === s ? 'primary.main' : 'text.secondary',
                     border: '1px solid',
                     borderColor: symbol === s ? 'primary.main' : 'divider',
@@ -298,12 +317,12 @@ function OrderForm({
             <ToggleButtonGroup value={side} exclusive onChange={(_, v) => v && setSide(v)} fullWidth size="small">
               <ToggleButton value="buy"
                 sx={{ textTransform: 'none', fontWeight: 700,
-                  '&.Mui-selected': { bgcolor: 'rgba(6,214,160,0.15)', color: '#06d6a0', borderColor: '#06d6a0' } }}>
+                  '&.Mui-selected': { bgcolor: 'rgba(0,200,150,0.15)', color: '#00C896', borderColor: '#00C896' } }}>
                 Buy
               </ToggleButton>
               <ToggleButton value="sell"
                 sx={{ textTransform: 'none', fontWeight: 700,
-                  '&.Mui-selected': { bgcolor: 'rgba(255,107,107,0.15)', color: '#ff6b6b', borderColor: '#ff6b6b' } }}>
+                  '&.Mui-selected': { bgcolor: 'rgba(255,107,107,0.15)', color: '#FF6B6B', borderColor: '#FF6B6B' } }}>
                 Sell
               </ToggleButton>
             </ToggleButtonGroup>
@@ -356,9 +375,9 @@ function OrderForm({
               py: 1.25,
               fontWeight: 700,
               textTransform: 'none',
-              bgcolor: side === 'buy' ? '#06d6a0' : '#ff6b6b',
-              '&:hover': { bgcolor: side === 'buy' ? '#05c490' : '#e55a5a' },
-              color: '#0f172a',
+              bgcolor: side === 'buy' ? '#00C896' : '#FF6B6B',
+              '&:hover': { bgcolor: side === 'buy' ? '#00b085' : '#e55a5a' },
+              color: '#0A0E17',
             }}
           >
             {isSubmitting ? 'Submitting…' : `${side === 'buy' ? 'Buy' : 'Sell'} ${qty || '?'} ${symbol}`}
@@ -381,7 +400,7 @@ function HistoryChart({ data }: { data: { timestamp: string; equity: number; pnl
     pnl:    ((d.equity - startEquity) / startEquity) * 100,
   }))
   const lastPnl = formatted[formatted.length - 1]?.pnl ?? 0
-  const color   = lastPnl >= 0 ? '#06d6a0' : '#ff6b6b'
+  const color   = lastPnl >= 0 ? '#00C896' : '#FF6B6B'
 
   return (
     <Card sx={{ border: '1px solid', borderColor: 'divider', mb: 3 }}>
@@ -397,18 +416,18 @@ function HistoryChart({ data }: { data: { timestamp: string; equity: number; pnl
                 <stop offset="95%" stopColor={color} stopOpacity={0.02} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-            <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#64748b' }} tickLine={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#1E2330" />
+            <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#9CA3AF' }} tickLine={false} />
             <YAxis
               tickFormatter={(v) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`}
-              tick={{ fontSize: 11, fill: '#64748b' }}
+              tick={{ fontSize: 11, fill: '#9CA3AF' }}
               axisLine={false} tickLine={false}
               domain={['auto', 'auto']}
             />
-            <ReferenceLine y={0} stroke="rgba(255,255,255,0.15)" strokeDasharray="4 4" />
+            <ReferenceLine y={0} stroke="#2D3548" strokeDasharray="4 4" />
             <RechartsTip
-              contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8 }}
-              labelStyle={{ color: '#94a3b8', fontSize: 12 }}
+              contentStyle={{ background: '#12161F', border: '1px solid #2D3548', borderRadius: 8 }}
+              labelStyle={{ color: '#9CA3AF', fontSize: 12 }}
               formatter={(val: number) => [`${val >= 0 ? '+' : ''}${val.toFixed(2)}%`, 'Return']}
             />
             <Area
@@ -471,7 +490,7 @@ function OrdersTable({
                       {o.symbol}
                     </TableCell>
                     <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.8rem',
-                      color: o.side === 'buy' ? '#06d6a0' : '#ff6b6b', fontWeight: 700 }}>
+                      color: o.side === 'buy' ? '#00C896' : '#FF6B6B', fontWeight: 700 }}>
                       {o.side.toUpperCase()}
                     </TableCell>
                     <TableCell sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
@@ -502,7 +521,7 @@ function OrdersTable({
                           <IconButton size="small"
                             onClick={() => handleCancel(o.id)}
                             disabled={cancellingId === o.id}
-                            sx={{ color: 'text.disabled', '&:hover': { color: '#ff6b6b' } }}
+                            sx={{ color: 'text.disabled', '&:hover': { color: '#FF6B6B' } }}
                           >
                             {cancellingId === o.id
                               ? <CircularProgress size={14} />
@@ -532,6 +551,12 @@ export default function Trading() {
   const [isResetting,  setIsResetting]  = useState(false)
   const [orderError,   setOrderError]   = useState<string | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Live prices from WebSocket — used to update position P&L in real time
+  const { prices } = useLivePrices()
+  const livePrices = Object.fromEntries(
+    Object.entries(prices).map(([sym, tick]) => [sym, tick.price])
+  )
 
   // ── Poll every 2s ───────────────────────────────────────────────────────────
   const fetchState = async () => {
@@ -626,7 +651,7 @@ export default function Trading() {
 
           <Grid container spacing={2} mb={3}>
             <Grid item xs={12} md={7}>
-              <PositionsTable positions={state.positions} />
+              <PositionsTable positions={state.positions} livePrices={livePrices} />
             </Grid>
             <Grid item xs={12} md={5}>
               <OrderForm

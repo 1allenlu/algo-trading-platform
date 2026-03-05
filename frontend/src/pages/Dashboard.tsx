@@ -22,6 +22,8 @@ import { TrendingDown, TrendingUp } from '@mui/icons-material'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/services/api'
 import PriceChart from '@/components/charts/PriceChart'
+import { useLivePrices } from '@/hooks/useLivePrices'
+import WatchlistWidget from '@/components/dashboard/WatchlistWidget'
 
 // ── Config ────────────────────────────────────────────────────────────────────
 const SYMBOLS = ['SPY', 'QQQ', 'NVDA', 'AAPL'] as const
@@ -112,6 +114,7 @@ function SymbolCard({ symbol, limit }: SymbolCardProps) {
 export default function Dashboard() {
   const [tf, setTf] = useState('1Y')
   const limit = TIMEFRAMES[tf]
+  const { prices, status: wsStatus } = useLivePrices()
 
   return (
     <Box>
@@ -148,12 +151,9 @@ export default function Dashboard() {
         ))}
       </Grid>
 
-      {/* Phase indicator */}
-      <Box sx={{ mt: 4, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
-        <Typography variant="caption" color="text.disabled">
-          Phase 1 complete — Foundation & Data Pipeline ·
-          Next: ML Pipeline (Phase 2) · Quant Strategies (Phase 3)
-        </Typography>
+      {/* Live watchlist (Phase 7) */}
+      <Box mt={3}>
+        <WatchlistWidget prices={prices} status={wsStatus} />
       </Box>
     </Box>
   )
