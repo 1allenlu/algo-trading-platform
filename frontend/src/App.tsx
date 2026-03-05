@@ -1,5 +1,5 @@
 import { Box } from '@mui/material'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Route, Routes } from 'react-router-dom'
 import Sidebar from '@/components/layout/Sidebar'
 import TopBar from '@/components/layout/TopBar'
 import Dashboard from '@/pages/Dashboard'
@@ -10,16 +10,22 @@ import Risk from '@/pages/Risk'
 import Trading from '@/pages/Trading'
 import Settings from '@/pages/Settings'
 import AlertsPage from '@/pages/Alerts'
+import AnalyticsPage from '@/pages/Analytics'
+import IntroPage from '@/pages/Intro'
 
 const SIDEBAR_WIDTH = 240
 
-export default function App() {
+/**
+ * Inner layout for all authenticated/app pages.
+ * Wraps content with the permanent sidebar + top bar.
+ */
+function AppLayout() {
   return (
     <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
       {/* Permanent sidebar */}
       <Sidebar width={SIDEBAR_WIDTH} />
 
-      {/* Main area */}
+      {/* Main area: top bar + scrollable page content */}
       <Box
         sx={{
           flexGrow: 1,
@@ -40,7 +46,6 @@ export default function App() {
           }}
         >
           <Routes>
-            <Route path="/"           element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard"  element={<Dashboard />} />
             <Route path="/ml"         element={<MLModels />} />
             <Route path="/strategies" element={<Strategies />} />
@@ -48,10 +53,25 @@ export default function App() {
             <Route path="/risk"       element={<Risk />} />
             <Route path="/trading"    element={<Trading />} />
             <Route path="/alerts"     element={<AlertsPage />} />
+            <Route path="/analytics"  element={<AnalyticsPage />} />
             <Route path="/settings"   element={<Settings />} />
           </Routes>
         </Box>
       </Box>
     </Box>
+  )
+}
+
+/**
+ * Root router.
+ * - "/" renders the full-screen Intro page (no sidebar/topbar)
+ * - Everything else renders inside AppLayout
+ */
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/"    element={<IntroPage />} />
+      <Route path="/*"   element={<AppLayout />} />
+    </Routes>
   )
 }

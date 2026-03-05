@@ -442,6 +442,44 @@ export interface AlertWsMessage {
   triggered_at:  string
 }
 
+// ── Analytics types — Phase 9 ─────────────────────────────────────────────────
+
+export interface AnalyticsSummary {
+  equity:         number
+  starting_cash:  number
+  total_return:   number   // fraction, e.g. 0.12 = +12%
+  cagr:           number
+  sharpe_ratio:   number
+  sortino_ratio:  number
+  max_drawdown:   number   // positive fraction, e.g. 0.08 = 8% drawdown
+  annual_vol:     number
+  calmar_ratio:   number
+  n_days:         number
+  n_trades:       number
+  win_rate:       number
+  avg_win:        number   // dollars
+  avg_loss:       number   // dollars (negative)
+  profit_factor:  number
+}
+
+export interface PnlAttribution {
+  symbol:         string
+  buy_cost:       number
+  sell_proceeds:  number
+  realized_pnl:   number
+  unrealized_pnl: number
+  total_pnl:      number
+  n_buys:         number
+  n_sells:        number
+}
+
+export interface RollingPoint {
+  date:            string   // YYYY-MM-DD
+  equity:          number
+  rolling_sharpe:  number
+  rolling_vol:     number   // annualized fraction
+}
+
 // ── API functions ─────────────────────────────────────────────────────────────
 
 export const api = {
@@ -572,6 +610,19 @@ export const api = {
     acknowledgeAll: (): Promise<{ acknowledged: number }> =>
       apiClient
         .patch<{ acknowledged: number }>('/api/alerts/events/acknowledge')
+        .then((r) => r.data),
+  },
+
+  analytics: {
+    getSummary: (): Promise<AnalyticsSummary> =>
+      apiClient.get<AnalyticsSummary>('/api/analytics/summary').then((r) => r.data),
+
+    getPnlAttribution: (): Promise<PnlAttribution[]> =>
+      apiClient.get<PnlAttribution[]>('/api/analytics/pnl_attribution').then((r) => r.data),
+
+    getRolling: (window = 20): Promise<RollingPoint[]> =>
+      apiClient
+        .get<RollingPoint[]>('/api/analytics/rolling', { params: { window } })
         .then((r) => r.data),
   },
 }

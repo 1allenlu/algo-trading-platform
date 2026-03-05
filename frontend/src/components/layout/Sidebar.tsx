@@ -12,6 +12,7 @@ import {
 import {
   Assessment as BacktestIcon,
   Dashboard as DashboardIcon,
+  Insights as AnalyticsIcon,
   NotificationsOutlined as AlertsIcon,
   Psychology as MLIcon,
   Settings as SettingsIcon,
@@ -33,6 +34,7 @@ const NAV_ITEMS = [
   { label: 'Backtest',    path: '/backtest',   icon: <BacktestIcon />,    phase: '' },
   { label: 'Risk',        path: '/risk',       icon: <RiskIcon />,        phase: '' },
   { label: 'Trading',     path: '/trading',    icon: <TradingIcon />,     phase: '' },
+  { label: 'Analytics',   path: '/analytics',  icon: <AnalyticsIcon />,   phase: '' },
   { label: 'Alerts',      path: '/alerts',     icon: <AlertsIcon />,      phase: '' },
   { label: 'Settings',    path: '/settings',   icon: <SettingsIcon />,    phase: '' },
 ]
@@ -124,10 +126,10 @@ export default function Sidebar({ width }: SidebarProps) {
       {/* ── Footer ──────────────────────────────────────────────────────── */}
       <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
         <Typography variant="caption" color="text.disabled" display="block">
-          Phase 8 — Alerts & Notifications
+          Phase 9 — Portfolio Analytics
         </Typography>
         <Typography variant="caption" color="text.disabled">
-          v0.8.0
+          v0.9.0
         </Typography>
       </Box>
     </Drawer>

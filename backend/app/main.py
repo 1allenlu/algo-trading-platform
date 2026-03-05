@@ -22,7 +22,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
-from app.api.routes import alerts, backtest, health, market_data, ml, paper_trading, risk, strategies
+from app.api.routes import alerts, analytics, backtest, health, market_data, ml, paper_trading, risk, strategies
 from app.api.routes import websocket as ws_routes
 from app.core.config import settings
 from app.core.logging import setup_logging
@@ -145,6 +145,11 @@ app.include_router(
     alerts.router,
     prefix=f"{settings.API_V1_PREFIX}/alerts",
     tags=["alerts"],
+)
+app.include_router(
+    analytics.router,
+    prefix=f"{settings.API_V1_PREFIX}/analytics",
+    tags=["analytics"],
 )
 
 # ── WebSocket routes (Phase 7 + 8) ───────────────────────────────────────────
