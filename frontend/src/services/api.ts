@@ -242,6 +242,123 @@ export interface EfficientFrontierResponse {
   min_vol:    FrontierPoint | null
 }
 
+// ── Advanced ML types — Phase 6 ──────────────────────────────────────────────
+
+export interface SHAPFeatureContribution {
+  name:          string
+  shap_value:    number   // Signed: >0 pushes toward UP, <0 toward DOWN
+  feature_value: number   // Raw feature value for context
+}
+
+export interface SHAPResponse {
+  symbol:          string
+  model_name:      string
+  base_value:      number   // E[f(X)] — average model log-odds output
+  predicted_proba: number   // P(up) for the latest bar
+  predicted_dir:   'up' | 'down'
+  features:        SHAPFeatureContribution[]   // Top N by |SHAP|
+  count:           number
+}
+
+export interface SentimentComponents {
+  rsi_component:    number
+  sma50_component:  number
+  sma200_component: number
+}
+
+export interface SentimentResponse {
+  symbol:          string
+  score:           number   // [-1, +1] composite sentiment score
+  label:           'bullish' | 'bearish' | 'neutral'
+  rsi_14:          number   // Raw RSI(14) value (0-100)
+  price_vs_sma50:  number   // (close / sma50 - 1) as fraction
+  price_vs_sma200: number   // (close / sma200 - 1) as fraction
+  components:      SentimentComponents
+}
+
+export interface SubSignal {
+  vote:  number   // Normalized [-1, +1] vote from this source
+  label: string   // Human-readable description
+}
+
+export interface SubSignals {
+  ml:        SubSignal
+  sentiment: SubSignal
+  technical: SubSignal
+}
+
+export interface SignalResponse {
+  symbol:      string
+  signal:      'buy' | 'hold' | 'sell'
+  confidence:  number      // abs(composite score) in [0, 1]
+  score:       number      // Raw weighted composite in [-1, +1]
+  reasoning:   string[]    // Human-readable explanation bullet points
+  sub_signals: SubSignals
+}
+
+// ── Paper Trading types (mirrors backend app/models/schemas.py) ───────────────
+
+export interface AccountInfo {
+  equity:        number
+  cash:          number
+  buying_power:  number
+  day_pnl:       number
+  day_pnl_pct:   number
+  total_pnl:     number
+  total_pnl_pct: number
+}
+
+export interface PaperPosition {
+  symbol:             string
+  qty:                number
+  avg_entry_price:    number
+  current_price:      number
+  market_value:       number
+  unrealized_pnl:     number
+  unrealized_pnl_pct: number
+}
+
+export interface PaperOrder {
+  id:               string
+  symbol:           string
+  side:             'buy' | 'sell'
+  order_type:       string
+  qty:              number
+  filled_qty:       number
+  status:           string   // "new" | "partially_filled" | "filled" | "canceled" | "expired"
+  filled_avg_price: number | null
+  limit_price:      number | null
+  created_at:       string
+}
+
+export interface PortfolioPoint {
+  timestamp: string
+  equity:    number
+  pnl_pct:   number
+}
+
+export interface PaperTradingState {
+  account:           AccountInfo
+  positions:         PaperPosition[]
+  orders:            PaperOrder[]
+  portfolio_history: PortfolioPoint[]
+  last_updated:      string
+}
+
+export interface SubmitOrderRequest {
+  symbol:      string
+  side:        'buy' | 'sell'
+  qty:         number
+  order_type?: 'market' | 'limit'
+  limit_price?: number
+}
+
+export interface OrderResponse {
+  order_id: string
+  status:   string
+  message:  string
+}
+
 // ── API functions ─────────────────────────────────────────────────────────────
 
 export const api = {
@@ -278,6 +395,18 @@ export const api = {
 
     getTrainStatus: (jobId: string): Promise<TrainStatusResponse> =>
       apiClient.get<TrainStatusResponse>(`/api/ml/status/${jobId}`).then((r) => r.data),
+
+    // Phase 6: Advanced ML
+    getSentiment: (symbol: string): Promise<SentimentResponse> =>
+      apiClient.get<SentimentResponse>(`/api/ml/sentiment/${symbol}`).then((r) => r.data),
+
+    getSignal: (symbol: string): Promise<SignalResponse> =>
+      apiClient.get<SignalResponse>(`/api/ml/signal/${symbol}`).then((r) => r.data),
+
+    getShapValues: (symbol: string, topN = 12): Promise<SHAPResponse> =>
+      apiClient
+        .get<SHAPResponse>(`/api/ml/shap/${symbol}`, { params: { top_n: topN } })
+        .then((r) => r.data),
   },
 
   strategies: {
@@ -321,5 +450,19 @@ export const api = {
           params: { symbols: symbols.join(',') },
         })
         .then((r) => r.data),
+  },
+
+  paper: {
+    getState: (): Promise<PaperTradingState> =>
+      apiClient.get<PaperTradingState>('/api/paper/state').then((r) => r.data),
+
+    submitOrder: (req: SubmitOrderRequest): Promise<OrderResponse> =>
+      apiClient.post<OrderResponse>('/api/paper/orders', req).then((r) => r.data),
+
+    cancelOrder: (orderId: string): Promise<{ message: string }> =>
+      apiClient.delete<{ message: string }>(`/api/paper/orders/${orderId}`).then((r) => r.data),
+
+    reset: (): Promise<{ message: string }> =>
+      apiClient.post<{ message: string }>('/api/paper/reset').then((r) => r.data),
   },
 }

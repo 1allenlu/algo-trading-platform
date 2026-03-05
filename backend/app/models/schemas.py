@@ -268,3 +268,141 @@ class EfficientFrontierResponse(BaseModel):
     frontier:   list[FrontierPoint]          # Optimized frontier points (with weights)
     max_sharpe: FrontierPoint | None         # Tangency portfolio
     min_vol:    FrontierPoint | None         # Global minimum variance portfolio
+
+
+# ── Paper Trading (Phase 5) ───────────────────────────────────────────────────
+
+class AccountInfo(BaseModel):
+    """Live Alpaca paper account snapshot."""
+    equity:        float    # Total account value (cash + positions)
+    cash:          float    # Free cash available
+    buying_power:  float    # Available purchasing power
+    day_pnl:       float    # Today's P&L in dollars
+    day_pnl_pct:   float    # Today's P&L as fraction
+    total_pnl:     float    # Total P&L vs $100k starting equity
+    total_pnl_pct: float    # Total P&L as fraction
+
+
+class PaperPosition(BaseModel):
+    """An open position in the paper trading account."""
+    symbol:            str
+    qty:               float   # Shares held (negative = short)
+    avg_entry_price:   float
+    current_price:     float
+    market_value:      float   # qty * current_price
+    unrealized_pnl:    float   # In dollars
+    unrealized_pnl_pct: float  # As fraction (e.g., 0.05 = +5%)
+
+
+class PaperOrder(BaseModel):
+    """A single order (pending or historical)."""
+    id:               str
+    symbol:           str
+    side:             str    # "buy" | "sell"
+    order_type:       str    # "market" | "limit" | "stop"
+    qty:              float
+    filled_qty:       float
+    status:           str    # "new" | "partially_filled" | "filled" | "canceled" | "expired"
+    filled_avg_price: float | None = None
+    limit_price:      float | None = None
+    created_at:       str    # ISO 8601
+
+
+class PortfolioPoint(BaseModel):
+    """One daily equity snapshot for the portfolio history chart."""
+    timestamp: str     # ISO 8601
+    equity:    float
+    pnl_pct:   float   # Cumulative P&L fraction for that day
+
+
+class PaperTradingState(BaseModel):
+    """
+    Full paper trading snapshot returned by GET /api/paper/state.
+    Frontend polls this every 2 seconds.
+    """
+    account:           AccountInfo
+    positions:         list[PaperPosition]
+    orders:            list[PaperOrder]
+    portfolio_history: list[PortfolioPoint]
+    last_updated:      str    # ISO 8601 timestamp of this snapshot
+
+
+class SubmitOrderRequest(BaseModel):
+    """POST /api/paper/orders — place a new order."""
+    symbol:      str   = Field(description="Ticker symbol, e.g. SPY")
+    side:        str   = Field(pattern="^(buy|sell)$", description="'buy' or 'sell'")
+    qty:         float = Field(gt=0, description="Number of shares")
+    order_type:  str   = Field(default="market", pattern="^(market|limit)$")
+    limit_price: float | None = Field(default=None, description="Required for limit orders")
+
+    model_config = ConfigDict(json_schema_extra={
+        "example": {"symbol": "SPY", "side": "buy", "qty": 10, "order_type": "market"}
+    })
+
+
+class OrderResponse(BaseModel):
+    """Confirmation returned after submitting an order."""
+    order_id: str
+    status:   str
+    message:  str
+
+
+# ── Advanced ML (Phase 6) ─────────────────────────────────────────────────────
+
+class SHAPFeatureContribution(BaseModel):
+    """SHAP contribution for a single feature."""
+    name:          str
+    shap_value:    float   # Signed: >0 pushes toward "up", <0 toward "down"
+    feature_value: float   # Raw (scaled) feature value for context
+
+
+class SHAPResponse(BaseModel):
+    """SHAP explainability for the latest prediction — GET /api/ml/shap/{symbol}."""
+    symbol:          str
+    model_name:      str
+    base_value:      float   # E[f(X)] — model's average log-odds output
+    predicted_proba: float   # P(up) for the latest bar
+    predicted_dir:   str     # "up" | "down"
+    features:        list[SHAPFeatureContribution]   # Top N by |SHAP|
+    count:           int
+
+
+class SentimentComponents(BaseModel):
+    """Breakdown of the three sub-signals that make up the sentiment score."""
+    rsi_component:    float   # RSI-based sub-score [-0.5, +0.5]
+    sma50_component:  float   # Price vs 50-day MA sub-score [-0.3, +0.3]
+    sma200_component: float   # Price vs 200-day MA sub-score [-0.2, +0.2]
+
+
+class SentimentResponse(BaseModel):
+    """RSI + moving-average sentiment score — GET /api/ml/sentiment/{symbol}."""
+    symbol:          str
+    score:           float               # [-1.0, +1.0] composite score
+    label:           str                 # "bullish" | "bearish" | "neutral"
+    rsi_14:          float               # Latest RSI(14) value (0-100)
+    price_vs_sma50:  float               # (close/sma50 - 1) as fraction
+    price_vs_sma200: float               # (close/sma200 - 1) as fraction
+    components:      SentimentComponents
+
+
+class SubSignal(BaseModel):
+    """One input signal into the composite aggregator."""
+    vote:  float   # Normalized [-1, +1] vote
+    label: str     # Human-readable description
+
+
+class SubSignals(BaseModel):
+    """The three sub-signals combined in the composite signal aggregator."""
+    ml:        SubSignal
+    sentiment: SubSignal
+    technical: SubSignal
+
+
+class SignalResponse(BaseModel):
+    """Composite BUY/HOLD/SELL signal — GET /api/ml/signal/{symbol}."""
+    symbol:      str
+    signal:      str          # "buy" | "hold" | "sell"
+    confidence:  float        # abs(composite score) in [0, 1]
+    score:       float        # Raw weighted composite in [-1, +1]
+    reasoning:   list[str]    # Human-readable explanation bullet points
+    sub_signals: SubSignals

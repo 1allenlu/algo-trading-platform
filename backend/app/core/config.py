@@ -38,5 +38,6 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
 
 
+
 # Single shared instance — import this everywhere
 settings = Settings()

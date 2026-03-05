@@ -7,6 +7,7 @@ import MLModels from '@/pages/MLModels'
 import Strategies from '@/pages/Strategies'
 import Backtest from '@/pages/Backtest'
 import Risk from '@/pages/Risk'
+import Trading from '@/pages/Trading'
 import Settings from '@/pages/Settings'
 
 const SIDEBAR_WIDTH = 240
@@ -45,6 +46,7 @@ export default function App() {
             <Route path="/strategies" element={<Strategies />} />
             <Route path="/backtest"   element={<Backtest />} />
             <Route path="/risk"       element={<Risk />} />
+            <Route path="/trading"    element={<Trading />} />
             <Route path="/settings"   element={<Settings />} />
           </Routes>
         </Box>

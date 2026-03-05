@@ -1,11 +1,12 @@
 /**
- * ML Models page — Phase 2.
+ * ML Models page — Phase 2 + Phase 6 (Advanced ML).
  *
  * Sections:
  *   1. Model Cards          — Trained models with accuracy / F1 / AUC metrics
  *   2. Prediction Timeline  — Recent up/down predictions with confidence bars
  *   3. Feature Importance   — Horizontal bar chart for selected model
  *   4. Train Panel          — Trigger training from UI (async + polling)
+ *   5. Advanced ML Signals  — SHAP explainability, Sentiment gauge, Composite signal (Phase 6)
  */
 
 import { useState } from 'react'
@@ -41,10 +42,13 @@ import {
   TrendingUp,
   Psychology as MLIcon,
   Refresh as TrainIcon,
+  AutoAwesome as SignalIcon,
 } from '@mui/icons-material'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, type MLModelInfo } from '@/services/api'
 import FeatureImportanceChart from '@/components/charts/FeatureImportanceChart'
+import SHAPWaterfallChart from '@/components/charts/SHAPWaterfallChart'
+import SentimentGauge from '@/components/charts/SentimentGauge'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const SYMBOLS = ['SPY', 'QQQ', 'AAPL', 'MSFT', 'NVDA'] as const
@@ -239,10 +243,12 @@ function TrainPanel() {
           if (status.status === 'done' || status.status === 'failed') {
             clearInterval(poll)
             if (status.status === 'done') {
-              // Refresh models list + predictions
+              // Refresh all ML data for the trained symbol
               queryClient.invalidateQueries({ queryKey: ['ml', 'models'] })
               queryClient.invalidateQueries({ queryKey: ['ml', 'predict', symbol] })
               queryClient.invalidateQueries({ queryKey: ['ml', 'features', symbol] })
+              queryClient.invalidateQueries({ queryKey: ['ml', 'shap', symbol] })
+              queryClient.invalidateQueries({ queryKey: ['ml', 'signal', symbol] })
             }
           }
         } catch {
@@ -309,6 +315,257 @@ function TrainPanel() {
   )
 }
 
+// ── Phase 6: SHAP Panel ───────────────────────────────────────────────────────
+function SHAPPanel({ symbol }: { symbol: string }) {
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey:  ['ml', 'shap', symbol],
+    queryFn:   () => api.ml.getShapValues(symbol, 12),
+    staleTime: 120_000,
+    retry: 1,
+  })
+
+  const headerColor = data?.predicted_dir === 'up' ? 'secondary.main' : 'error.main'
+
+  return (
+    <Card sx={{ height: '100%' }}>
+      <CardHeader
+        title="SHAP Explainability"
+        subheader={
+          data
+            ? `${symbol} · P(up) = ${(data.predicted_proba * 100).toFixed(1)}% · Top ${data.count} features`
+            : `${symbol} · Feature contributions to latest prediction`
+        }
+        titleTypographyProps={{ variant: 'subtitle1', fontWeight: 700 }}
+        subheaderTypographyProps={{ variant: 'caption' }}
+        action={
+          data && (
+            <Chip
+              label={data.predicted_dir === 'up' ? 'UP' : 'DOWN'}
+              size="small"
+              sx={{
+                bgcolor: `${data.predicted_dir === 'up' ? '#06d6a0' : '#ef476f'}22`,
+                color: headerColor,
+                fontWeight: 700,
+                mr: 1,
+                mt: 0.5,
+              }}
+            />
+          )
+        }
+      />
+      <CardContent sx={{ pt: 0 }}>
+        {isLoading && <Skeleton variant="rectangular" height={380} sx={{ borderRadius: 1 }} />}
+        {isError && (
+          <Alert severity="warning" sx={{ mt: 1 }}>
+            {(error as Error)?.message?.includes('404')
+              ? `No trained model for ${symbol}. Train one first.`
+              : `Could not load SHAP values. Make sure 'shap' is installed in the backend.`
+            }
+          </Alert>
+        )}
+        {data && (
+          <>
+            <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mb: 1 }}>
+              Green bars push toward UP · Red bars push toward DOWN · Base value: {data.base_value.toFixed(3)}
+            </Typography>
+            <SHAPWaterfallChart features={data.features} height={380} />
+          </>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+// ── Phase 6: Sentiment Panel ──────────────────────────────────────────────────
+function SentimentPanel({ symbol }: { symbol: string }) {
+  const { data, isLoading, isError } = useQuery({
+    queryKey:  ['ml', 'sentiment', symbol],
+    queryFn:   () => api.ml.getSentiment(symbol),
+    staleTime: 60_000,
+    retry: 1,
+  })
+
+  return (
+    <Card sx={{ height: '100%' }}>
+      <CardHeader
+        title="Sentiment Score"
+        subheader={`${symbol} · RSI(14) + SMA(50/200) momentum`}
+        titleTypographyProps={{ variant: 'subtitle1', fontWeight: 700 }}
+        subheaderTypographyProps={{ variant: 'caption' }}
+      />
+      <CardContent sx={{ pt: 0 }}>
+        {isLoading && <Skeleton variant="rectangular" height={340} sx={{ borderRadius: 1 }} />}
+        {isError && (
+          <Alert severity="warning">
+            Could not load sentiment for {symbol}. Make sure market data is ingested.
+          </Alert>
+        )}
+        {data && (
+          <>
+            <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mb: 1.5 }}>
+              Score: -1 (very bearish) → +1 (very bullish) · No external API required
+            </Typography>
+            <SentimentGauge data={data} />
+
+            {/* Components breakdown */}
+            <Divider sx={{ my: 2 }} />
+            <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mb: 1 }}>
+              Score components
+            </Typography>
+            {[
+              { label: 'RSI(14) signal', value: data.components.rsi_component },
+              { label: 'vs SMA50 signal', value: data.components.sma50_component },
+              { label: 'vs SMA200 signal', value: data.components.sma200_component },
+            ].map(({ label, value }) => (
+              <Box key={label} sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                <Typography variant="caption" color="text.secondary">{label}</Typography>
+                <Typography
+                  variant="caption"
+                  fontFamily="Roboto Mono, monospace"
+                  fontWeight={700}
+                  sx={{ color: value > 0 ? 'secondary.main' : value < 0 ? 'error.main' : 'text.disabled' }}
+                >
+                  {value >= 0 ? '+' : ''}{value.toFixed(3)}
+                </Typography>
+              </Box>
+            ))}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+// ── Phase 6: Signal Panel ─────────────────────────────────────────────────────
+function SignalPanel({ symbol }: { symbol: string }) {
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey:  ['ml', 'signal', symbol],
+    queryFn:   () => api.ml.getSignal(symbol),
+    staleTime: 60_000,
+    retry: 1,
+  })
+
+  const signalColor = {
+    buy:  '#06d6a0',
+    sell: '#ef476f',
+    hold: '#94a3b8',
+  }
+
+  return (
+    <Card sx={{ height: '100%' }}>
+      <CardHeader
+        title="Composite Signal"
+        subheader={`${symbol} · ML 50% + Sentiment 30% + Technical 20%`}
+        titleTypographyProps={{ variant: 'subtitle1', fontWeight: 700 }}
+        subheaderTypographyProps={{ variant: 'caption' }}
+        action={<SignalIcon sx={{ color: 'primary.main', mr: 1, mt: 0.5 }} />}
+      />
+      <CardContent sx={{ pt: 0 }}>
+        {isLoading && <Skeleton variant="rectangular" height={340} sx={{ borderRadius: 1 }} />}
+        {isError && (
+          <Alert severity="warning">
+            {(error as Error)?.message?.includes('404')
+              ? `No trained model for ${symbol}. Train one first.`
+              : `Could not load signal for ${symbol}.`
+            }
+          </Alert>
+        )}
+        {data && (
+          <>
+            {/* Large signal badge */}
+            <Box sx={{ textAlign: 'center', py: 2 }}>
+              <Typography
+                variant="h2"
+                fontWeight={900}
+                fontFamily="Roboto Mono, monospace"
+                sx={{ color: signalColor[data.signal], letterSpacing: '0.05em' }}
+              >
+                {data.signal.toUpperCase()}
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mt: 1 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Score:
+                </Typography>
+                <Typography
+                  variant="body1"
+                  fontFamily="Roboto Mono, monospace"
+                  fontWeight={700}
+                  sx={{ color: signalColor[data.signal] }}
+                >
+                  {data.score >= 0 ? '+' : ''}{data.score.toFixed(3)}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  · Confidence:
+                </Typography>
+                <Typography
+                  variant="body1"
+                  fontFamily="Roboto Mono, monospace"
+                  fontWeight={700}
+                >
+                  {(data.confidence * 100).toFixed(1)}%
+                </Typography>
+              </Box>
+            </Box>
+
+            <Divider sx={{ mb: 2 }} />
+
+            {/* Sub-signal votes */}
+            <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mb: 1 }}>
+              Sub-signal votes (−1 = bearish, +1 = bullish)
+            </Typography>
+            {Object.entries(data.sub_signals).map(([key, sub]) => {
+              const pct = ((sub.vote + 1) / 2) * 100  // Map [-1, +1] → [0, 100]
+              const c   = sub.vote > 0.1 ? '#06d6a0' : sub.vote < -0.1 ? '#ef476f' : '#94a3b8'
+              return (
+                <Box key={key} sx={{ mb: 1.5 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'capitalize' }}>
+                      {key}
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      fontFamily="Roboto Mono, monospace"
+                      fontWeight={700}
+                      sx={{ color: c }}
+                    >
+                      {sub.vote >= 0 ? '+' : ''}{sub.vote.toFixed(3)}
+                    </Typography>
+                  </Box>
+                  <LinearProgress
+                    variant="determinate"
+                    value={pct}
+                    sx={{
+                      height: 5,
+                      borderRadius: 3,
+                      bgcolor: 'rgba(255,255,255,0.06)',
+                      '& .MuiLinearProgress-bar': { bgcolor: c, borderRadius: 3 },
+                    }}
+                  />
+                  <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mt: 0.25 }}>
+                    {sub.label}
+                  </Typography>
+                </Box>
+              )
+            })}
+
+            <Divider sx={{ my: 1.5 }} />
+
+            {/* Reasoning */}
+            <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mb: 0.75 }}>
+              Reasoning
+            </Typography>
+            {data.reasoning.map((line, i) => (
+              <Typography key={i} variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
+                • {line}
+              </Typography>
+            ))}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function MLModels() {
   const [selectedSymbol, setSelectedSymbol] = useState<Symbol>('SPY')
@@ -338,7 +595,7 @@ export default function MLModels() {
           <Typography variant="h4">ML Models</Typography>
         </Box>
         <Typography variant="body2" color="text.secondary">
-          XGBoost direction classifiers trained on 42 technical features · Walk-forward validation
+          XGBoost direction classifiers · SHAP explainability · Sentiment signals · Composite signal
         </Typography>
       </Box>
 
@@ -425,11 +682,40 @@ export default function MLModels() {
       <Typography variant="h6" fontWeight={700} sx={{ mb: 1.5 }}>Train New Model</Typography>
       <TrainPanel />
 
+      {/* ── Section 4: Advanced ML Signals (Phase 6) ──────────────────────── */}
+      <Box sx={{ mt: 4 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
+          <SignalIcon sx={{ color: 'primary.main', fontSize: 22 }} />
+          <Typography variant="h6" fontWeight={700}>Advanced ML Signals</Typography>
+          <Chip label="Phase 6" size="small" color="primary" sx={{ fontSize: '0.65rem' }} />
+        </Box>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          SHAP explainability · RSI+MA sentiment · Composite BUY/HOLD/SELL signal for{' '}
+          <strong>{selectedSymbol}</strong> (symbol selector above applies)
+        </Typography>
+
+        <Grid container spacing={2.5}>
+          {/* SHAP Waterfall */}
+          <Grid item xs={12} lg={5}>
+            <SHAPPanel symbol={selectedSymbol} />
+          </Grid>
+
+          {/* Sentiment Gauge */}
+          <Grid item xs={12} sm={6} lg={3}>
+            <SentimentPanel symbol={selectedSymbol} />
+          </Grid>
+
+          {/* Composite Signal */}
+          <Grid item xs={12} sm={6} lg={4}>
+            <SignalPanel symbol={selectedSymbol} />
+          </Grid>
+        </Grid>
+      </Box>
+
       {/* Phase indicator */}
       <Box sx={{ mt: 4, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
         <Typography variant="caption" color="text.disabled">
-          Phase 2 — ML Pipeline ·
-          Next: Quant Strategies (Phase 3) · Risk Management (Phase 4)
+          Phase 6 — Advanced ML · SHAP Explainability · Sentiment Signals · Composite Signal Aggregator
         </Typography>
       </Box>
     </Box>

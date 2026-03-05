@@ -41,6 +41,8 @@ xgboost = "^2.0.0"         # Gradient boosting classifier
 joblib = "^1.3.0"          # Model serialization
 statsmodels = "^0.14.0"    # Phase 3: cointegration tests (pairs trading)
 scipy = "^1.12.0"          # Phase 4: portfolio optimization (efficient frontier)
+# Phase 5: paper trading uses local DB prices — no external API dependency
+shap = "^0.44.0"           # Phase 6: SHAP feature explainability for XGBoost
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"

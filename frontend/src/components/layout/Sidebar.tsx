@@ -17,6 +17,7 @@ import {
   ShowChart as LogoIcon,
   TrendingUp as StrategiesIcon,
   AccountBalance as RiskIcon,
+  CandlestickChart as TradingIcon,
 } from '@mui/icons-material'
 import { useLocation, useNavigate } from 'react-router-dom'
 
@@ -30,6 +31,7 @@ const NAV_ITEMS = [
   { label: 'Strategies',  path: '/strategies', icon: <StrategiesIcon />,  phase: '' },
   { label: 'Backtest',    path: '/backtest',   icon: <BacktestIcon />,    phase: '' },
   { label: 'Risk',        path: '/risk',       icon: <RiskIcon />,        phase: '' },
+  { label: 'Trading',     path: '/trading',    icon: <TradingIcon />,     phase: '' },
   { label: 'Settings',    path: '/settings',   icon: <SettingsIcon />,    phase: '' },
 ]
 
@@ -120,10 +122,10 @@ export default function Sidebar({ width }: SidebarProps) {
       {/* ── Footer ──────────────────────────────────────────────────────── */}
       <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
         <Typography variant="caption" color="text.disabled" display="block">
-          Phase 4 — Risk Management
+          Phase 5 — Paper Trading
         </Typography>
         <Typography variant="caption" color="text.disabled">
-          v0.4.0
+          v0.5.0
         </Typography>
       </Box>
     </Drawer>

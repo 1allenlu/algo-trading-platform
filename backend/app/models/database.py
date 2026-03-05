@@ -8,7 +8,7 @@ Architecture note:
   - The SQLAlchemy models mirror the hypertable schema so the ORM can query them
 """
 
-from sqlalchemy import BigInteger, Boolean, Column, DateTime, Float, Index, Integer, String, Text
+from sqlalchemy import BigInteger, Boolean, Column, Date, DateTime, Float, Index, Integer, String, Text
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -196,3 +196,90 @@ class BacktestRun(Base):
 
     def __repr__(self) -> str:
         return f"<BacktestRun id={self.id} strategy={self.strategy_name} status={self.status}>"
+
+
+# ── Paper Trading (Phase 5) ────────────────────────────────────────────────────
+
+class PaperAccount(Base):
+    """
+    Single paper trading account. Always has at most one row (id=1).
+    Stores the current cash balance; equity is computed on-the-fly from positions.
+    Starting balance: $100,000.
+    """
+
+    __tablename__ = "paper_account"
+
+    id         = Column(Integer, primary_key=True, autoincrement=True)
+    cash       = Column(Float,   nullable=False, default=100_000.0)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: __import__('datetime').datetime.utcnow())
+
+    def __repr__(self) -> str:
+        return f"<PaperAccount cash={self.cash:.2f}>"
+
+
+class PaperPosition(Base):
+    """
+    An open position in the paper trading account.
+    One row per symbol (unique). Deleted when qty reaches zero.
+    avg_entry_price is a weighted average updated on each buy.
+    """
+
+    __tablename__ = "paper_positions"
+
+    id              = Column(Integer,    primary_key=True, autoincrement=True)
+    symbol          = Column(String(20), nullable=False, unique=True)
+    qty             = Column(Float,      nullable=False, default=0.0)
+    avg_entry_price = Column(Float,      nullable=False, default=0.0)
+    updated_at      = Column(DateTime(timezone=True), nullable=True)
+
+    def __repr__(self) -> str:
+        return f"<PaperPosition {self.symbol} qty={self.qty} avg={self.avg_entry_price:.2f}>"
+
+
+class PaperOrder(Base):
+    """
+    An order (market or limit) in the paper trading account.
+
+    Lifecycle:
+      'new' → 'filled'   (market: immediate; limit: when price crosses)
+      'new' → 'canceled' (via DELETE /api/paper/orders/{id})
+    """
+
+    __tablename__ = "paper_orders"
+
+    id               = Column(Integer,    primary_key=True, autoincrement=True)
+    symbol           = Column(String(20), nullable=False)
+    side             = Column(String(4),  nullable=False)    # "buy" | "sell"
+    order_type       = Column(String(10), nullable=False, default="market")
+    qty              = Column(Float,      nullable=False)
+    filled_qty       = Column(Float,      nullable=False, default=0.0)
+    status           = Column(String(20), nullable=False, default="new")
+    limit_price      = Column(Float,      nullable=True)
+    filled_avg_price = Column(Float,      nullable=True)
+    created_at       = Column(DateTime(timezone=True), nullable=True)
+    updated_at       = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("ix_paper_orders_status", "status"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<PaperOrder {self.side.upper()} {self.qty} {self.symbol} status={self.status}>"
+
+
+class PaperEquityHistory(Base):
+    """
+    Daily equity snapshots for the portfolio history chart.
+    At most one row per calendar day (unique recorded_at).
+    Inserted the first time get_state() is called each day.
+    """
+
+    __tablename__ = "paper_equity_history"
+
+    id          = Column(Integer, primary_key=True, autoincrement=True)
+    equity      = Column(Float,   nullable=False)
+    cash        = Column(Float,   nullable=False)
+    recorded_at = Column(Date,    nullable=False, unique=True)
+
+    def __repr__(self) -> str:
+        return f"<PaperEquityHistory {self.recorded_at} equity={self.equity:.2f}>"

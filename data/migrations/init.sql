@@ -126,5 +126,47 @@ CREATE TABLE IF NOT EXISTS backtest_runs (
 CREATE INDEX IF NOT EXISTS ix_backtest_runs_strategy
     ON backtest_runs (strategy_name, created_at DESC);
 
--- ── Phase 4+ tables (added via Alembic) ───────────────────────────────────────
--- positions, orders, portfolio_snapshots, risk_metrics, etc.
+-- ── Phase 5: Paper Trading ────────────────────────────────────────────────────
+-- Self-contained simulator: no external API needed.
+-- Orders fill at the most recent close from market_data.
+
+-- Single paper account (always id=1, starting with $100k cash)
+CREATE TABLE IF NOT EXISTS paper_account (
+    id         SERIAL PRIMARY KEY,
+    cash       DOUBLE PRECISION NOT NULL DEFAULT 100000.0,
+    created_at TIMESTAMPTZ      NOT NULL DEFAULT NOW()
+);
+
+-- Open positions (one row per symbol; deleted when qty reaches zero)
+CREATE TABLE IF NOT EXISTS paper_positions (
+    id              SERIAL PRIMARY KEY,
+    symbol          VARCHAR(20)      NOT NULL UNIQUE,
+    qty             DOUBLE PRECISION NOT NULL DEFAULT 0,
+    avg_entry_price DOUBLE PRECISION NOT NULL DEFAULT 0,
+    updated_at      TIMESTAMPTZ
+);
+
+-- All orders (pending + historical)
+CREATE TABLE IF NOT EXISTS paper_orders (
+    id               SERIAL PRIMARY KEY,
+    symbol           VARCHAR(20)      NOT NULL,
+    side             VARCHAR(4)       NOT NULL,              -- 'buy' | 'sell'
+    order_type       VARCHAR(10)      NOT NULL DEFAULT 'market',
+    qty              DOUBLE PRECISION NOT NULL,
+    filled_qty       DOUBLE PRECISION NOT NULL DEFAULT 0,
+    status           VARCHAR(20)      NOT NULL DEFAULT 'new', -- new|filled|canceled
+    limit_price      DOUBLE PRECISION,
+    filled_avg_price DOUBLE PRECISION,
+    created_at       TIMESTAMPTZ,
+    updated_at       TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS ix_paper_orders_status ON paper_orders (status);
+
+-- Daily equity snapshots for the portfolio history chart
+CREATE TABLE IF NOT EXISTS paper_equity_history (
+    id          SERIAL PRIMARY KEY,
+    equity      DOUBLE PRECISION NOT NULL,
+    cash        DOUBLE PRECISION NOT NULL,
+    recorded_at DATE             NOT NULL UNIQUE DEFAULT CURRENT_DATE
+);

@@ -1,5 +1,5 @@
 """
-ML API routes — Phase 2.
+ML API routes — Phase 2 + Phase 6.
 
 Endpoints:
   POST /api/ml/train                    Trigger model training (async job)
@@ -7,24 +7,38 @@ Endpoints:
   GET  /api/ml/models                   List all trained models
   GET  /api/ml/predict/{symbol}         Latest predictions for a symbol
   GET  /api/ml/features/{symbol}        Feature importance for best model
+  GET  /api/ml/shap/{symbol}            SHAP explainability (Phase 6)
+  GET  /api/ml/sentiment/{symbol}       RSI+MA sentiment score (Phase 6)
+  GET  /api/ml/signal/{symbol}          Composite BUY/HOLD/SELL signal (Phase 6)
 
 All training is non-blocking: POST /api/ml/train returns a job_id immediately,
 and the client polls /api/ml/status/{job_id} until status == "done" | "failed".
 """
 
+import asyncio
 from typing import Annotated
 
+import pandas as pd
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from loguru import logger
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
 from app.core.config import settings
+from app.models.database import MarketData
 from app.models.schemas import (
     MLModelInfo,
     MLModelsResponse,
     MLPredictResponse,
     PredictionBar,
+    SHAPFeatureContribution,
+    SHAPResponse,
+    SentimentComponents,
+    SentimentResponse,
+    SignalResponse,
+    SubSignal,
+    SubSignals,
     TrainJobResponse,
     TrainRequest,
     TrainStatusResponse,
@@ -251,3 +265,236 @@ async def get_feature_importance(
         "features":   top_features,
         "count":      len(top_features),
     }
+
+
+# ── Phase 6: Advanced ML endpoints ───────────────────────────────────────────
+
+
+def _build_ohlcv_df(ohlcv_rows: list) -> pd.DataFrame:
+    """Build a dated OHLCV DataFrame from ORM rows (shared by Phase 6 routes)."""
+    df = pd.DataFrame([
+        {
+            "open": r.open, "high": r.high, "low": r.low,
+            "close": r.close, "volume": r.volume,
+        }
+        for r in ohlcv_rows
+    ])
+    df.index = pd.to_datetime([r.timestamp for r in ohlcv_rows], utc=True)
+    return df
+
+
+# ── GET /api/ml/sentiment/{symbol} ───────────────────────────────────────────
+
+@router.get(
+    "/sentiment/{symbol}",
+    response_model=SentimentResponse,
+    summary="RSI + moving-average sentiment score (Phase 6)",
+)
+async def get_sentiment(
+    symbol: str,
+    db:     AsyncSession = Depends(get_db),
+) -> SentimentResponse:
+    """
+    Derive a market sentiment score from price/momentum patterns.
+
+    No external data needed — computed from the closing prices already in the DB.
+
+    Score range: -1.0 (very bearish) to +1.0 (very bullish).
+    Components: RSI(14) zone, price vs SMA(50), price vs SMA(200).
+    """
+    symbol = symbol.upper().strip()
+
+    result = await db.execute(
+        select(MarketData)
+        .where(MarketData.symbol == symbol)
+        .order_by(MarketData.timestamp.asc())
+    )
+    ohlcv_rows = result.scalars().all()
+
+    if len(ohlcv_rows) < 210:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Need at least 210 bars for '{symbol}' to compute sentiment. "
+                   f"Currently have {len(ohlcv_rows)} bars. Run 'make ingest' first.",
+        )
+
+    df = _build_ohlcv_df(ohlcv_rows)
+
+    from app.services.sentiment_service import compute_sentiment
+    data = compute_sentiment(df)
+
+    return SentimentResponse(
+        symbol=symbol,
+        score=data["score"],
+        label=data["label"],
+        rsi_14=data["rsi_14"],
+        price_vs_sma50=data["price_vs_sma50"],
+        price_vs_sma200=data["price_vs_sma200"],
+        components=SentimentComponents(**data["components"]),
+    )
+
+
+# ── GET /api/ml/signal/{symbol} ──────────────────────────────────────────────
+
+@router.get(
+    "/signal/{symbol}",
+    response_model=SignalResponse,
+    summary="Composite BUY/HOLD/SELL signal (Phase 6)",
+)
+async def get_composite_signal(
+    symbol: str,
+    db:     AsyncSession = Depends(get_db),
+) -> SignalResponse:
+    """
+    Aggregate ML, sentiment, and technical signals into a single action.
+
+    Requires a trained XGBoost model (POST /api/ml/train) and stored predictions.
+    Weights: ML 50%, Sentiment 30%, Technical 20%.
+    BUY when composite > +0.35, SELL when < -0.35, else HOLD.
+    """
+    symbol = symbol.upper().strip()
+
+    # ── 1. Get latest stored ML prediction (avoids model reload) ─────────────
+    model = await ml_service.get_latest_model(db, symbol, "xgboost")
+    if model is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No trained xgboost model for '{symbol}'. Train first via POST /api/ml/train.",
+        )
+
+    preds = await ml_service.get_predictions(db, symbol, model.id, limit=1)
+    if not preds:
+        raise HTTPException(
+            status_code=404,
+            detail="No predictions stored. Retrain the model.",
+        )
+    pred = preds[-1]
+
+    # ── 2. Load OHLCV and compute sentiment + MACD inline ────────────────────
+    result = await db.execute(
+        select(MarketData)
+        .where(MarketData.symbol == symbol)
+        .order_by(MarketData.timestamp.asc())
+    )
+    ohlcv_rows = result.scalars().all()
+
+    if len(ohlcv_rows) < 210:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Need at least 210 bars for '{symbol}'. Currently have {len(ohlcv_rows)}.",
+        )
+
+    df = _build_ohlcv_df(ohlcv_rows)
+
+    from ml_engine.features.technical import macd as compute_macd
+    from app.services.sentiment_service import compute_sentiment
+
+    sentiment = compute_sentiment(df)
+    _, _, macd_hist_series = compute_macd(df["close"])
+
+    latest_features = {
+        "rsi_14":    sentiment["rsi_14"],
+        "macd_hist": float(macd_hist_series.iloc[-1]),
+    }
+
+    # ── 3. Aggregate ──────────────────────────────────────────────────────────
+    from app.services.signal_service import compute_composite_signal
+    data = compute_composite_signal(
+        ml_direction=pred.predicted_dir,
+        ml_confidence=pred.confidence,
+        sentiment_score=sentiment["score"],
+        latest_features=latest_features,
+    )
+
+    return SignalResponse(
+        symbol=symbol,
+        signal=data["signal"],
+        confidence=data["confidence"],
+        score=data["score"],
+        reasoning=data["reasoning"],
+        sub_signals=SubSignals(
+            ml        = SubSignal(**data["sub_signals"]["ml"]),
+            sentiment = SubSignal(**data["sub_signals"]["sentiment"]),
+            technical = SubSignal(**data["sub_signals"]["technical"]),
+        ),
+    )
+
+
+# ── GET /api/ml/shap/{symbol} ────────────────────────────────────────────────
+
+@router.get(
+    "/shap/{symbol}",
+    response_model=SHAPResponse,
+    summary="SHAP feature explanations for the latest prediction (Phase 6)",
+)
+async def get_shap_values(
+    symbol:     str,
+    model_type: Annotated[str, Query()] = "xgboost",
+    top_n:      Annotated[int, Query(ge=5, le=40)] = 12,
+    db:         AsyncSession = Depends(get_db),
+) -> SHAPResponse:
+    """
+    Compute SHAP values for the most recent bar's XGBoost prediction.
+
+    Uses shap.TreeExplainer (exact, no approximation).
+    Positive SHAP value → feature pushes prediction toward UP.
+    Negative SHAP value → feature pushes prediction toward DOWN.
+
+    This endpoint takes ~100-300ms (CPU-bound model load + SHAP inference).
+    """
+    symbol = symbol.upper().strip()
+
+    model = await ml_service.get_latest_model(db, symbol, model_type)
+    if model is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No trained {model_type} model for '{symbol}'. "
+                   f"Train one via POST /api/ml/train.",
+        )
+
+    result = await db.execute(
+        select(MarketData)
+        .where(MarketData.symbol == symbol)
+        .order_by(MarketData.timestamp.asc())
+    )
+    ohlcv_rows = result.scalars().all()
+
+    if len(ohlcv_rows) < 210:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Need at least 210 bars for '{symbol}'. Currently have {len(ohlcv_rows)}.",
+        )
+
+    df = _build_ohlcv_df(ohlcv_rows)
+
+    # Build feature matrix using the same pipeline as training
+    from ml_engine.features.technical import compute_features, FEATURE_COLUMNS
+    feat = compute_features(df)
+    feat_cols = [c for c in FEATURE_COLUMNS if c in feat.columns]
+
+    if feat.empty or len(feat_cols) == 0:
+        raise HTTPException(status_code=400, detail="Feature computation returned empty result.")
+
+    latest_X = feat[feat_cols].values[-1:]   # Shape (1, n_features)
+
+    # Run SHAP in a thread pool — CPU-bound, ~100-300ms
+    from app.services.shap_service import compute_shap_values
+    data = await asyncio.to_thread(
+        compute_shap_values,
+        model.model_path,
+        latest_X,
+        feat_cols,
+        top_n,
+    )
+
+    direction = "up" if data["predicted_proba"] >= 0.5 else "down"
+
+    return SHAPResponse(
+        symbol=symbol,
+        model_name=model.name,
+        base_value=data["base_value"],
+        predicted_proba=data["predicted_proba"],
+        predicted_dir=direction,
+        features=[SHAPFeatureContribution(**f) for f in data["features"]],
+        count=len(data["features"]),
+    )
