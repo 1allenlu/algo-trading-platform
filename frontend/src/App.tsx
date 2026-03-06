@@ -11,6 +11,9 @@ import Trading from '@/pages/Trading'
 import Settings from '@/pages/Settings'
 import AlertsPage from '@/pages/Alerts'
 import AnalyticsPage from '@/pages/Analytics'
+import OptimizePage from '@/pages/Optimize'
+import ScannerPage from '@/pages/Scanner'
+import AutoTradePage from '@/pages/AutoTrade'
 import IntroPage from '@/pages/Intro'
 
 const SIDEBAR_WIDTH = 240
@@ -54,6 +57,9 @@ function AppLayout() {
             <Route path="/trading"    element={<Trading />} />
             <Route path="/alerts"     element={<AlertsPage />} />
             <Route path="/analytics"  element={<AnalyticsPage />} />
+            <Route path="/optimize"   element={<OptimizePage />} />
+            <Route path="/scanner"    element={<ScannerPage />} />
+            <Route path="/autotrade"  element={<AutoTradePage />} />
             <Route path="/settings"   element={<Settings />} />
           </Routes>
         </Box>

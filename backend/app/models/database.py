@@ -345,3 +345,120 @@ class AlertEvent(Base):
 
     def __repr__(self) -> str:
         return f"<AlertEvent rule={self.rule_id} {self.symbol} {self.message[:40]}>"
+
+
+# ── Strategy Optimization (Phase 10) ─────────────────────────────────────────
+
+class OptimizationRun(Base):
+    """
+    A hyperparameter optimization job — runs N backtest trials for a strategy
+    with different parameter combinations and ranks them by an objective metric.
+
+    status lifecycle: 'queued' → 'running' → 'done' | 'failed'
+
+    Fields:
+      param_grid_json   — JSON dict of {param: [value1, value2, …]} lists
+      objective         — metric to maximise: "sharpe" | "total_return" | "calmar" | "sortino"
+      total_trials      — total number of combinations to evaluate
+      completed_trials  — number done so far (incremented during run)
+      results_json      — JSON list of trial results sorted by objective (written on completion)
+      best_params_json  — JSON dict of winning parameter set
+      best_sharpe       — quick-access copy of best trial's Sharpe ratio
+      best_return       — quick-access copy of best trial's total return
+    """
+
+    __tablename__ = "optimization_runs"
+
+    id               = Column(Integer, primary_key=True, autoincrement=True)
+    strategy         = Column(String(50),  nullable=False)
+    symbols          = Column(Text,        nullable=False)   # comma-separated
+    param_grid_json  = Column(Text,        nullable=False)
+    objective        = Column(String(20),  nullable=False, default="sharpe")
+
+    # Job state
+    status           = Column(String(20),  nullable=False, default="queued")
+    error            = Column(Text,        nullable=True)
+    total_trials     = Column(Integer,     nullable=False, default=0)
+    completed_trials = Column(Integer,     nullable=False, default=0)
+
+    # Results (populated on completion)
+    results_json     = Column(Text,        nullable=True)   # list[TrialResult]
+    best_params_json = Column(Text,        nullable=True)
+    best_sharpe      = Column(Float,       nullable=True)
+    best_return      = Column(Float,       nullable=True)
+
+    created_at       = Column(DateTime(timezone=True), nullable=False)
+    completed_at     = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("ix_optimization_runs_strategy", "strategy"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<OptimizationRun id={self.id} {self.strategy} status={self.status} trials={self.completed_trials}/{self.total_trials}>"
+
+
+# ── Signal-Based Auto Paper Trading (Phase 12) ────────────────────────────────
+
+class AutoTradeConfig(Base):
+    """
+    Singleton configuration row for signal-based automated paper trading.
+    Always has exactly one row (id=1), upserted on first access.
+
+    Fields:
+      enabled           — whether the background auto-trader is active
+      symbols           — comma-separated list of symbols to monitor
+      signal_threshold  — min composite signal confidence to trigger a trade [0,1]
+      position_size_pct — fraction of current equity to allocate per new position
+      check_interval_sec — seconds between each signal evaluation cycle
+    """
+
+    __tablename__ = "auto_trade_config"
+
+    id                 = Column(Integer, primary_key=True, autoincrement=True)
+    enabled            = Column(Boolean,  nullable=False, default=False)
+    symbols            = Column(Text,     nullable=False, default="SPY,QQQ")
+    signal_threshold   = Column(Float,    nullable=False, default=0.5)
+    position_size_pct  = Column(Float,    nullable=False, default=0.05)
+    check_interval_sec = Column(Integer,  nullable=False, default=60)
+    updated_at         = Column(DateTime(timezone=True), nullable=True)
+
+    def __repr__(self) -> str:
+        return f"<AutoTradeConfig enabled={self.enabled} threshold={self.signal_threshold}>"
+
+
+class AutoTradeLog(Base):
+    """
+    One row per auto-trading evaluation × symbol.
+
+    action values:
+      bought              — market buy placed successfully
+      sold                — market sell placed successfully
+      hold_signal         — signal was HOLD; skipped
+      no_position_to_sell — SELL signal but no open position
+      already_positioned  — BUY signal but position already exists
+      low_confidence      — signal confidence below configured threshold
+      insufficient_data   — fewer than 210 bars in DB
+      error               — unexpected exception during evaluation
+    """
+
+    __tablename__ = "auto_trade_log"
+
+    id         = Column(Integer,    primary_key=True, autoincrement=True)
+    symbol     = Column(String(20), nullable=False)
+    signal     = Column(String(10), nullable=False)   # buy | sell | hold
+    confidence = Column(Float,      nullable=False)
+    score      = Column(Float,      nullable=False)
+    action     = Column(String(40), nullable=False)
+    qty        = Column(Float,      nullable=True)
+    price      = Column(Float,      nullable=True)
+    reason     = Column(Text,       nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        Index("ix_auto_trade_log_symbol",     "symbol"),
+        Index("ix_auto_trade_log_created_at", "created_at"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<AutoTradeLog {self.symbol} {self.signal} → {self.action}>"

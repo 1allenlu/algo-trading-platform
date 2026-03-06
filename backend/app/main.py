@@ -22,12 +22,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
-from app.api.routes import alerts, analytics, backtest, health, market_data, ml, paper_trading, risk, strategies
+from app.api.routes import alerts, analytics, autotrade, backtest, health, market_data, ml, optimize, paper_trading, risk, scanner, strategies
 from app.api.routes import websocket as ws_routes
 from app.core.config import settings
 from app.core.logging import setup_logging
 from app.models.database import Base, engine
 from app.services.alert_service import get_alert_service
+from app.services.autotrade_service import start_autotrade_task, stop_autotrade_task
 from app.services.price_broadcaster import PriceConnectionManager
 from app.services.price_simulator import run_price_simulator
 
@@ -40,7 +41,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     # ── Startup ───────────────────────────────────────────────────────────────
     setup_logging()
-    logger.info(f"Starting {settings.APP_NAME} v0.8.0")
+    logger.info(f"Starting {settings.APP_NAME} v0.10.0")
     logger.info(f"Database: {settings.DATABASE_URL.split('@')[-1]}")
     logger.info(f"Debug mode: {settings.DEBUG}")
 
@@ -77,9 +78,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     )
     logger.info("Price simulator background task started")
 
+    # ── Phase 12: Auto-trade background task ──────────────────────────────────
+    # Evaluates ML/sentiment signals on a configurable interval and places
+    # paper orders when confidence exceeds the user-configured threshold.
+    start_autotrade_task()
+    logger.info("Auto-trade background task started")
+
     yield  # Application runs here
 
     # ── Shutdown ──────────────────────────────────────────────────────────────
+    await stop_autotrade_task()
     simulator_task.cancel()
     try:
         await simulator_task
@@ -94,7 +102,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 app = FastAPI(
     title=settings.APP_NAME,
     description="Algorithmic Trading Platform — Quant + ML + Real-time",
-    version="0.8.0",
+    version="0.10.0",
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan,
@@ -150,6 +158,21 @@ app.include_router(
     analytics.router,
     prefix=f"{settings.API_V1_PREFIX}/analytics",
     tags=["analytics"],
+)
+app.include_router(
+    optimize.router,
+    prefix=f"{settings.API_V1_PREFIX}/optimize",
+    tags=["optimize"],
+)
+app.include_router(
+    scanner.router,
+    prefix=f"{settings.API_V1_PREFIX}/scanner",
+    tags=["scanner"],
+)
+app.include_router(
+    autotrade.router,
+    prefix=f"{settings.API_V1_PREFIX}/autotrade",
+    tags=["autotrade"],
 )
 
 # ── WebSocket routes (Phase 7 + 8) ───────────────────────────────────────────

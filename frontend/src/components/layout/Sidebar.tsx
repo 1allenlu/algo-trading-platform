@@ -11,12 +11,15 @@ import {
 } from '@mui/material'
 import {
   Assessment as BacktestIcon,
+  AutoMode as AutoTradeIcon,
   Dashboard as DashboardIcon,
   Insights as AnalyticsIcon,
   NotificationsOutlined as AlertsIcon,
   Psychology as MLIcon,
+  Search as ScannerIcon,
   Settings as SettingsIcon,
   ShowChart as LogoIcon,
+  Tune as OptimizeIcon,
   TrendingUp as StrategiesIcon,
   AccountBalance as RiskIcon,
   CandlestickChart as TradingIcon,
@@ -36,6 +39,9 @@ const NAV_ITEMS = [
   { label: 'Trading',     path: '/trading',    icon: <TradingIcon />,     phase: '' },
   { label: 'Analytics',   path: '/analytics',  icon: <AnalyticsIcon />,   phase: '' },
   { label: 'Alerts',      path: '/alerts',     icon: <AlertsIcon />,      phase: '' },
+  { label: 'Optimize',    path: '/optimize',   icon: <OptimizeIcon />,    phase: '' },
+  { label: 'Scanner',     path: '/scanner',    icon: <ScannerIcon />,     phase: '' },
+  { label: 'Auto Trade',  path: '/autotrade',  icon: <AutoTradeIcon />,   phase: '' },
   { label: 'Settings',    path: '/settings',   icon: <SettingsIcon />,    phase: '' },
 ]
 
@@ -126,10 +132,10 @@ export default function Sidebar({ width }: SidebarProps) {
       {/* ── Footer ──────────────────────────────────────────────────────── */}
       <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
         <Typography variant="caption" color="text.disabled" display="block">
-          Phase 9 — Portfolio Analytics
+          Phase 12 — Auto Paper Trading
         </Typography>
         <Typography variant="caption" color="text.disabled">
-          v0.9.0
+          v0.12.0
         </Typography>
       </Box>
     </Drawer>

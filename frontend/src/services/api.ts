@@ -480,6 +480,123 @@ export interface RollingPoint {
   rolling_vol:     number   // annualized fraction
 }
 
+// ── Scanner types — Phase 11 ──────────────────────────────────────────────────
+
+export interface SymbolSnapshot {
+  symbol:         string
+  price:          number
+  change_pct:     number
+  rsi_14:         number
+  sma_20:         number | null
+  sma_50:         number | null
+  sma_200:        number | null
+  vs_sma50:       number | null
+  vs_sma200:      number | null
+  volume:         number
+  avg_volume_20:  number | null
+  volume_ratio:   number | null
+  high_52w:       number
+  low_52w:        number
+  vs_52w_high:    number
+  vs_52w_low:     number
+  bar_count:      number
+}
+
+export interface ScanRequest {
+  rsi_max?:            number
+  rsi_min?:            number
+  price_above_sma50?:  boolean
+  price_below_sma50?:  boolean
+  price_above_sma200?: boolean
+  price_below_sma200?: boolean
+  volume_ratio_min?:   number
+  change_pct_min?:     number
+  change_pct_max?:     number
+  near_52w_high_pct?:  number
+  near_52w_low_pct?:   number
+  symbols?:            string[]
+  sort_by?:            'symbol' | 'rsi' | 'change_pct' | 'volume_ratio' | 'vs_sma50' | 'vs_sma200'
+  sort_desc?:          boolean
+}
+
+// ── Auto-Trade types — Phase 12 ───────────────────────────────────────────────
+
+export interface AutoTradeConfig {
+  id:                 number
+  enabled:            boolean
+  symbols:            string[]
+  signal_threshold:   number
+  position_size_pct:  number
+  check_interval_sec: number
+  updated_at:         string | null
+}
+
+export interface UpdateAutoTradeConfigRequest {
+  symbols?:            string
+  signal_threshold?:   number
+  position_size_pct?:  number
+  check_interval_sec?: number
+}
+
+export interface AutoTradeLogEntry {
+  id:         number
+  symbol:     string
+  signal:     string
+  confidence: number
+  score:      number
+  action:     string
+  qty:        number | null
+  price:      number | null
+  reason:     string
+  created_at: string
+}
+
+// ── Optimization types — Phase 10 ─────────────────────────────────────────────
+
+export interface OptimizationRunSummary {
+  id:               number
+  strategy:         string
+  symbols:          string[]
+  objective:        string
+  status:           'queued' | 'running' | 'done' | 'failed'
+  total_trials:     number
+  completed_trials: number
+  best_sharpe:      number | null
+  best_return:      number | null
+  best_params:      Record<string, unknown> | null
+  created_at:       string
+}
+
+export interface TrialResult {
+  params:       Record<string, unknown>
+  sharpe_ratio: number | null
+  total_return: number | null
+  max_drawdown: number | null
+  calmar_ratio: number | null
+  num_trades:   number | null
+  objective_value: number
+}
+
+export interface OptimizationRunDetail extends OptimizationRunSummary {
+  param_grid:   Record<string, unknown[]>
+  error:        string | null
+  results:      TrialResult[]
+  completed_at: string | null
+}
+
+export interface StartOptimizationRequest {
+  strategy:   string
+  symbols:    string[]
+  param_grid: Record<string, unknown[]>
+  objective?: 'sharpe' | 'total_return' | 'calmar' | 'sortino'
+}
+
+export interface StartOptimizationResponse {
+  opt_id:       number
+  total_trials: number
+  status:       string
+}
+
 // ── API functions ─────────────────────────────────────────────────────────────
 
 export const api = {
@@ -623,6 +740,49 @@ export const api = {
     getRolling: (window = 20): Promise<RollingPoint[]> =>
       apiClient
         .get<RollingPoint[]>('/api/analytics/rolling', { params: { window } })
+        .then((r) => r.data),
+  },
+
+  optimize: {
+    getDefaultParams: (): Promise<Record<string, Record<string, unknown[]>>> =>
+      apiClient.get('/api/optimize/params').then((r) => r.data),
+
+    start: (req: StartOptimizationRequest): Promise<StartOptimizationResponse> =>
+      apiClient.post<StartOptimizationResponse>('/api/optimize/run', req).then((r) => r.data),
+
+    get: (optId: number): Promise<OptimizationRunDetail> =>
+      apiClient.get<OptimizationRunDetail>(`/api/optimize/${optId}`).then((r) => r.data),
+
+    list: (limit = 20): Promise<OptimizationRunSummary[]> =>
+      apiClient
+        .get<OptimizationRunSummary[]>('/api/optimize/list', { params: { limit } })
+        .then((r) => r.data),
+  },
+
+  scanner: {
+    getSymbols: (): Promise<string[]> =>
+      apiClient.get<string[]>('/api/scanner/symbols').then((r) => r.data),
+
+    scan: (req: ScanRequest): Promise<SymbolSnapshot[]> =>
+      apiClient.post<SymbolSnapshot[]>('/api/scanner/scan', req).then((r) => r.data),
+  },
+
+  autotrade: {
+    getConfig: (): Promise<AutoTradeConfig> =>
+      apiClient.get<AutoTradeConfig>('/api/autotrade/config').then((r) => r.data),
+
+    updateConfig: (req: UpdateAutoTradeConfigRequest): Promise<AutoTradeConfig> =>
+      apiClient.post<AutoTradeConfig>('/api/autotrade/config', req).then((r) => r.data),
+
+    enable: (): Promise<AutoTradeConfig> =>
+      apiClient.post<AutoTradeConfig>('/api/autotrade/enable').then((r) => r.data),
+
+    disable: (): Promise<AutoTradeConfig> =>
+      apiClient.post<AutoTradeConfig>('/api/autotrade/disable').then((r) => r.data),
+
+    getLog: (limit = 100): Promise<AutoTradeLogEntry[]> =>
+      apiClient
+        .get<AutoTradeLogEntry[]>('/api/autotrade/log', { params: { limit } })
         .then((r) => r.data),
   },
 }

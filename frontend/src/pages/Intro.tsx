@@ -16,6 +16,7 @@ import {
 import {
   Assessment as BacktestIcon,
   AutoGraph as AutoGraphIcon,
+  AutoMode as AutoTradeIcon,
   CandlestickChart as TradingIcon,
   Dashboard as DashboardIcon,
   Insights as AnalyticsIcon,
@@ -23,7 +24,9 @@ import {
   Psychology as MLIcon,
   QueryStats as RiskIcon,
   Science as SHAPIcon,
+  Search as ScannerIcon,
   ShowChart as LogoIcon,
+  Tune as OptimizeIcon,
   TrendingUp as StrategiesIcon,
   AccountBalance as PortfolioIcon,
 } from '@mui/icons-material'
@@ -112,6 +115,30 @@ const FEATURES = [
     description: 'Deep-dive performance reporting: rolling Sharpe, annualized vol, P&L attribution by symbol, FIFO trade-level analytics, and one-click CSV export.',
     tags:        ['Rolling Sharpe', 'P&L Attribution', 'CSV Export'],
   },
+  {
+    icon:        <OptimizeIcon sx={{ fontSize: 28 }} />,
+    title:       'Strategy Optimization',
+    phase:       'Phase 10',
+    color:       '#34D399',
+    description: 'Hyperparameter grid search for all quant strategies. Define param ranges, pick an objective (Sharpe/Return/Calmar/Sortino), and run up to 50 in-memory trials ranked in a scatter chart.',
+    tags:        ['Grid Search', 'Max 50 Trials', 'Ranked Results'],
+  },
+  {
+    icon:        <ScannerIcon sx={{ fontSize: 28 }} />,
+    title:       'Market Scanner',
+    phase:       'Phase 11',
+    color:       '#FBBF24',
+    description: 'Technical screener for every symbol in the database. Filter by RSI, SMA relationship, volume spikes, 52-week proximity, and daily change — with 7 one-click presets.',
+    tags:        ['RSI Filter', 'SMA Cross', 'Volume Spike'],
+  },
+  {
+    icon:        <AutoTradeIcon sx={{ fontSize: 28 }} />,
+    title:       'Auto Paper Trading',
+    phase:       'Phase 12',
+    color:       '#A78BFA',
+    description: 'Signal-based automation that evaluates composite ML + sentiment signals on a configurable interval and places paper orders when confidence meets the threshold.',
+    tags:        ['Signal-Based', 'Auto Orders', 'Activity Log'],
+  },
 ]
 
 const TECH_STACK = [
@@ -130,7 +157,7 @@ const TECH_STACK = [
 ]
 
 const STATS = [
-  { value: '9',    label: 'Phases Built' },
+  { value: '12',   label: 'Phases Built' },
   { value: '42',   label: 'ML Features' },
   { value: '3',    label: 'Quant Strategies' },
   { value: '1Hz',  label: 'Live Price Feed' },
@@ -246,7 +273,7 @@ export default function IntroPage() {
         </Typography>
 
         <Typography variant="body2" color="text.disabled" mb={4}>
-          9 phases · Full-stack · TypeScript + Python · Docker
+          12 phases · Full-stack · TypeScript + Python · Docker
         </Typography>
 
         {/* Stats row */}
@@ -350,7 +377,7 @@ export default function IntroPage() {
         {/* ── Footer ─────────────────────────────────────────────────────── */}
         <Box sx={{ mt: 8, textAlign: 'center', pb: 4 }}>
           <Typography variant="caption" color="text.disabled">
-            TradingOS v0.9.0 — Phase 9: Portfolio Analytics & Reporting
+            TradingOS v0.12.0 — Phase 12: Auto Paper Trading
           </Typography>
         </Box>
       </Box>
