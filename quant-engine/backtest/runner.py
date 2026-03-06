@@ -168,8 +168,17 @@ async def run_backtest(
     benchmark = prices_df.iloc[:, 0]
 
     # ── 4. Run backtest engine ────────────────────────────────────────────────
-    log("INFO", "Running backtest engine...")
-    engine  = BacktestEngine(initial_capital=100_000.0)
+    # Extract cost params injected by the API route (dunder-prefixed to avoid
+    # clashing with strategy-specific params).  Fall back to engine defaults.
+    commission = params.pop("__commission__", 0.001)
+    slippage   = params.pop("__slippage__",   0.0005)
+
+    log("INFO", f"Running backtest engine (commission={commission:.4%}, slippage={slippage:.4%})...")
+    engine  = BacktestEngine(
+        initial_capital = 100_000.0,
+        commission      = commission,
+        slippage        = slippage,
+    )
     results = engine.run(signals=signals, prices=prices_df, benchmark=benchmark)
 
     m = results["metrics"]

@@ -566,6 +566,113 @@ function SignalPanel({ symbol }: { symbol: string }) {
   )
 }
 
+// ── Phase 15: XGBoost vs LSTM comparison table ───────────────────────────────
+function ModelComparisonTable({ models }: { models: MLModelInfo[] }) {
+  // Group models by symbol, then by model_type to build comparison rows
+  const symbolMap: Record<string, Record<string, MLModelInfo>> = {}
+  for (const m of models) {
+    if (!symbolMap[m.symbol]) symbolMap[m.symbol] = {}
+    // Keep the latest version per type
+    const existing = symbolMap[m.symbol][m.model_type]
+    if (!existing || m.version > existing.version) {
+      symbolMap[m.symbol][m.model_type] = m
+    }
+  }
+
+  const symbols   = Object.keys(symbolMap).sort()
+  const modelTypes = ['xgboost', 'lstm']
+
+  if (symbols.length === 0) return null
+
+  return (
+    <Card sx={{ border: '1px solid', borderColor: 'divider' }}>
+      <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
+        <TableContainer>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem' }}>Symbol</TableCell>
+                <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem' }}>Model Type</TableCell>
+                <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem' }}>Version</TableCell>
+                <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem' }}>Accuracy</TableCell>
+                <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem' }}>F1 Score</TableCell>
+                <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem' }}>AUC-ROC</TableCell>
+                <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem' }}>Train Samples</TableCell>
+                <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem' }}>Trained</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {symbols.flatMap((sym) =>
+                modelTypes
+                  .filter((t) => symbolMap[sym][t])
+                  .map((t) => {
+                    const m = symbolMap[sym][t]
+                    const isLSTM = t === 'lstm'
+                    return (
+                      <TableRow key={`${sym}-${t}`} hover>
+                        <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontWeight: 700 }}>
+                          {sym}
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            size="small"
+                            label={t.toUpperCase()}
+                            sx={{
+                              bgcolor: isLSTM ? 'rgba(168,85,247,0.15)' : 'rgba(0,180,216,0.15)',
+                              color:   isLSTM ? '#a855f7' : 'primary.main',
+                              fontWeight: 700,
+                              fontSize: '0.65rem',
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell sx={{ fontFamily: 'Roboto Mono, monospace' }}>v{m.version}</TableCell>
+                        <TableCell>
+                          <Typography
+                            variant="body2"
+                            fontFamily="Roboto Mono, monospace"
+                            sx={{ color: m.accuracy && m.accuracy > 0.55 ? '#06d6a0' : 'text.primary' }}
+                          >
+                            {m.accuracy != null ? (m.accuracy * 100).toFixed(1) + '%' : '—'}
+                          </Typography>
+                        </TableCell>
+                        <TableCell sx={{ fontFamily: 'Roboto Mono, monospace' }}>
+                          {m.f1_score != null ? (m.f1_score * 100).toFixed(1) + '%' : '—'}
+                        </TableCell>
+                        <TableCell>
+                          <Typography
+                            variant="body2"
+                            fontFamily="Roboto Mono, monospace"
+                            sx={{ color: m.roc_auc && m.roc_auc > 0.6 ? '#06d6a0' : 'text.primary' }}
+                          >
+                            {m.roc_auc != null ? m.roc_auc.toFixed(3) : '—'}
+                          </Typography>
+                        </TableCell>
+                        <TableCell sx={{ fontFamily: 'Roboto Mono, monospace' }}>
+                          {m.train_samples?.toLocaleString() ?? '—'}
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="caption" color="text.disabled">
+                            {new Date(m.created_at).toLocaleDateString()}
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        <Box sx={{ p: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
+          <Typography variant="caption" color="text.disabled">
+            Train both XGBoost and LSTM for the same symbol to compare. Use "Train New Model" above or{' '}
+            <code>make train symbol=SPY model_type=lstm</code> in the terminal.
+          </Typography>
+        </Box>
+      </CardContent>
+    </Card>
+  )
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function MLModels() {
   const [selectedSymbol, setSelectedSymbol] = useState<Symbol>('SPY')
@@ -712,10 +819,25 @@ export default function MLModels() {
         </Grid>
       </Box>
 
+      {/* ── Section 5: XGBoost vs LSTM Comparison (Phase 15) ─────────────── */}
+      {models.length > 0 && (
+        <Box sx={{ mt: 4 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
+            <Chip label="Phase 15" size="small" color="secondary" sx={{ fontSize: '0.65rem' }} />
+            <Typography variant="h6" fontWeight={700}>XGBoost vs LSTM Comparison</Typography>
+          </Box>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Side-by-side performance metrics for all trained models. Train both model types on the
+            same symbol to compare accuracy, F1-score, and AUC-ROC.
+          </Typography>
+          <ModelComparisonTable models={models} />
+        </Box>
+      )}
+
       {/* Phase indicator */}
       <Box sx={{ mt: 4, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
         <Typography variant="caption" color="text.disabled">
-          Phase 6 — Advanced ML · SHAP Explainability · Sentiment Signals · Composite Signal Aggregator
+          Phase 15 — LSTM Predictions UI · XGBoost vs LSTM Comparison | Phase 6 — Advanced ML
         </Typography>
       </Box>
     </Box>

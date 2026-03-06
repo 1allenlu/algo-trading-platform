@@ -16,6 +16,7 @@ import {
 } from '@mui/material'
 import {
   Circle as DotIcon,
+  Logout as LogoutIcon,
   NotificationsOutlined as BellIcon,
   Refresh as RefreshIcon,
 } from '@mui/icons-material'
@@ -25,6 +26,7 @@ import { useNavigate } from 'react-router-dom'
 import { api } from '@/services/api'
 import { useLivePrices } from '@/hooks/useLivePrices'
 import { useAlerts } from '@/hooks/useAlerts'
+import { useAuth } from '@/contexts/AuthContext'
 import TickerBar from '@/components/layout/TickerBar'
 
 export default function TopBar() {
@@ -37,6 +39,7 @@ export default function TopBar() {
   const { prices, status: wsStatus } = useLivePrices()
   const { alerts, unreadCount, clearUnread } = useAlerts()
   const navigate = useNavigate()
+  const { user, authEnabled, logout } = useAuth()
 
   // Bell popover state
   const bellRef = useRef<HTMLButtonElement>(null)
@@ -101,6 +104,29 @@ export default function TopBar() {
             <RefreshIcon fontSize="small" />
           </IconButton>
         </Tooltip>
+
+        {/* Auth: user badge + logout (Phase 17) */}
+        {authEnabled && user && (
+          <Tooltip title={`Signed in as ${user}`}>
+            <Chip
+              label={user}
+              size="small"
+              variant="outlined"
+              sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.7rem', cursor: 'default' }}
+            />
+          </Tooltip>
+        )}
+        {authEnabled && (
+          <Tooltip title="Sign out">
+            <IconButton
+              size="small"
+              onClick={() => { logout(); navigate('/login') }}
+              sx={{ color: 'text.secondary' }}
+            >
+              <LogoutIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        )}
 
         {/* Alerts bell — Phase 8 */}
         <Tooltip title="Notifications">

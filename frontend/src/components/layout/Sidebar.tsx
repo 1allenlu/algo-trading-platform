@@ -14,6 +14,7 @@ import {
   AutoMode as AutoTradeIcon,
   Dashboard as DashboardIcon,
   Insights as AnalyticsIcon,
+  Newspaper as NewsIcon,
   NotificationsOutlined as AlertsIcon,
   Psychology as MLIcon,
   Search as ScannerIcon,
@@ -42,6 +43,7 @@ const NAV_ITEMS = [
   { label: 'Optimize',    path: '/optimize',   icon: <OptimizeIcon />,    phase: '' },
   { label: 'Scanner',     path: '/scanner',    icon: <ScannerIcon />,     phase: '' },
   { label: 'Auto Trade',  path: '/autotrade',  icon: <AutoTradeIcon />,   phase: '' },
+  { label: 'News',        path: '/news',       icon: <NewsIcon />,        phase: '' },
   { label: 'Settings',    path: '/settings',   icon: <SettingsIcon />,    phase: '' },
 ]
 
@@ -132,10 +134,10 @@ export default function Sidebar({ width }: SidebarProps) {
       {/* ── Footer ──────────────────────────────────────────────────────── */}
       <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
         <Typography variant="caption" color="text.disabled" display="block">
-          Phase 12 — Auto Paper Trading
+          Phase 18 — Production Ready
         </Typography>
         <Typography variant="caption" color="text.disabled">
-          v0.12.0
+          v0.18.0
         </Typography>
       </Box>
     </Drawer>

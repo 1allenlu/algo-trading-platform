@@ -128,9 +128,13 @@ class TrainStatusResponse(BaseModel):
 
 class BacktestRequest(BaseModel):
     """POST /api/backtest/run — kick off a backtest."""
-    strategy: str = Field(description="Strategy name: pairs_trading | momentum | mean_reversion")
-    symbols:  list[str] = Field(description="List of ticker symbols")
-    params:   dict[str, Any] = Field(default_factory=dict, description="Optional strategy params")
+    strategy:       str = Field(description="Strategy name: pairs_trading | momentum | mean_reversion")
+    symbols:        list[str] = Field(description="List of ticker symbols")
+    params:         dict[str, Any] = Field(default_factory=dict, description="Optional strategy params")
+    commission_pct: float = Field(default=0.001, ge=0, le=0.05,
+                                  description="One-way commission as fraction (0.001 = 0.1%)")
+    slippage_pct:   float = Field(default=0.0005, ge=0, le=0.02,
+                                  description="One-way slippage as fraction (0.0005 = 0.05%)")
 
 
 class EquityPoint(BaseModel):

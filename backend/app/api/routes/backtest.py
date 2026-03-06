@@ -96,12 +96,20 @@ async def run_backtest(
     """
     logger.info(f"Backtest request: strategy={request.strategy}, symbols={request.symbols}")
 
+    # Inject commission/slippage into params so runner.py can extract them.
+    # Use dunder-prefixed keys to avoid colliding with strategy-specific params.
+    merged_params = {
+        **request.params,
+        "__commission__": request.commission_pct,
+        "__slippage__":   request.slippage_pct,
+    }
+
     # Insert DB row and get ID
     run_id = await backtest_service.create_run(
         session  = session,
         strategy = request.strategy,
         symbols  = request.symbols,
-        params   = request.params,
+        params   = merged_params,
     )
 
     # Schedule the subprocess (non-blocking)
@@ -110,7 +118,7 @@ async def run_backtest(
         run_id   = run_id,
         strategy = request.strategy,
         symbols  = request.symbols,
-        params   = request.params,
+        params   = merged_params,
     )
 
     # Return immediately with the run_id so the client can start polling

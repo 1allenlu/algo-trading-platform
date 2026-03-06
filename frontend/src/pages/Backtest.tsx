@@ -25,6 +25,7 @@ import {
   Divider,
   Grid,
   LinearProgress,
+  Slider,
   Stack,
   Table,
   TableBody,
@@ -80,16 +81,24 @@ function ConfigPanel({
   onStrategyChange,
   selectedSymbols,
   onSymbolToggle,
+  commissionPct,
+  onCommissionChange,
+  slippagePct,
+  onSlippageChange,
   onRun,
   isRunning,
 }: {
-  strategies:       StrategyInfo[]
-  selectedStrategy: string
-  onStrategyChange: (s: string) => void
-  selectedSymbols:  string[]
-  onSymbolToggle:   (s: string) => void
-  onRun:            () => void
-  isRunning:        boolean
+  strategies:         StrategyInfo[]
+  selectedStrategy:   string
+  onStrategyChange:   (s: string) => void
+  selectedSymbols:    string[]
+  onSymbolToggle:     (s: string) => void
+  commissionPct:      number
+  onCommissionChange: (v: number) => void
+  slippagePct:        number
+  onSlippageChange:   (v: number) => void
+  onRun:              () => void
+  isRunning:          boolean
 }) {
   const info = strategies.find((s) => s.name === selectedStrategy)
 
@@ -167,6 +176,42 @@ function ConfigPanel({
             Selected: {selectedSymbols.join(', ')}
           </Typography>
         )}
+
+        {/* Transaction costs */}
+        <Divider sx={{ mb: 2.5 }} />
+        <Typography variant="caption" color="text.disabled" display="block" mb={0.5}>
+          TRANSACTION COSTS
+        </Typography>
+        <Box mb={1.5}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+            <Typography variant="caption" color="text.secondary">Commission (one-way)</Typography>
+            <Typography variant="caption" fontFamily="Roboto Mono, monospace" color="primary.main">
+              {(commissionPct * 100).toFixed(2)}%
+            </Typography>
+          </Box>
+          <Slider
+            size="small"
+            value={commissionPct * 10000}
+            min={0} max={100} step={1}
+            onChange={(_, v) => onCommissionChange((v as number) / 10000)}
+            sx={{ color: 'primary.main' }}
+          />
+        </Box>
+        <Box mb={2.5}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+            <Typography variant="caption" color="text.secondary">Slippage (one-way)</Typography>
+            <Typography variant="caption" fontFamily="Roboto Mono, monospace" color="primary.main">
+              {(slippagePct * 100).toFixed(2)}%
+            </Typography>
+          </Box>
+          <Slider
+            size="small"
+            value={slippagePct * 10000}
+            min={0} max={50} step={1}
+            onChange={(_, v) => onSlippageChange((v as number) / 10000)}
+            sx={{ color: 'primary.main' }}
+          />
+        </Box>
 
         <Divider sx={{ mb: 2.5 }} />
 
@@ -426,9 +471,11 @@ export default function Backtest() {
   const [selectedSymbols, setSelectedSymbols] = useState<string[]>(
     searchParams.get('symbols')?.split(',').filter(Boolean) ?? ['SPY', 'QQQ']
   )
-  const [runId, setRunId] = useState<number | null>(null)
-  const [isRunning, setIsRunning]   = useState(false)
-  const [result, setResult]         = useState<BacktestRunResponse | null>(null)
+  const [runId, setRunId]             = useState<number | null>(null)
+  const [isRunning, setIsRunning]     = useState(false)
+  const [result, setResult]           = useState<BacktestRunResponse | null>(null)
+  const [commissionPct, setCommission] = useState(0.001)
+  const [slippagePct, setSlippage]    = useState(0.0005)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Fetch strategy list
@@ -458,7 +505,7 @@ export default function Backtest() {
     setResult(null)
 
     try {
-      const res = await api.backtest.run(selectedStrategy, selectedSymbols)
+      const res = await api.backtest.run(selectedStrategy, selectedSymbols, {}, commissionPct, slippagePct)
       setRunId(res.id)
       setResult(res)
     } catch (err) {
@@ -509,6 +556,10 @@ export default function Backtest() {
             onStrategyChange={handleStrategyChange}
             selectedSymbols={selectedSymbols}
             onSymbolToggle={handleSymbolToggle}
+            commissionPct={commissionPct}
+            onCommissionChange={setCommission}
+            slippagePct={slippagePct}
+            onSlippageChange={setSlippage}
             onRun={handleRun}
             isRunning={isRunning}
           />

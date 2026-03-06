@@ -37,6 +37,20 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
 
+    # ── Alpaca (Phase 13) ─────────────────────────────────────────────────────
+    # Free paper-trading keys at https://alpaca.markets → Paper Trading
+    # Leave empty to use DB prices only (no external API needed)
+    ALPACA_API_KEY:    str = ""
+    ALPACA_SECRET_KEY: str = ""
+
+    # ── Auth (Phase 17) ───────────────────────────────────────────────────────
+    # Set JWT_SECRET_KEY to enable JWT authentication. Leave empty to skip.
+    # Generate: python -c "import secrets; print(secrets.token_hex(32))"
+    JWT_SECRET_KEY:      str = ""
+    JWT_ALGORITHM:       str = "HS256"
+    JWT_EXPIRE_MINUTES:  int = 480   # 8 hours access token lifetime
+    ADMIN_USERNAME:      str = "admin"
+    ADMIN_PASSWORD_HASH: str = ""    # bcrypt hash — set via .env
 
 
 # Single shared instance — import this everywhere

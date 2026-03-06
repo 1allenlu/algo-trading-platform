@@ -29,6 +29,8 @@ import {
   Tune as OptimizeIcon,
   TrendingUp as StrategiesIcon,
   AccountBalance as PortfolioIcon,
+  Lock as LockIcon,
+  Newspaper as NewsIcon,
 } from '@mui/icons-material'
 import { useNavigate } from 'react-router-dom'
 
@@ -139,6 +141,54 @@ const FEATURES = [
     description: 'Signal-based automation that evaluates composite ML + sentiment signals on a configurable interval and places paper orders when confidence meets the threshold.',
     tags:        ['Signal-Based', 'Auto Orders', 'Activity Log'],
   },
+  {
+    icon:        <TradingIcon sx={{ fontSize: 28 }} />,
+    title:       'Alpaca Real-Time Prices',
+    phase:       'Phase 13',
+    color:       '#EF4444',
+    description: 'Optional Alpaca REST API integration provides real-time trade prices for paper trading positions. Falls back to DB close prices when keys are not configured.',
+    tags:        ['Alpaca API', 'Real-Time', 'Price Feed'],
+  },
+  {
+    icon:        <NewsIcon sx={{ fontSize: 28 }} />,
+    title:       'News Sentiment Feed',
+    phase:       'Phase 14',
+    color:       '#F97316',
+    description: 'VADER-scored financial news headlines via yfinance. Bullish/bearish/neutral labelling per article with aggregate compound score and stacked bar chart.',
+    tags:        ['VADER NLP', 'yfinance News', 'Sentiment'],
+  },
+  {
+    icon:        <SHAPIcon sx={{ fontSize: 28 }} />,
+    title:       'XGBoost vs LSTM',
+    phase:       'Phase 15',
+    color:       '#06B6D4',
+    description: 'Side-by-side comparison table of all trained models (XGBoost and LSTM) for each symbol — accuracy, F1, AUC-ROC, sample counts, and training date.',
+    tags:        ['Model Comparison', 'LSTM', 'XGBoost'],
+  },
+  {
+    icon:        <BacktestIcon sx={{ fontSize: 28 }} />,
+    title:       'Commission & Slippage',
+    phase:       'Phase 16',
+    color:       '#84CC16',
+    description: 'Configurable transaction cost model for backtests. Adjust commission (0–1%) and slippage (0–0.5%) via UI sliders — passed directly into the BacktestEngine.',
+    tags:        ['Transaction Costs', 'Slippage', 'Realistic Backtest'],
+  },
+  {
+    icon:        <LockIcon sx={{ fontSize: 28 }} />,
+    title:       'JWT Authentication',
+    phase:       'Phase 17',
+    color:       '#EC4899',
+    description: 'Optional single-user JWT auth. Set JWT_SECRET_KEY + ADMIN_PASSWORD_HASH in .env to protect all routes. Fully transparent — all routes are public when disabled.',
+    tags:        ['JWT', 'bcrypt', 'Single-User'],
+  },
+  {
+    icon:        <AnalyticsIcon sx={{ fontSize: 28 }} />,
+    title:       'Production Deployment',
+    phase:       'Phase 18',
+    color:       '#64748B',
+    description: 'nginx reverse proxy, Vite production build, 4-worker Gunicorn, docker-compose.prod.yml. Complete DEPLOY.md guide with HTTPS/TLS instructions.',
+    tags:        ['nginx', 'Docker', 'Production-Ready'],
+  },
 ]
 
 const TECH_STACK = [
@@ -148,16 +198,20 @@ const TECH_STACK = [
   { label: 'TimescaleDB',   color: '#F59E0B' },
   { label: 'Redis 7',       color: '#EF4444' },
   { label: 'XGBoost 2',     color: '#8B5CF6' },
+  { label: 'LSTM (PyTorch)', color: '#A78BFA' },
   { label: 'SQLAlchemy 2',  color: '#A78BFA' },
   { label: 'Recharts 2',    color: '#06B6D4' },
   { label: 'MUI 5',         color: '#007FFF' },
-  { label: 'Docker',        color: '#2496ED' },
+  { label: 'Docker + nginx',color: '#2496ED' },
   { label: 'WebSocket',     color: '#10B981' },
+  { label: 'VADER NLP',     color: '#F97316' },
+  { label: 'JWT Auth',      color: '#EC4899' },
+  { label: 'Alpaca API',    color: '#EF4444' },
   { label: 'Pydantic v2',   color: '#E8316D' },
 ]
 
 const STATS = [
-  { value: '12',   label: 'Phases Built' },
+  { value: '18',   label: 'Phases Built' },
   { value: '42',   label: 'ML Features' },
   { value: '3',    label: 'Quant Strategies' },
   { value: '1Hz',  label: 'Live Price Feed' },

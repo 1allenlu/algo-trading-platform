@@ -62,6 +62,13 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       # Phase 2: expose ml_engine package to Python import system
       PYTHONPATH: /
+      # Phase 13: Alpaca paper-trading keys (optional — leave empty to use DB prices)
+      ALPACA_API_KEY: ${ALPACA_API_KEY:-}
+      ALPACA_SECRET_KEY: ${ALPACA_SECRET_KEY:-}
+      # Phase 17: JWT auth (optional — leave empty to disable auth)
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH:-}
     ports:
       - "8000:8000"
     volumes:

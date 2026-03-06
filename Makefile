@@ -1,4 +1,4 @@
-.PHONY: help up down logs shell-backend shell-db ingest migrate train predict train-all backtest fmt lint test
+.PHONY: help up down logs shell-backend shell-db ingest migrate train predict train-all backtest fmt lint test prod-build prod-up prod-down auth-hash
 
 # ─── Colors ───────────────────────────────────────────────────────────────────
 CYAN  := \033[0;36m
@@ -39,6 +39,12 @@ help:
 	@echo "    make fmt            Format Python (black) + TypeScript (prettier)"
 	@echo "    make lint           Lint Python (ruff) + TypeScript (eslint)"
 	@echo "    make test           Run backend tests (pytest)"
+	@echo ""
+	@echo "  Production (Phase 18):"
+	@echo "    make prod-build     Build React production bundle"
+	@echo "    make prod-up        Start nginx + gunicorn production stack"
+	@echo "    make prod-down      Stop production stack"
+	@echo "    make auth-hash password=mypass   Generate bcrypt password hash"
 	@echo ""
 
 # ── Infrastructure ────────────────────────────────────────────────────────────
@@ -125,3 +131,28 @@ lint:
 
 test:
 	docker compose exec backend pytest tests/ -v
+
+# ── Production (Phase 18) ──────────────────────────────────────────────────────
+# Build React production bundle and start production stack (nginx + gunicorn)
+prod-build:
+	@echo "$(CYAN)Building React production bundle...$(RESET)"
+	docker compose -f docker-compose.prod.yml --profile build run --rm frontend-build
+
+prod-up:
+	@echo "$(CYAN)Starting production stack...$(RESET)"
+	docker compose -f docker-compose.prod.yml up -d
+	@echo "$(CYAN)Production services running at http://localhost$(RESET)"
+
+prod-down:
+	docker compose -f docker-compose.prod.yml down
+
+# ── Auth (Phase 17) ───────────────────────────────────────────────────────────
+# Generate a bcrypt hash for the admin password.
+# Usage: make auth-hash password=mysecretpassword
+password ?= changeme
+auth-hash:
+	@echo "$(CYAN)Generating bcrypt hash for '$(password)'...$(RESET)"
+	docker compose exec backend python -c \
+		"from passlib.context import CryptContext; \
+		 c = CryptContext(schemes=['bcrypt']); \
+		 print(c.hash('$(password)'))"

@@ -40,7 +40,26 @@ STARTING_CASH = 100_000.0
 # ── Price lookup ──────────────────────────────────────────────────────────────
 
 async def _get_price(symbol: str, session: AsyncSession) -> float:
-    """Return the most recent close price for a symbol from the market_data table."""
+    """
+    Return the current price for a symbol.
+
+    Priority:
+      1. Alpaca REST API (real-time quote) — only when keys are configured
+      2. Most recent close price from market_data table (DB fallback)
+
+    Using Alpaca provides real market prices instead of stale DB closes.
+    The Alpaca price service caches quotes for 10 s to avoid rate-limiting.
+    """
+    # Phase 13: try Alpaca real-time price first
+    try:
+        from app.services.alpaca_price_service import get_alpaca_price
+        alpaca_price = get_alpaca_price(symbol)
+        if alpaca_price is not None:
+            return alpaca_price
+    except Exception:
+        pass   # Alpaca not installed or misconfigured — fall through to DB
+
+    # Fallback: latest close from DB
     row = await session.scalar(
         select(MarketData.close)
         .where(MarketData.symbol == symbol.upper())

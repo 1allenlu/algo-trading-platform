@@ -20,9 +20,10 @@ from typing import AsyncGenerator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from loguru import logger
 
-from app.api.routes import alerts, analytics, autotrade, backtest, health, market_data, ml, optimize, paper_trading, risk, scanner, strategies
+from app.api.routes import alerts, analytics, auth, autotrade, backtest, health, market_data, ml, news, optimize, paper_trading, risk, scanner, strategies
 from app.api.routes import websocket as ws_routes
 from app.core.config import settings
 from app.core.logging import setup_logging
@@ -41,7 +42,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     # ── Startup ───────────────────────────────────────────────────────────────
     setup_logging()
-    logger.info(f"Starting {settings.APP_NAME} v0.10.0")
+    logger.info(f"Starting {settings.APP_NAME} v0.18.0")
     logger.info(f"Database: {settings.DATABASE_URL.split('@')[-1]}")
     logger.info(f"Debug mode: {settings.DEBUG}")
 
@@ -102,7 +103,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 app = FastAPI(
     title=settings.APP_NAME,
     description="Algorithmic Trading Platform — Quant + ML + Real-time",
-    version="0.10.0",
+    version="0.18.0",
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan,
@@ -116,6 +117,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ── API root redirect ─────────────────────────────────────────────────────────
+@app.get("/api", include_in_schema=False)
+@app.get("/api/", include_in_schema=False)
+async def api_root() -> RedirectResponse:
+    return RedirectResponse(url="/docs")
 
 # ── REST routes ───────────────────────────────────────────────────────────────
 app.include_router(health.router, prefix=settings.API_V1_PREFIX)
@@ -173,6 +180,16 @@ app.include_router(
     autotrade.router,
     prefix=f"{settings.API_V1_PREFIX}/autotrade",
     tags=["autotrade"],
+)
+app.include_router(
+    news.router,
+    prefix=f"{settings.API_V1_PREFIX}/news",
+    tags=["news"],
+)
+app.include_router(
+    auth.router,
+    prefix=f"{settings.API_V1_PREFIX}/auth",
+    tags=["auth"],
 )
 
 # ── WebSocket routes (Phase 7 + 8) ───────────────────────────────────────────

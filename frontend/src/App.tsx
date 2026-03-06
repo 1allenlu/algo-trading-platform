@@ -1,3 +1,4 @@
+import { Navigate } from 'react-router-dom'
 import { Box } from '@mui/material'
 import { Route, Routes } from 'react-router-dom'
 import Sidebar from '@/components/layout/Sidebar'
@@ -14,7 +15,10 @@ import AnalyticsPage from '@/pages/Analytics'
 import OptimizePage from '@/pages/Optimize'
 import ScannerPage from '@/pages/Scanner'
 import AutoTradePage from '@/pages/AutoTrade'
+import NewsPage from '@/pages/News'
+import LoginPage from '@/pages/Login'
 import IntroPage from '@/pages/Intro'
+import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 
 const SIDEBAR_WIDTH = 240
 
@@ -60,6 +64,7 @@ function AppLayout() {
             <Route path="/optimize"   element={<OptimizePage />} />
             <Route path="/scanner"    element={<ScannerPage />} />
             <Route path="/autotrade"  element={<AutoTradePage />} />
+            <Route path="/news"       element={<NewsPage />} />
             <Route path="/settings"   element={<Settings />} />
           </Routes>
         </Box>
@@ -69,15 +74,35 @@ function AppLayout() {
 }
 
 /**
- * Root router.
- * - "/" renders the full-screen Intro page (no sidebar/topbar)
- * - Everything else renders inside AppLayout
+ * Route guard — redirects unauthenticated users to /login when JWT
+ * auth is enabled on the backend.  Passes through when auth is disabled.
  */
-export default function App() {
+function ProtectedAppLayout() {
+  const { isAuthenticated } = useAuth()
+  if (!isAuthenticated) return <Navigate to="/login" replace />
+  return <AppLayout />
+}
+
+/**
+ * Root router.
+ * - "/"       → full-screen Intro page (no sidebar/topbar)
+ * - "/login"  → login page (shown when auth is enabled)
+ * - "/*"      → AppLayout (protected by ProtectedAppLayout)
+ */
+function AppRoutes() {
   return (
     <Routes>
-      <Route path="/"    element={<IntroPage />} />
-      <Route path="/*"   element={<AppLayout />} />
+      <Route path="/"      element={<IntroPage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/*"     element={<ProtectedAppLayout />} />
     </Routes>
+  )
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppRoutes />
+    </AuthProvider>
   )
 }

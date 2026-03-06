@@ -43,6 +43,10 @@ statsmodels = "^0.14.0"    # Phase 3: cointegration tests (pairs trading)
 scipy = "^1.12.0"          # Phase 4: portfolio optimization (efficient frontier)
 # Phase 5: paper trading uses local DB prices — no external API dependency
 shap = "^0.44.0"           # Phase 6: SHAP feature explainability for XGBoost
+vaderSentiment = "^3.3.2"  # Phase 14: Financial news sentiment scoring (no model download)
+alpaca-py = "^0.30.0"      # Phase 13: Alpaca REST API for real-time market quotes
+python-jose = {extras = ["cryptography"], version = "^3.3.0"}  # Phase 17: JWT tokens
+passlib = {extras = ["bcrypt"], version = "^1.7.4"}            # Phase 17: Password hashing
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"

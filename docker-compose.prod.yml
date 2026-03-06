@@ -1,0 +1,127 @@
+version: '3.8'
+
+# ─── TradingOS — Production Docker Compose ────────────────────────────────────
+#
+# Differences from docker-compose.yml (development):
+#   - nginx reverse proxy replaces Vite dev server (serves React build)
+#   - Backend runs with multiple Gunicorn/Uvicorn workers (no --reload)
+#   - No source-code volume mounts (image contains the code)
+#   - Stricter restart policies
+#   - No exposed ports except 80 (nginx) and 5432/6379 only on localhost
+#
+# Prerequisites:
+#   1. Build the frontend:   docker compose -f docker-compose.prod.yml build frontend-build
+#   2. Configure .env (see .env.example)
+#   3. Run: docker compose -f docker-compose.prod.yml up -d
+#
+# See DEPLOY.md for the full deployment guide.
+
+services:
+  # ── TimescaleDB ───────────────────────────────────────────────────────────────
+  postgres:
+    image: timescale/timescaledb:latest-pg15
+    container_name: trading_postgres_prod
+    environment:
+      POSTGRES_USER:     ${POSTGRES_USER:-trading}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-trading}  # Set in .env for production
+      POSTGRES_DB:       ${POSTGRES_DB:-trading_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./data/migrations/init.sql:/docker-entrypoint-initdb.d/01_init.sql
+    ports:
+      - "127.0.0.1:5432:5432"   # Bind to localhost only — not exposed to internet
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-trading} -d ${POSTGRES_DB:-trading_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: always
+
+  # ── Redis ─────────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: trading_redis_prod
+    # Only add --requirepass when REDIS_PASSWORD is non-empty.
+    # Passing --requirepass with an empty value is a fatal Redis 7 config error.
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    command: >-
+      sh -c '[ -n "$$REDIS_PASSWORD" ] && redis-server --requirepass "$$REDIS_PASSWORD" || redis-server'
+    volumes:
+      - redis_data:/data
+    ports:
+      - "127.0.0.1:6379:6379"   # Localhost only
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli $${REDIS_PASSWORD:+-a \"$$REDIS_PASSWORD\"} ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: always
+
+  # ── FastAPI Backend (production: 4 workers, no reload) ───────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: trading_backend_prod
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-trading}:${POSTGRES_PASSWORD:-trading}@postgres:5432/${POSTGRES_DB:-trading_db}
+      REDIS_URL:    redis://:${REDIS_PASSWORD:-}@redis:6379
+      DEBUG:        "false"
+      LOG_LEVEL:    ${LOG_LEVEL:-WARNING}
+      PYTHONPATH:   /
+      # Alpaca (Phase 13)
+      ALPACA_API_KEY:    ${ALPACA_API_KEY:-}
+      ALPACA_SECRET_KEY: ${ALPACA_SECRET_KEY:-}
+      # JWT Auth (Phase 17)
+      JWT_SECRET_KEY:      ${JWT_SECRET_KEY:-}       # Set in .env to enable auth
+      ADMIN_USERNAME:      ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH:-}  # Set in .env to enable auth
+    volumes:
+      - ./data:/data    # ML models + ingested data persist here
+      - ./ml-engine:/ml_engine
+      - ./quant-engine:/quant_engine
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # 4 Uvicorn workers for production throughput
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+    restart: always
+    # No port exposure — nginx handles all inbound traffic
+
+  # ── React Build Stage ─────────────────────────────────────────────────────────
+  # This one-shot container builds the React app and exits.
+  # The built files end up in the named volume 'frontend_dist'.
+  frontend-build:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod   # See frontend/Dockerfile.prod
+    container_name: trading_frontend_build
+    volumes:
+      - frontend_dist:/app/dist
+    profiles:
+      - build   # Only runs when: docker compose --profile build up frontend-build
+
+  # ── nginx (reverse proxy + static file server) ───────────────────────────────
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: trading_nginx_prod
+    ports:
+      - "80:80"
+      - "443:443"   # Configure TLS certs in nginx.conf to enable HTTPS
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - frontend_dist:/app/frontend/dist:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro   # Mount TLS certs if available
+    depends_on:
+      - backend
+    restart: always
+
+volumes:
+  postgres_data:
+  redis_data:
+  frontend_dist:

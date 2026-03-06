@@ -515,7 +515,7 @@ export interface ScanRequest {
   near_52w_high_pct?:  number
   near_52w_low_pct?:   number
   symbols?:            string[]
-  sort_by?:            'symbol' | 'rsi' | 'change_pct' | 'volume_ratio' | 'vs_sma50' | 'vs_sma200'
+  sort_by?:            'symbol' | 'rsi' | 'change_pct' | 'volume_ratio' | 'vs_sma50' | 'vs_sma200' | 'vs_52w_high' | 'vs_52w_low'
   sort_desc?:          boolean
 }
 
@@ -549,6 +549,29 @@ export interface AutoTradeLogEntry {
   price:      number | null
   reason:     string
   created_at: string
+}
+
+// ── News / Sentiment types — Phase 14 ────────────────────────────────────────
+
+export interface NewsArticle {
+  title:     string
+  publisher: string
+  link:      string
+  published: string   // ISO 8601
+  compound:  number   // VADER compound [-1, +1]
+  label:     'bullish' | 'bearish' | 'neutral'
+  summary?:  string
+}
+
+export interface NewsAggregateSentiment {
+  symbol:        string
+  article_count: number
+  avg_compound:  number
+  bullish_count: number
+  bearish_count: number
+  neutral_count: number
+  label:         'bullish' | 'bearish' | 'neutral'
+  articles:      NewsArticle[]
 }
 
 // ── Optimization types — Phase 10 ─────────────────────────────────────────────
@@ -597,9 +620,37 @@ export interface StartOptimizationResponse {
   status:       string
 }
 
+// ── Auth types — Phase 17 ─────────────────────────────────────────────────────
+
+export interface TokenResponse {
+  access_token: string
+  token_type:   string
+  expires_in:   number
+}
+
+export interface MeResponse {
+  username:     string
+  auth_enabled: boolean
+}
+
 // ── API functions ─────────────────────────────────────────────────────────────
 
 export const api = {
+  auth: {
+    login: (username: string, password: string): Promise<TokenResponse> =>
+      apiClient
+        .post<TokenResponse>('/api/auth/login', { username, password })
+        .then((r) => r.data),
+
+    me: (): Promise<MeResponse> =>
+      apiClient.get<MeResponse>('/api/auth/me').then((r) => r.data),
+
+    generateHash: (password: string): Promise<{ hash: string }> =>
+      apiClient
+        .post<{ hash: string }>('/api/auth/hash', { password })
+        .then((r) => r.data),
+  },
+
   health: {
     check: (): Promise<HealthResponse> =>
       apiClient.get<HealthResponse>('/api/health').then((r) => r.data),
@@ -654,12 +705,20 @@ export const api = {
 
   backtest: {
     run: (
-      strategy: string,
-      symbols:  string[],
-      params:   Record<string, unknown> = {},
+      strategy:       string,
+      symbols:        string[],
+      params:         Record<string, unknown> = {},
+      commissionPct?: number,
+      slippagePct?:   number,
     ): Promise<BacktestRunResponse> =>
       apiClient
-        .post<BacktestRunResponse>('/api/backtest/run', { strategy, symbols, params })
+        .post<BacktestRunResponse>('/api/backtest/run', {
+          strategy,
+          symbols,
+          params,
+          commission_pct: commissionPct ?? 0.001,
+          slippage_pct:   slippagePct ?? 0.0005,
+        })
         .then((r) => r.data),
 
     get: (runId: number): Promise<BacktestRunResponse> =>
@@ -765,6 +824,18 @@ export const api = {
 
     scan: (req: ScanRequest): Promise<SymbolSnapshot[]> =>
       apiClient.post<SymbolSnapshot[]>('/api/scanner/scan', req).then((r) => r.data),
+  },
+
+  news: {
+    getSentiment: (symbol: string, maxArticles = 20): Promise<NewsAggregateSentiment> =>
+      apiClient
+        .get<NewsAggregateSentiment>(`/api/news/${symbol}`, { params: { max_articles: maxArticles } })
+        .then((r) => r.data),
+
+    getArticles: (symbol: string, maxArticles = 10): Promise<NewsArticle[]> =>
+      apiClient
+        .get<NewsArticle[]>(`/api/news/${symbol}/articles`, { params: { max_articles: maxArticles } })
+        .then((r) => r.data),
   },
 
   autotrade: {
