@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from loguru import logger
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -48,15 +48,14 @@ class OptimizeRequest(BaseModel):
         description="Metric to maximise: sharpe | total_return | calmar | sortino",
     )
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "strategy":   "mean_reversion",
-                "symbols":    ["SPY"],
-                "param_grid": {"window": [10, 20, 30], "num_std": [1.5, 2.0, 2.5]},
-                "objective":  "sharpe",
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "strategy":   "mean_reversion",
+            "symbols":    ["SPY"],
+            "param_grid": {"window": [10, 20, 30], "num_std": [1.5, 2.0, 2.5]},
+            "objective":  "sharpe",
         }
+    })
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────

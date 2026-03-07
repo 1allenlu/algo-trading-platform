@@ -9,7 +9,7 @@ Endpoints:
 """
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.database import AsyncSessionLocal
@@ -47,16 +47,15 @@ class ScanRequest(BaseModel):
     sort_by:  str  = Field("symbol", description="Sort field: symbol|rsi|change_pct|volume_ratio|vs_sma50|vs_sma200")
     sort_desc: bool = Field(False, description="Descending sort")
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "rsi_max": 35,
-                "price_above_sma200": True,
-                "volume_ratio_min": 1.2,
-                "sort_by": "rsi",
-                "sort_desc": False,
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "rsi_max": 35,
+            "price_above_sma200": True,
+            "volume_ratio_min": 1.2,
+            "sort_by": "rsi",
+            "sort_desc": False,
         }
+    })
 
 
 # ── Endpoints ──────────────────────────────────────────────────────────────────
