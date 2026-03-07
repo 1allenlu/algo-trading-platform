@@ -10,7 +10,7 @@ Configuration (set in .env):
   ADMIN_PASSWORD_HASH  = <bcrypt hash of your password>
 
 Generate a password hash:
-  python -c "from passlib.context import CryptContext; c = CryptContext(schemes=['bcrypt']); print(c.hash('your-password'))"
+  python -c "import bcrypt; print(bcrypt.hashpw(b'your-password', bcrypt.gensalt()).decode())"
 
 If JWT_SECRET_KEY is empty, authentication is DISABLED and all routes
 are accessible without a token (development convenience).
@@ -26,19 +26,6 @@ from loguru import logger
 
 from app.core.config import settings
 
-# Lazy imports — only needed when auth is enabled
-_pwd_context = None
-_jwt = None
-
-
-def _get_pwd_context():
-    global _pwd_context
-    if _pwd_context is None:
-        from passlib.context import CryptContext
-        _pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    return _pwd_context
-
-
 def auth_enabled() -> bool:
     """Return True if JWT_SECRET_KEY is configured."""
     return bool(settings.JWT_SECRET_KEY)
@@ -47,7 +34,8 @@ def auth_enabled() -> bool:
 def verify_password(plain: str, hashed: str) -> bool:
     """Verify a plaintext password against a bcrypt hash."""
     try:
-        return _get_pwd_context().verify(plain, hashed)
+        import bcrypt
+        return bcrypt.checkpw(plain.encode(), hashed.encode())
     except Exception as exc:
         logger.warning(f"[auth] Password verify error: {exc}")
         return False
@@ -55,7 +43,8 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 def hash_password(plain: str) -> str:
     """Return a bcrypt hash for a plaintext password."""
-    return _get_pwd_context().hash(plain)
+    import bcrypt
+    return bcrypt.hashpw(plain.encode(), bcrypt.gensalt()).decode()
 
 
 def authenticate_user(username: str, password: str) -> bool:

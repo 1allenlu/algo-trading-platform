@@ -153,6 +153,4 @@ password ?= changeme
 auth-hash:
 	@echo "$(CYAN)Generating bcrypt hash for '$(password)'...$(RESET)"
 	docker compose exec backend python -c \
-		"from passlib.context import CryptContext; \
-		 c = CryptContext(schemes=['bcrypt']); \
-		 print(c.hash('$(password)'))"
+		"import bcrypt; print(bcrypt.hashpw(b'$(password)', bcrypt.gensalt()).decode())"

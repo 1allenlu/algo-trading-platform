@@ -46,7 +46,7 @@ shap = "^0.44.0"           # Phase 6: SHAP feature explainability for XGBoost
 vaderSentiment = "^3.3.2"  # Phase 14: Financial news sentiment scoring (no model download)
 alpaca-py = "^0.30.0"      # Phase 13: Alpaca REST API for real-time market quotes
 python-jose = {extras = ["cryptography"], version = "^3.3.0"}  # Phase 17: JWT tokens
-passlib = {extras = ["bcrypt"], version = "^1.7.4"}            # Phase 17: Password hashing
+bcrypt = "^4.0"                                                # Phase 17: Password hashing (passlib dropped — incompatible with bcrypt>=4)
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"
