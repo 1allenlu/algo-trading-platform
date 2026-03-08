@@ -111,7 +111,7 @@ function AccountBar({
           {/* Equity */}
           <Box>
             <Typography variant="caption" color="text.disabled" display="block">PORTFOLIO EQUITY</Typography>
-            <Typography variant="h5" fontWeight={700} fontFamily="Roboto Mono, monospace">
+            <Typography variant="h5" fontWeight={700} fontFamily="IBM Plex Mono, monospace">
               {fmt$(account.equity, 2)}
             </Typography>
           </Box>
@@ -121,7 +121,7 @@ function AccountBar({
           {/* Cash */}
           <Box>
             <Typography variant="caption" color="text.disabled" display="block">CASH</Typography>
-            <Typography variant="h6" fontWeight={600} fontFamily="Roboto Mono, monospace">
+            <Typography variant="h6" fontWeight={600} fontFamily="IBM Plex Mono, monospace">
               {fmt$(account.cash, 2)}
             </Typography>
           </Box>
@@ -131,7 +131,7 @@ function AccountBar({
           {/* Day P&L */}
           <Box>
             <Typography variant="caption" color="text.disabled" display="block">DAY P&L</Typography>
-            <Typography variant="h6" fontWeight={600} fontFamily="Roboto Mono, monospace"
+            <Typography variant="h6" fontWeight={600} fontFamily="IBM Plex Mono, monospace"
               sx={{ color: pnlColor(account.day_pnl) }}>
               {fmt$(account.day_pnl)} ({fmtPct(account.day_pnl_pct)})
             </Typography>
@@ -142,7 +142,7 @@ function AccountBar({
           {/* Total return */}
           <Box>
             <Typography variant="caption" color="text.disabled" display="block">TOTAL RETURN</Typography>
-            <Typography variant="h6" fontWeight={600} fontFamily="Roboto Mono, monospace"
+            <Typography variant="h6" fontWeight={600} fontFamily="IBM Plex Mono, monospace"
               sx={{ color: pnlColor(account.total_pnl) }}>
               {fmt$(account.total_pnl)} ({fmtPct(account.total_pnl_pct)})
             </Typography>
@@ -214,22 +214,22 @@ function PositionsTable({
 
                   return (
                     <TableRow key={pos.symbol} hover>
-                      <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontWeight: 700, color: 'primary.main' }}>
+                      <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontWeight: 700, color: 'primary.main' }}>
                         {pos.symbol}
                       </TableCell>
-                      <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.8rem' }}>
+                      <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem' }}>
                         {pos.qty}
                       </TableCell>
-                      <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.8rem' }}>
+                      <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem' }}>
                         {fmt$(pos.avg_entry_price)}
                       </TableCell>
-                      <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.8rem', color: 'primary.main' }}>
+                      <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem', color: 'primary.main' }}>
                         {fmt$(livePrice)}
                       </TableCell>
-                      <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.8rem' }}>
+                      <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem' }}>
                         {fmt$(liveValue)}
                       </TableCell>
-                      <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.8rem' }}>
+                      <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem' }}>
                         <Box sx={{ color: pnlColor(liveUnrealized) }}>
                           {fmt$(liveUnrealized)} ({fmtPct(liveUnrPct)})
                         </Box>
@@ -291,7 +291,7 @@ function OrderForm({
               value={symbol}
               onChange={(e) => setSymbol(e.target.value.toUpperCase())}
               size="small" fullWidth
-              inputProps={{ style: { fontFamily: 'Roboto Mono, monospace', fontWeight: 700 } }}
+              inputProps={{ style: { fontFamily: 'IBM Plex Mono, monospace', fontWeight: 700 } }}
             />
             <Stack direction="row" flexWrap="wrap" gap={0.5} mt={0.75}>
               {QUICK_SYMBOLS.map((s) => (
@@ -299,7 +299,7 @@ function OrderForm({
                   key={s} label={s} size="small" clickable
                   onClick={() => setSymbol(s)}
                   sx={{
-                    fontFamily: 'Roboto Mono, monospace',
+                    fontFamily: 'IBM Plex Mono, monospace',
                     fontSize: '0.65rem',
                     bgcolor:     symbol === s ? 'rgba(74,158,255,0.15)' : 'transparent',
                     color:       symbol === s ? 'primary.main' : 'text.secondary',
@@ -334,7 +334,7 @@ function OrderForm({
             <TextField
               value={qty} onChange={(e) => setQty(e.target.value)}
               type="number" size="small" fullWidth
-              inputProps={{ min: 1, style: { fontFamily: 'Roboto Mono, monospace' } }}
+              inputProps={{ min: 1, style: { fontFamily: 'IBM Plex Mono, monospace' } }}
             />
           </Box>
 
@@ -356,7 +356,7 @@ function OrderForm({
                 value={limitPrice} onChange={(e) => setLimitPrice(e.target.value)}
                 type="number" size="small" fullWidth
                 InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
-                inputProps={{ style: { fontFamily: 'Roboto Mono, monospace' } }}
+                inputProps={{ style: { fontFamily: 'IBM Plex Mono, monospace' } }}
               />
             </Box>
           )}
@@ -486,23 +486,23 @@ function OrdersTable({
               <TableBody>
                 {orders.map((o) => (
                   <TableRow key={o.id} hover>
-                    <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontWeight: 700, color: 'primary.main' }}>
+                    <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontWeight: 700, color: 'primary.main' }}>
                       {o.symbol}
                     </TableCell>
-                    <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.8rem',
+                    <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem',
                       color: o.side === 'buy' ? '#00C896' : '#FF6B6B', fontWeight: 700 }}>
                       {o.side.toUpperCase()}
                     </TableCell>
                     <TableCell sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
                       {o.order_type}
                     </TableCell>
-                    <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.8rem' }}>
+                    <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem' }}>
                       {o.qty}
                     </TableCell>
-                    <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.8rem' }}>
+                    <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem' }}>
                       {o.filled_qty}
                     </TableCell>
-                    <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.8rem' }}>
+                    <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem' }}>
                       {o.filled_avg_price ? fmt$(o.filled_avg_price) : '—'}
                     </TableCell>
                     <TableCell>

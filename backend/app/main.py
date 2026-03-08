@@ -4,11 +4,11 @@ Trading Platform — FastAPI application entry point.
 Startup sequence:
   1. Configure structured logging (loguru)
   2. Create database tables if they don't exist
-     (TimescaleDB hypertable created by init.sql; ORM models mirror the schema)
-  3. Start the WebSocket price simulator background task (Phase 7)
+  3. Start price feed: Alpaca WS (Phase 19) if keys set, else random-walk simulator
   4. Initialize alert service + alert WS manager (Phase 8)
-  5. Register API routers
-  6. Configure CORS for frontend
+  5. Start scheduler (Phase 21)
+  6. Register API routers
+  7. Configure CORS for frontend
 
 Development: uvicorn app.main:app --reload
 Production:  uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
@@ -23,7 +23,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from loguru import logger
 
-from app.api.routes import alerts, analytics, auth, autotrade, backtest, health, market_data, ml, news, optimize, paper_trading, risk, scanner, strategies
+from app.api.routes import (
+    alerts, analytics, auth, autotrade, backtest, health, market_data,
+    ml, news, notifications, optimize, paper_trading, risk, scanner,
+    scheduler, signals, strategies,
+)
 from app.api.routes import websocket as ws_routes
 from app.core.config import settings
 from app.core.logging import setup_logging
@@ -32,6 +36,7 @@ from app.services.alert_service import get_alert_service
 from app.services.autotrade_service import start_autotrade_task, stop_autotrade_task
 from app.services.price_broadcaster import PriceConnectionManager
 from app.services.price_simulator import run_price_simulator
+from app.services.scheduler_service import get_scheduler
 
 
 @asynccontextmanager
@@ -42,7 +47,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     # ── Startup ───────────────────────────────────────────────────────────────
     setup_logging()
-    logger.info(f"Starting {settings.APP_NAME} v0.18.0")
+    logger.info(f"Starting {settings.APP_NAME} v0.24.0")
     logger.info(f"Database: {settings.DATABASE_URL.split('@')[-1]}")
     logger.info(f"Debug mode: {settings.DEBUG}")
 
@@ -52,19 +57,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await conn.run_sync(Base.metadata.create_all)
     logger.info("Database tables verified/created")
 
-    # ── Phase 7: WebSocket price simulator ────────────────────────────────────
+    # ── Phase 7 / 19: Price feed ──────────────────────────────────────────────
     # PriceConnectionManager tracks all active WebSocket clients.
-    # run_price_simulator() emits ticks every ~1s for the full app lifetime.
-    # asyncio.create_task is used (not BackgroundTasks) because the simulator
-    # must outlive individual HTTP requests.
+    # Phase 19: use Alpaca live stream when keys are configured, otherwise
+    # fall back to the random-walk simulator (no user action required).
     price_manager = PriceConnectionManager()
     ws_routes.set_manager(price_manager)
 
     # ── Phase 8: Alert service setup ──────────────────────────────────────────
-    # AlertConnectionManager fans out fired-alert JSON to /ws/alerts clients.
-    # AlertService holds rules in memory and checks each price tick.
-    # It receives a broadcast callback so it can push to WS without knowing
-    # about the connection manager directly (clean dependency inversion).
     alert_manager = ws_routes.AlertConnectionManager()
     ws_routes.set_alert_manager(alert_manager)
 
@@ -73,28 +73,45 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await alert_service.refresh_rules()
     logger.info("Alert service initialized")
 
-    simulator_task = asyncio.create_task(
-        run_price_simulator(price_manager, alert_service),
-        name="price_simulator",
-    )
-    logger.info("Price simulator background task started")
+    # Phase 19: choose live Alpaca stream or simulator
+    if settings.ALPACA_API_KEY and settings.ALPACA_SECRET_KEY:
+        from app.services.alpaca_ws_service import start_alpaca_stream
+        price_task = asyncio.create_task(
+            start_alpaca_stream(price_manager, alert_service),
+            name="alpaca_price_stream",
+        )
+        health.set_price_source("alpaca")
+        logger.info("Alpaca WebSocket price stream started (live data)")
+    else:
+        price_task = asyncio.create_task(
+            run_price_simulator(price_manager, alert_service),
+            name="price_simulator",
+        )
+        health.set_price_source("simulator")
+        logger.info("Price simulator background task started (no Alpaca keys)")
 
     # ── Phase 12: Auto-trade background task ──────────────────────────────────
-    # Evaluates ML/sentiment signals on a configurable interval and places
-    # paper orders when confidence exceeds the user-configured threshold.
     start_autotrade_task()
     logger.info("Auto-trade background task started")
+
+    # ── Phase 21: Scheduler ───────────────────────────────────────────────────
+    sched = get_scheduler()
+    sched.start()
+    logger.info("APScheduler started (daily OHLCV ingest + cleanup jobs)")
 
     yield  # Application runs here
 
     # ── Shutdown ──────────────────────────────────────────────────────────────
     await stop_autotrade_task()
-    simulator_task.cancel()
+    price_task.cancel()
     try:
-        await simulator_task
+        await price_task
     except asyncio.CancelledError:
         pass
-    logger.info("Price simulator stopped")
+    logger.info("Price feed stopped")
+
+    sched.shutdown(wait=False)
+    logger.info("Scheduler stopped")
 
     await engine.dispose()
     logger.info("Database connections closed — shutdown complete")
@@ -103,7 +120,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 app = FastAPI(
     title=settings.APP_NAME,
     description="Algorithmic Trading Platform — Quant + ML + Real-time",
-    version="0.18.0",
+    version="0.24.0",
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan,
@@ -190,6 +207,21 @@ app.include_router(
     auth.router,
     prefix=f"{settings.API_V1_PREFIX}/auth",
     tags=["auth"],
+)
+app.include_router(
+    notifications.router,
+    prefix=f"{settings.API_V1_PREFIX}/notifications",
+    tags=["notifications"],
+)
+app.include_router(
+    scheduler.router,
+    prefix=f"{settings.API_V1_PREFIX}/scheduler",
+    tags=["scheduler"],
+)
+app.include_router(
+    signals.router,
+    prefix=f"{settings.API_V1_PREFIX}/signals",
+    tags=["signals"],
 )
 
 # ── WebSocket routes (Phase 7 + 8) ───────────────────────────────────────────

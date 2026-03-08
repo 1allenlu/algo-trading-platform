@@ -37,6 +37,7 @@ import {
 } from '@mui/material'
 import {
   PlayArrow as RunIcon,
+  PictureAsPdf as PdfIcon,
   TrendingDown,
   TrendingUp,
 } from '@mui/icons-material'
@@ -66,7 +67,7 @@ function MetricCard({
         <Typography variant="caption" color="text.disabled" display="block">
           {label}
         </Typography>
-        <Typography variant="h5" fontWeight={700} sx={{ color, fontFamily: 'Roboto Mono, monospace' }}>
+        <Typography variant="h5" fontWeight={700} sx={{ color, fontFamily: 'IBM Plex Mono, monospace' }}>
           {value == null ? '—' : format(value)}
         </Typography>
       </CardContent>
@@ -158,7 +159,7 @@ function ConfigPanel({
                 clickable
                 onClick={() => onSymbolToggle(sym)}
                 sx={{
-                  fontFamily: 'Roboto Mono, monospace',
+                  fontFamily: 'IBM Plex Mono, monospace',
                   fontWeight: selected ? 700 : 400,
                   bgcolor: selected ? 'rgba(0,180,216,0.15)' : 'transparent',
                   color:   selected ? 'primary.main' : 'text.secondary',
@@ -185,7 +186,7 @@ function ConfigPanel({
         <Box mb={1.5}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
             <Typography variant="caption" color="text.secondary">Commission (one-way)</Typography>
-            <Typography variant="caption" fontFamily="Roboto Mono, monospace" color="primary.main">
+            <Typography variant="caption" fontFamily="IBM Plex Mono, monospace" color="primary.main">
               {(commissionPct * 100).toFixed(2)}%
             </Typography>
           </Box>
@@ -200,7 +201,7 @@ function ConfigPanel({
         <Box mb={2.5}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
             <Typography variant="caption" color="text.secondary">Slippage (one-way)</Typography>
-            <Typography variant="caption" fontFamily="Roboto Mono, monospace" color="primary.main">
+            <Typography variant="caption" fontFamily="IBM Plex Mono, monospace" color="primary.main">
               {(slippagePct * 100).toFixed(2)}%
             </Typography>
           </Box>
@@ -284,14 +285,26 @@ function ResultsPanel({ result }: { result: BacktestRunResponse | null }) {
   return (
     <Box>
       {/* Header */}
-      <Box sx={{ mb: 2.5 }}>
-        <Typography variant="h6" fontWeight={700}>
-          {result.strategy_name.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
-          {' '}· {result.symbols.join('/')}
-        </Typography>
-        <Typography variant="caption" color="text.disabled">
-          {result.num_trades} trades · Created {new Date(result.created_at).toLocaleDateString()}
-        </Typography>
+      <Box sx={{ mb: 2.5, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <Box>
+          <Typography variant="h6" fontWeight={700}>
+            {result.strategy_name.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+            {' '}· {result.symbols.join('/')}
+          </Typography>
+          <Typography variant="caption" color="text.disabled">
+            {result.num_trades} trades · Created {new Date(result.created_at).toLocaleDateString()}
+          </Typography>
+        </Box>
+        {/* Phase 24: PDF download button */}
+        <Button
+          size="small"
+          variant="outlined"
+          startIcon={<PdfIcon />}
+          onClick={() => api.reports.downloadBacktest(result.id)}
+          sx={{ ml: 2, flexShrink: 0 }}
+        >
+          Download PDF
+        </Button>
       </Box>
 
       {/* Metric cards */}
@@ -385,10 +398,10 @@ function ResultsPanel({ result }: { result: BacktestRunResponse | null }) {
                 ].map(({ label, strat, bm: bmVal, fmt }) => (
                   <Box key={label} textAlign="center">
                     <Typography variant="caption" color="text.disabled" display="block">{label}</Typography>
-                    <Typography variant="body2" color="primary.main" fontFamily="Roboto Mono, monospace">
+                    <Typography variant="body2" color="primary.main" fontFamily="IBM Plex Mono, monospace">
                       {strat != null ? fmt(strat) : '—'}
                     </Typography>
-                    <Typography variant="caption" color="text.disabled" fontFamily="Roboto Mono, monospace">
+                    <Typography variant="caption" color="text.disabled" fontFamily="IBM Plex Mono, monospace">
                       BM: {bmVal != null ? fmt(bmVal) : '—'}
                     </Typography>
                   </Box>
@@ -423,10 +436,10 @@ function ResultsPanel({ result }: { result: BacktestRunResponse | null }) {
                 <TableBody>
                   {result.trades.slice(-30).map((t, i) => (
                     <TableRow key={i} hover>
-                      <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.78rem' }}>
+                      <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.78rem' }}>
                         {t.date}
                       </TableCell>
-                      <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontWeight: 700, fontSize: '0.78rem' }}>
+                      <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontWeight: 700, fontSize: '0.78rem' }}>
                         {t.symbol}
                       </TableCell>
                       <TableCell>
@@ -442,10 +455,10 @@ function ResultsPanel({ result }: { result: BacktestRunResponse | null }) {
                           </Typography>
                         </Box>
                       </TableCell>
-                      <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.78rem' }}>
+                      <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.78rem' }}>
                         ${t.price.toLocaleString()}
                       </TableCell>
-                      <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.78rem' }}>
+                      <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.78rem' }}>
                         {(t.size * 100).toFixed(0)}%
                       </TableCell>
                     </TableRow>

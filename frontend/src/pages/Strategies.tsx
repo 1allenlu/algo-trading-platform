@@ -89,7 +89,7 @@ function StrategyCard({ strategy }: { strategy: StrategyInfo }) {
                 bgcolor:  'rgba(255,255,255,0.05)',
                 px: 1, py: 0.3,
                 borderRadius: 1,
-                fontFamily: 'Roboto Mono, monospace',
+                fontFamily: 'IBM Plex Mono, monospace',
                 fontSize: '0.68rem',
               }}
             >
@@ -115,7 +115,7 @@ function StrategyCard({ strategy }: { strategy: StrategyInfo }) {
                 label={sym}
                 size="small"
                 sx={{
-                  fontFamily: 'Roboto Mono, monospace',
+                  fontFamily: 'IBM Plex Mono, monospace',
                   fontSize: '0.72rem',
                   bgcolor: 'rgba(0,180,216,0.08)',
                   color: 'primary.main',

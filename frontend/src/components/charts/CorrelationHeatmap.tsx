@@ -65,7 +65,7 @@ export default function CorrelationHeatmap({ symbols, correlation }: Correlation
             <Typography
               variant="caption"
               fontWeight={700}
-              fontFamily="Roboto Mono, monospace"
+              fontFamily="IBM Plex Mono, monospace"
               sx={{ fontSize: n > 5 ? '0.62rem' : '0.72rem', color: 'primary.main' }}
             >
               {sym}
@@ -91,7 +91,7 @@ export default function CorrelationHeatmap({ symbols, correlation }: Correlation
               <Typography
                 variant="caption"
                 fontWeight={700}
-                fontFamily="Roboto Mono, monospace"
+                fontFamily="IBM Plex Mono, monospace"
                 sx={{ fontSize: n > 5 ? '0.62rem' : '0.72rem', color: 'primary.main' }}
               >
                 {rowSym}
@@ -128,7 +128,7 @@ export default function CorrelationHeatmap({ symbols, correlation }: Correlation
                   >
                     <Typography
                       variant="caption"
-                      fontFamily="Roboto Mono, monospace"
+                      fontFamily="IBM Plex Mono, monospace"
                       sx={{ fontSize: n > 5 ? '0.6rem' : '0.7rem', color: isDiagonal ? 'primary.main' : textColor, fontWeight: 600 }}
                     >
                       {val.toFixed(2)}

@@ -40,10 +40,11 @@ class MarketDataResponse(BaseModel):
 
 class HealthResponse(BaseModel):
     """System health status — used by Docker healthcheck + monitoring."""
-    status:   str   # "healthy" | "degraded"
-    database: str   # "healthy" | "unhealthy"
-    redis:    str   # "healthy" | "unhealthy"
-    version:  str
+    status:       str   # "healthy" | "degraded"
+    database:     str   # "healthy" | "unhealthy"
+    redis:        str   # "healthy" | "unhealthy"
+    version:      str
+    price_source: str = "simulator"   # "alpaca" | "simulator" (Phase 19)
 
 
 # ── ML — Model metadata ───────────────────────────────────────────────────────

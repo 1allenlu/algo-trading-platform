@@ -229,7 +229,7 @@ function AlertRulesPanel() {
               <TableBody>
                 {rules.map((rule) => (
                   <TableRow key={rule.id} hover>
-                    <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontWeight: 700, color: 'primary.main' }}>
+                    <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontWeight: 700, color: 'primary.main' }}>
                       {rule.symbol}
                     </TableCell>
                     <TableCell>
@@ -241,10 +241,10 @@ function AlertRulesPanel() {
                         sx={{ fontSize: '0.65rem', height: 20 }}
                       />
                     </TableCell>
-                    <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.8rem' }}>
+                    <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem' }}>
                       {CONDITION_UNITS[rule.condition]}{rule.threshold.toFixed(2)}
                     </TableCell>
-                    <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.8rem', color: 'text.secondary' }}>
+                    <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem', color: 'text.secondary' }}>
                       {rule.cooldown_seconds}s
                     </TableCell>
                     <TableCell padding="none">
@@ -357,10 +357,10 @@ function AlertHistoryPanel() {
                     hover
                     sx={{ opacity: ev.acknowledged ? 0.55 : 1 }}
                   >
-                    <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.75rem', color: 'text.secondary', whiteSpace: 'nowrap' }}>
+                    <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.75rem', color: 'text.secondary', whiteSpace: 'nowrap' }}>
                       {new Date(ev.triggered_at).toLocaleTimeString()}
                     </TableCell>
-                    <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontWeight: 700, color: 'primary.main' }}>
+                    <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontWeight: 700, color: 'primary.main' }}>
                       {ev.symbol}
                     </TableCell>
                     <TableCell>
@@ -372,7 +372,7 @@ function AlertHistoryPanel() {
                         sx={{ fontSize: '0.62rem', height: 18 }}
                       />
                     </TableCell>
-                    <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.8rem' }}>
+                    <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem' }}>
                       {CONDITION_UNITS[ev.condition]}{ev.current_value.toFixed(2)}
                     </TableCell>
                     <TableCell sx={{ fontSize: '0.78rem', maxWidth: 240 }}>

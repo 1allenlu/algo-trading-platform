@@ -52,10 +52,60 @@ export interface MarketDataResponse {
 }
 
 export interface HealthResponse {
-  status:   string   // "healthy" | "degraded"
-  database: string
-  redis:    string
-  version:  string
+  status:       string   // "healthy" | "degraded"
+  database:     string
+  redis:        string
+  version:      string
+  price_source: string   // "alpaca" | "simulator" (Phase 19)
+}
+
+// ── Phase 20: Notifications ───────────────────────────────────────────────────
+
+export interface NotificationConfig {
+  email_enabled:   boolean
+  email_recipient: string
+  smtp_host:       string
+  slack_enabled:   boolean
+}
+
+// ── Phase 21: Scheduler ───────────────────────────────────────────────────────
+
+export interface JobStatus {
+  job_id:        string
+  name:          string
+  next_run_time: string | null
+  last_run_at:   string | null
+  last_status:   string
+  last_error:    string | null
+}
+
+// ── Phase 22: Signals ─────────────────────────────────────────────────────────
+
+export interface SignalRow {
+  symbol:          string
+  last_price:      number | null
+  composite:       string   // "buy" | "hold" | "sell"
+  confidence:      number
+  score:           number
+  ml_direction:    string   // "up" | "down" | "none"
+  ml_confidence:   number
+  rsi:             number | null
+  rsi_signal:      string   // "oversold" | "neutral" | "overbought"
+  sentiment_score: number | null
+  sentiment_label: string
+  last_updated:    string
+}
+
+// ── Phase 23: Multi-user ──────────────────────────────────────────────────────
+
+export interface UserInfo {
+  id:            number
+  username:      string
+  email:         string | null
+  role:          string   // "admin" | "viewer"
+  is_active:     boolean
+  created_at:    string
+  last_login_at: string | null
 }
 
 // ── ML types (mirrors backend app/models/schemas.py) ─────────────────────────
@@ -855,5 +905,61 @@ export const api = {
       apiClient
         .get<AutoTradeLogEntry[]>('/api/autotrade/log', { params: { limit } })
         .then((r) => r.data),
+  },
+
+  // ── Phase 20: Notifications ────────────────────────────────────────────────
+  notifications: {
+    getConfig: (): Promise<NotificationConfig> =>
+      apiClient.get<NotificationConfig>('/api/notifications/config').then((r) => r.data),
+
+    test: (channel: 'email' | 'slack'): Promise<{ ok: boolean; message: string }> =>
+      apiClient
+        .post<{ ok: boolean; message: string }>('/api/notifications/test', { channel })
+        .then((r) => r.data),
+  },
+
+  // ── Phase 21: Scheduler ────────────────────────────────────────────────────
+  scheduler: {
+    getJobs: (): Promise<JobStatus[]> =>
+      apiClient.get<JobStatus[]>('/api/scheduler/jobs').then((r) => r.data),
+
+    runNow: (jobId: string): Promise<{ job_id: string; message: string }> =>
+      apiClient
+        .post<{ job_id: string; message: string }>(`/api/scheduler/jobs/${jobId}/run`)
+        .then((r) => r.data),
+  },
+
+  // ── Phase 22: Signals ──────────────────────────────────────────────────────
+  signals: {
+    getAll: (): Promise<SignalRow[]> =>
+      apiClient.get<SignalRow[]>('/api/signals').then((r) => r.data),
+  },
+
+  // ── Phase 23: User management ──────────────────────────────────────────────
+  users: {
+    list: (): Promise<UserInfo[]> =>
+      apiClient.get<UserInfo[]>('/api/auth/users').then((r) => r.data),
+
+    create: (username: string, password: string, email?: string, role = 'viewer'): Promise<UserInfo> =>
+      apiClient
+        .post<UserInfo>('/api/auth/users', { username, password, email, role })
+        .then((r) => r.data),
+
+    deactivate: (userId: number): Promise<void> =>
+      apiClient.delete(`/api/auth/users/${userId}`).then(() => undefined),
+
+    changePassword: (userId: number, newPassword: string): Promise<{ message: string }> =>
+      apiClient
+        .post<{ message: string }>(`/api/auth/users/${userId}/password`, { new_password: newPassword })
+        .then((r) => r.data),
+  },
+
+  // ── Phase 24: PDF report ────────────────────────────────────────────────────
+  reports: {
+    /** Open PDF in new tab / trigger browser download */
+    downloadBacktest: (runId: number): void => {
+      const base = (import.meta.env.VITE_API_URL ?? '') as string
+      window.open(`${base}/api/backtest/${runId}/report`, '_blank')
+    },
   },
 }

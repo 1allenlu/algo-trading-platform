@@ -169,7 +169,7 @@ function ArticleRow({ article, idx }: { article: NewsAggregateSentiment['article
                 sx={{
                   bgcolor: compoundColor(compound) + '22',
                   color:   compoundColor(compound),
-                  fontFamily: 'Roboto Mono, monospace',
+                  fontFamily: 'IBM Plex Mono, monospace',
                   fontWeight: 700,
                   fontSize: '0.72rem',
                 }}
@@ -283,7 +283,7 @@ export default function NewsPage() {
                     <SearchIcon sx={{ fontSize: 18, color: 'text.disabled' }} />
                   </InputAdornment>
                 ),
-                sx: { fontFamily: 'Roboto Mono, monospace', fontWeight: 700 },
+                sx: { fontFamily: 'IBM Plex Mono, monospace', fontWeight: 700 },
               }}
               sx={{ width: 180 }}
             />
@@ -299,7 +299,7 @@ export default function NewsPage() {
                 clickable
                 onClick={() => { setInput(s); setSymbol(s) }}
                 sx={{
-                  fontFamily: 'Roboto Mono, monospace',
+                  fontFamily: 'IBM Plex Mono, monospace',
                   fontWeight: symbol === s ? 700 : 400,
                   bgcolor:    symbol === s ? 'rgba(0,180,216,0.15)' : 'transparent',
                   color:      symbol === s ? 'primary.main' : 'text.secondary',

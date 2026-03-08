@@ -75,7 +75,7 @@ function FeatureTooltip({ active, payload }: any) {
         minWidth: 200,
       }}
     >
-      <Typography variant="body2" fontWeight={700} fontFamily="Roboto Mono, monospace">
+      <Typography variant="body2" fontWeight={700} fontFamily="IBM Plex Mono, monospace">
         {name}
       </Typography>
       <Typography variant="caption" sx={{ color: GROUP_COLORS[group] ?? '#94a3b8', display: 'block' }}>
@@ -137,7 +137,7 @@ export default function FeatureImportanceChart({
         <YAxis
           type="category"
           dataKey="name"
-          tick={{ fontSize: 11, fill: '#9CA3AF', fontFamily: 'Roboto Mono, monospace' }}
+          tick={{ fontSize: 11, fill: '#9CA3AF', fontFamily: 'IBM Plex Mono, monospace' }}
           tickLine={false}
           axisLine={false}
           width={95}

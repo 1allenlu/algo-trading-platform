@@ -25,10 +25,10 @@ function TickerItem({ symbol, tick }: { symbol: string; tick: PriceTick | undefi
   if (!tick) {
     return (
       <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, px: 1.5, opacity: 0.35 }}>
-        <Typography variant="caption" fontFamily="Roboto Mono, monospace" fontWeight={700} color="primary.main">
+        <Typography variant="caption" fontFamily="IBM Plex Mono, monospace" fontWeight={700} color="primary.main">
           {symbol}
         </Typography>
-        <Typography variant="caption" fontFamily="Roboto Mono, monospace" color="text.disabled">
+        <Typography variant="caption" fontFamily="IBM Plex Mono, monospace" color="text.disabled">
           —
         </Typography>
       </Box>
@@ -49,10 +49,10 @@ function TickerItem({ symbol, tick }: { symbol: string; tick: PriceTick | undefi
         flexShrink: 0,
       }}
     >
-      <Typography variant="caption" fontFamily="Roboto Mono, monospace" fontWeight={700} color="primary.main">
+      <Typography variant="caption" fontFamily="IBM Plex Mono, monospace" fontWeight={700} color="primary.main">
         {symbol}
       </Typography>
-      <Typography variant="caption" fontFamily="Roboto Mono, monospace" fontWeight={600} color="text.primary">
+      <Typography variant="caption" fontFamily="IBM Plex Mono, monospace" fontWeight={600} color="text.primary">
         ${tick.price.toFixed(2)}
       </Typography>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
@@ -62,7 +62,7 @@ function TickerItem({ symbol, tick }: { symbol: string; tick: PriceTick | undefi
         }
         <Typography
           variant="caption"
-          fontFamily="Roboto Mono, monospace"
+          fontFamily="IBM Plex Mono, monospace"
           sx={{
             color:      isUp ? '#00C896' : '#FF6B6B',
             fontWeight: 700,

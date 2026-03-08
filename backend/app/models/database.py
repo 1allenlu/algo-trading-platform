@@ -462,3 +462,39 @@ class AutoTradeLog(Base):
 
     def __repr__(self) -> str:
         return f"<AutoTradeLog {self.symbol} {self.signal} → {self.action}>"
+
+
+# ── Users (Phase 23) ──────────────────────────────────────────────────────────
+
+class User(Base):
+    """
+    Multi-user account table — Phase 23.
+
+    Supports two roles:
+      admin  — full access, can manage other users
+      viewer — read-only access (no order placement, no user management)
+
+    Migration path from single-admin (Phase 17):
+      When the table is empty, auth_service falls back to the env-var
+      ADMIN_PASSWORD_HASH / ADMIN_USERNAME for backward compatibility.
+      Creating the first admin user via POST /api/auth/users switches the
+      system to DB-backed auth automatically.
+    """
+
+    __tablename__ = "users"
+
+    id            = Column(Integer,    primary_key=True, autoincrement=True)
+    username      = Column(String(100), nullable=False, unique=True)
+    email         = Column(String(200), nullable=True)
+    password_hash = Column(Text,        nullable=False)
+    role          = Column(String(20),  nullable=False, default="viewer")   # "admin" | "viewer"
+    is_active     = Column(Boolean,     nullable=False, default=True)
+    created_at    = Column(DateTime(timezone=True), nullable=False)
+    last_login_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("ix_users_username", "username"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<User {self.username} role={self.role} active={self.is_active}>"

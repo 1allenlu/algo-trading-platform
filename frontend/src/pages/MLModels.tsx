@@ -65,7 +65,7 @@ function MetricBadge({ label, value, colorize = false }: { label: string; value:
 
   return (
     <Box sx={{ textAlign: 'center' }}>
-      <Typography variant="h6" fontFamily="Roboto Mono, monospace" sx={{ color }}>
+      <Typography variant="h6" fontFamily="IBM Plex Mono, monospace" sx={{ color }}>
         {display}
       </Typography>
       <Typography variant="caption" color="text.disabled">{label}</Typography>
@@ -81,7 +81,7 @@ function ModelCard({ model }: { model: MLModelInfo }) {
         {/* Header row */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
           <Box>
-            <Typography variant="subtitle1" fontWeight={700} fontFamily="Roboto Mono, monospace">
+            <Typography variant="subtitle1" fontWeight={700} fontFamily="IBM Plex Mono, monospace">
               {model.name}
             </Typography>
             <Box sx={{ display: 'flex', gap: 0.75, mt: 0.5 }}>
@@ -110,19 +110,19 @@ function ModelCard({ model }: { model: MLModelInfo }) {
         <Box sx={{ display: 'flex', gap: 3 }}>
           <Box>
             <Typography variant="caption" color="text.disabled" display="block">Train samples</Typography>
-            <Typography variant="body2" fontFamily="Roboto Mono, monospace">
+            <Typography variant="body2" fontFamily="IBM Plex Mono, monospace">
               {model.train_samples?.toLocaleString() ?? '—'}
             </Typography>
           </Box>
           <Box>
             <Typography variant="caption" color="text.disabled" display="block">Test samples</Typography>
-            <Typography variant="body2" fontFamily="Roboto Mono, monospace">
+            <Typography variant="body2" fontFamily="IBM Plex Mono, monospace">
               {model.test_samples?.toLocaleString() ?? '—'}
             </Typography>
           </Box>
           <Box>
             <Typography variant="caption" color="text.disabled" display="block">Features</Typography>
-            <Typography variant="body2" fontFamily="Roboto Mono, monospace">
+            <Typography variant="body2" fontFamily="IBM Plex Mono, monospace">
               {model.feature_count ?? '—'}
             </Typography>
           </Box>
@@ -167,7 +167,7 @@ function PredictionTable({ symbol }: { symbol: string }) {
             const isUp = bar.predicted_dir === 'up'
             return (
               <TableRow key={bar.timestamp} hover>
-                <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.8rem' }}>
+                <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem' }}>
                   {new Date(bar.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}
                 </TableCell>
                 <TableCell align="center">
@@ -201,7 +201,7 @@ function PredictionTable({ symbol }: { symbol: string }) {
                     />
                     <Typography
                       variant="caption"
-                      fontFamily="Roboto Mono, monospace"
+                      fontFamily="IBM Plex Mono, monospace"
                       sx={{ minWidth: 42, textAlign: 'right' }}
                     >
                       {(bar.confidence * 100).toFixed(1)}%
@@ -421,7 +421,7 @@ function SentimentPanel({ symbol }: { symbol: string }) {
                 <Typography variant="caption" color="text.secondary">{label}</Typography>
                 <Typography
                   variant="caption"
-                  fontFamily="Roboto Mono, monospace"
+                  fontFamily="IBM Plex Mono, monospace"
                   fontWeight={700}
                   sx={{ color: value > 0 ? 'secondary.main' : value < 0 ? 'error.main' : 'text.disabled' }}
                 >
@@ -477,7 +477,7 @@ function SignalPanel({ symbol }: { symbol: string }) {
               <Typography
                 variant="h2"
                 fontWeight={900}
-                fontFamily="Roboto Mono, monospace"
+                fontFamily="IBM Plex Mono, monospace"
                 sx={{ color: signalColor[data.signal], letterSpacing: '0.05em' }}
               >
                 {data.signal.toUpperCase()}
@@ -488,7 +488,7 @@ function SignalPanel({ symbol }: { symbol: string }) {
                 </Typography>
                 <Typography
                   variant="body1"
-                  fontFamily="Roboto Mono, monospace"
+                  fontFamily="IBM Plex Mono, monospace"
                   fontWeight={700}
                   sx={{ color: signalColor[data.signal] }}
                 >
@@ -499,7 +499,7 @@ function SignalPanel({ symbol }: { symbol: string }) {
                 </Typography>
                 <Typography
                   variant="body1"
-                  fontFamily="Roboto Mono, monospace"
+                  fontFamily="IBM Plex Mono, monospace"
                   fontWeight={700}
                 >
                   {(data.confidence * 100).toFixed(1)}%
@@ -524,7 +524,7 @@ function SignalPanel({ symbol }: { symbol: string }) {
                     </Typography>
                     <Typography
                       variant="caption"
-                      fontFamily="Roboto Mono, monospace"
+                      fontFamily="IBM Plex Mono, monospace"
                       fontWeight={700}
                       sx={{ color: c }}
                     >
@@ -610,7 +610,7 @@ function ModelComparisonTable({ models }: { models: MLModelInfo[] }) {
                     const isLSTM = t === 'lstm'
                     return (
                       <TableRow key={`${sym}-${t}`} hover>
-                        <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontWeight: 700 }}>
+                        <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontWeight: 700 }}>
                           {sym}
                         </TableCell>
                         <TableCell>
@@ -625,29 +625,29 @@ function ModelComparisonTable({ models }: { models: MLModelInfo[] }) {
                             }}
                           />
                         </TableCell>
-                        <TableCell sx={{ fontFamily: 'Roboto Mono, monospace' }}>v{m.version}</TableCell>
+                        <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace' }}>v{m.version}</TableCell>
                         <TableCell>
                           <Typography
                             variant="body2"
-                            fontFamily="Roboto Mono, monospace"
+                            fontFamily="IBM Plex Mono, monospace"
                             sx={{ color: m.accuracy && m.accuracy > 0.55 ? '#06d6a0' : 'text.primary' }}
                           >
                             {m.accuracy != null ? (m.accuracy * 100).toFixed(1) + '%' : '—'}
                           </Typography>
                         </TableCell>
-                        <TableCell sx={{ fontFamily: 'Roboto Mono, monospace' }}>
+                        <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace' }}>
                           {m.f1_score != null ? (m.f1_score * 100).toFixed(1) + '%' : '—'}
                         </TableCell>
                         <TableCell>
                           <Typography
                             variant="body2"
-                            fontFamily="Roboto Mono, monospace"
+                            fontFamily="IBM Plex Mono, monospace"
                             sx={{ color: m.roc_auc && m.roc_auc > 0.6 ? '#06d6a0' : 'text.primary' }}
                           >
                             {m.roc_auc != null ? m.roc_auc.toFixed(3) : '—'}
                           </Typography>
                         </TableCell>
-                        <TableCell sx={{ fontFamily: 'Roboto Mono, monospace' }}>
+                        <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace' }}>
                           {m.train_samples?.toLocaleString() ?? '—'}
                         </TableCell>
                         <TableCell>

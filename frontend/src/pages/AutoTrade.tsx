@@ -335,7 +335,7 @@ function LogTable({ entries }: { entries: AutoTradeLogEntry[] }) {
               </TableCell>
               <TableCell><SignalChip signal={e.signal} /></TableCell>
               <TableCell>
-                <Typography variant="caption" fontFamily="Roboto Mono, monospace">
+                <Typography variant="caption" fontFamily="IBM Plex Mono, monospace">
                   {(e.confidence * 100).toFixed(1)}%
                 </Typography>
               </TableCell>
@@ -346,7 +346,7 @@ function LogTable({ entries }: { entries: AutoTradeLogEntry[] }) {
                 </Typography>
               </TableCell>
               <TableCell>
-                <Typography variant="caption" fontFamily="Roboto Mono, monospace">
+                <Typography variant="caption" fontFamily="IBM Plex Mono, monospace">
                   {e.price !== null ? `$${e.price.toFixed(2)}` : '—'}
                 </Typography>
               </TableCell>

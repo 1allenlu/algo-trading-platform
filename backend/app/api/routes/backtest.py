@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi.responses import Response
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -160,3 +161,32 @@ async def get_backtest(
     if run is None:
         raise HTTPException(status_code=404, detail=f"Backtest run {run_id} not found")
     return _parse_run(run)
+
+
+@router.get("/{run_id}/report")
+async def download_report(
+    run_id:  int,
+    session: AsyncSession = Depends(get_db),
+) -> Response:
+    """
+    Download a PDF report for a completed backtest run.
+    Phase 24: uses reportlab + matplotlib to generate a formatted document.
+    """
+    run = await backtest_service.get_run(run_id, session)
+    if run is None:
+        raise HTTPException(status_code=404, detail=f"Backtest run {run_id} not found")
+    if run.status != "done":
+        raise HTTPException(status_code=400, detail="Report only available for completed runs")
+
+    try:
+        from app.services.report_service import generate_backtest_pdf
+        pdf_bytes = generate_backtest_pdf(run)
+    except Exception as exc:
+        logger.error(f"PDF generation failed for run {run_id}: {exc}")
+        raise HTTPException(status_code=500, detail=f"PDF generation failed: {exc}")
+
+    return Response(
+        content     = pdf_bytes,
+        media_type  = "application/pdf",
+        headers     = {"Content-Disposition": f'attachment; filename="backtest_{run_id}.pdf"'},
+    )

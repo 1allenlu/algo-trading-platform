@@ -50,7 +50,7 @@ function SHAPTooltip({ active, payload }: any) {
         minWidth: 220,
       }}
     >
-      <Typography variant="body2" fontWeight={700} fontFamily="Roboto Mono, monospace">
+      <Typography variant="body2" fontWeight={700} fontFamily="IBM Plex Mono, monospace">
         {d.name}
       </Typography>
       <Typography
@@ -117,7 +117,7 @@ export default function SHAPWaterfallChart({
         <YAxis
           type="category"
           dataKey="name"
-          tick={{ fontSize: 11, fill: '#9CA3AF', fontFamily: 'Roboto Mono, monospace' }}
+          tick={{ fontSize: 11, fill: '#9CA3AF', fontFamily: 'IBM Plex Mono, monospace' }}
           tickLine={false}
           axisLine={false}
           width={105}

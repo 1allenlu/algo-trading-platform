@@ -526,7 +526,7 @@ export default function OptimizePage() {
               size="small"
               error={!!gridError}
               helperText={gridError ?? 'Each key maps to an array of values to try. Max 50 combinations.'}
-              inputProps={{ style: { fontFamily: 'Roboto Mono, monospace', fontSize: '0.8rem' } }}
+              inputProps={{ style: { fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem' } }}
             />
           </Grid>
 

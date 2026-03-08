@@ -31,6 +31,12 @@ import {
   AccountBalance as PortfolioIcon,
   Lock as LockIcon,
   Newspaper as NewsIcon,
+  SignalCellularAlt as SignalsIcon,
+  Email as NotifyIcon,
+  Schedule as SchedulerIcon,
+  PictureAsPdf as PdfIcon,
+  ManageAccounts as UsersIcon,
+  WifiTethering as LivePriceIcon,
 } from '@mui/icons-material'
 import { useNavigate } from 'react-router-dom'
 
@@ -189,6 +195,54 @@ const FEATURES = [
     description: 'nginx reverse proxy, Vite production build, 4-worker Gunicorn, docker-compose.prod.yml. Complete DEPLOY.md guide with HTTPS/TLS instructions.',
     tags:        ['nginx', 'Docker', 'Production-Ready'],
   },
+  {
+    icon:        <LivePriceIcon sx={{ fontSize: 28 }} />,
+    title:       'Real-Time Alpaca Prices',
+    phase:       'Phase 19',
+    color:       '#10B981',
+    description: 'Live WebSocket price stream via Alpaca StockDataStream. Automatically falls back to the built-in random-walk simulator when Alpaca keys are absent — zero config.',
+    tags:        ['Alpaca', 'WebSocket', 'Live Prices'],
+  },
+  {
+    icon:        <NotifyIcon sx={{ fontSize: 28 }} />,
+    title:       'Alert Notifications',
+    phase:       'Phase 20',
+    color:       '#F59E0B',
+    description: 'Email (SMTP/TLS via aiosmtplib) and Slack (incoming webhook) notifications when price alert rules fire. Fire-and-forget via asyncio.create_task — never blocks.',
+    tags:        ['Email', 'Slack', 'aiosmtplib'],
+  },
+  {
+    icon:        <SchedulerIcon sx={{ fontSize: 28 }} />,
+    title:       'Scheduled Data Pipeline',
+    phase:       'Phase 21',
+    color:       '#8B5CF6',
+    description: 'APScheduler cron jobs for daily OHLCV ingestion (18:10 ET after market close) and 90-day alert event cleanup. Trigger any job instantly from the Settings page.',
+    tags:        ['APScheduler', 'yfinance', 'Cron'],
+  },
+  {
+    icon:        <SignalsIcon sx={{ fontSize: 28 }} />,
+    title:       'Live Signals Dashboard',
+    phase:       'Phase 22',
+    color:       '#06B6D4',
+    description: 'Composite BUY/HOLD/SELL signal matrix for all tracked symbols. Combines ML prediction, RSI, and sentiment. Auto-refreshes every 30s with color-coded confidence.',
+    tags:        ['XGBoost', 'RSI', 'Composite Signal'],
+  },
+  {
+    icon:        <UsersIcon sx={{ fontSize: 28 }} />,
+    title:       'Multi-User Auth',
+    phase:       'Phase 23',
+    color:       '#EC4899',
+    description: 'PostgreSQL-backed user table with admin/viewer roles. Backwards-compatible: falls back to env-var ADMIN_PASSWORD_HASH when no DB users exist. CRUD via Settings.',
+    tags:        ['PostgreSQL', 'Roles', 'CRUD'],
+  },
+  {
+    icon:        <PdfIcon sx={{ fontSize: 28 }} />,
+    title:       'Backtest PDF Export',
+    phase:       'Phase 24',
+    color:       '#F97316',
+    description: 'One-click PDF report from any completed backtest: header, metrics table (Sharpe, CAGR, max drawdown), dark-themed equity curve chart, and top-20 trades table.',
+    tags:        ['reportlab', 'matplotlib', 'PDF'],
+  },
 ]
 
 const TECH_STACK = [
@@ -346,7 +400,7 @@ export default function IntroPage() {
                 variant="h4"
                 fontWeight={800}
                 color="primary.main"
-                sx={{ fontFamily: 'Roboto Mono, monospace', lineHeight: 1.1 }}
+                sx={{ fontFamily: 'IBM Plex Mono, monospace', lineHeight: 1.1 }}
               >
                 {value}
               </Typography>
@@ -431,7 +485,7 @@ export default function IntroPage() {
         {/* ── Footer ─────────────────────────────────────────────────────── */}
         <Box sx={{ mt: 8, textAlign: 'center', pb: 4 }}>
           <Typography variant="caption" color="text.disabled">
-            TradingOS v0.12.0 — Phase 12: Auto Paper Trading
+            TradingOS v0.24.0 — Phase 24: Full Featured
           </Typography>
         </Box>
       </Box>

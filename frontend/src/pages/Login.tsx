@@ -176,7 +176,7 @@ export default function LoginPage() {
             <Typography variant="caption" color="text.disabled" display="block">
               Forgot credentials? Regenerate the password hash and update ADMIN_PASSWORD_HASH in your .env file.
             </Typography>
-            <Typography variant="caption" color="text.disabled" sx={{ fontFamily: 'Roboto Mono, monospace', display: 'block', mt: 0.5 }}>
+            <Typography variant="caption" color="text.disabled" sx={{ fontFamily: 'IBM Plex Mono, monospace', display: 'block', mt: 0.5 }}>
               POST /api/auth/hash {"{ \"password\": \"newpass\" }"}
             </Typography>
           </Box>

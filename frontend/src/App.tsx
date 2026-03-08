@@ -15,6 +15,7 @@ import AnalyticsPage from '@/pages/Analytics'
 import OptimizePage from '@/pages/Optimize'
 import ScannerPage from '@/pages/Scanner'
 import AutoTradePage from '@/pages/AutoTrade'
+import SignalsPage from '@/pages/Signals'
 import NewsPage from '@/pages/News'
 import LoginPage from '@/pages/Login'
 import IntroPage from '@/pages/Intro'
@@ -64,6 +65,7 @@ function AppLayout() {
             <Route path="/optimize"   element={<OptimizePage />} />
             <Route path="/scanner"    element={<ScannerPage />} />
             <Route path="/autotrade"  element={<AutoTradePage />} />
+            <Route path="/signals"    element={<SignalsPage />} />
             <Route path="/news"       element={<NewsPage />} />
             <Route path="/settings"   element={<Settings />} />
           </Routes>

@@ -55,7 +55,7 @@ function MetricCard({
         <Typography variant="caption" color="text.disabled" display="block" mb={0.5}>
           {label}
         </Typography>
-        <Typography variant="h4" fontWeight={700} fontFamily="Roboto Mono, monospace"
+        <Typography variant="h4" fontWeight={700} fontFamily="IBM Plex Mono, monospace"
           sx={{ color, lineHeight: 1.2 }}>
           {value}
         </Typography>
@@ -93,34 +93,34 @@ function AssetTable({ data }: { data: PortfolioRiskResponse }) {
                 const w = data.weights[i] ?? 0
                 return (
                   <TableRow key={asset.symbol} hover>
-                    <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontWeight: 700, color: 'primary.main' }}>
+                    <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontWeight: 700, color: 'primary.main' }}>
                       {asset.symbol}
                     </TableCell>
-                    <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.8rem' }}>
+                    <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem' }}>
                       {(w * 100).toFixed(1)}%
                     </TableCell>
                     <TableCell sx={{
-                      fontFamily: 'Roboto Mono, monospace', fontSize: '0.8rem',
+                      fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem',
                       color: asset.annual_return >= 0 ? '#06d6a0' : '#ff6b6b',
                     }}>
                       {asset.annual_return >= 0 ? '+' : ''}{(asset.annual_return * 100).toFixed(1)}%
                     </TableCell>
-                    <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.8rem' }}>
+                    <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem' }}>
                       {(asset.annual_vol * 100).toFixed(1)}%
                     </TableCell>
                     <TableCell sx={{
-                      fontFamily: 'Roboto Mono, monospace', fontSize: '0.8rem',
+                      fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem',
                       color: asset.sharpe >= 1 ? '#06d6a0' : asset.sharpe >= 0 ? 'text.primary' : '#ff6b6b',
                     }}>
                       {asset.sharpe.toFixed(2)}
                     </TableCell>
-                    <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.8rem', color: '#ff6b6b' }}>
+                    <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem', color: '#ff6b6b' }}>
                       {(asset.max_drawdown * 100).toFixed(1)}%
                     </TableCell>
-                    <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.8rem' }}>
+                    <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem' }}>
                       {asset.beta.toFixed(2)}
                     </TableCell>
-                    <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.8rem', color: '#f77f00' }}>
+                    <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem', color: '#f77f00' }}>
                       {(asset.var_95 * 100).toFixed(2)}%
                     </TableCell>
                   </TableRow>
@@ -198,7 +198,7 @@ export default function Risk() {
                       key={sym} label={sym} size="small" clickable
                       onClick={() => toggleSymbol(sym)}
                       sx={{
-                        fontFamily:  'Roboto Mono, monospace',
+                        fontFamily:  'IBM Plex Mono, monospace',
                         fontWeight:  selected ? 700 : 400,
                         bgcolor:     selected ? 'rgba(0,180,216,0.15)' : 'transparent',
                         color:       selected ? 'primary.main' : 'text.secondary',
@@ -329,7 +329,7 @@ export default function Risk() {
                         <Typography variant="caption" color="text.disabled" display="block">
                           Max Sharpe allocation
                         </Typography>
-                        <Typography variant="caption" fontFamily="Roboto Mono, monospace" color="#fbbf24" fontSize="0.68rem">
+                        <Typography variant="caption" fontFamily="IBM Plex Mono, monospace" color="#fbbf24" fontSize="0.68rem">
                           {frontierData.max_sharpe.weights
                             .map((w, i) => `${frontierData.symbols[i]}: ${(w * 100).toFixed(0)}%`)
                             .join('  ')}

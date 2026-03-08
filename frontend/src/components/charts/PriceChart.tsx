@@ -57,7 +57,7 @@ function ChartTooltip({ active, payload }: any) {
       <Typography variant="caption" color="text.secondary" display="block" mb={0.5}>
         {d.date}
       </Typography>
-      <Typography variant="body2" fontWeight={700} fontFamily="Roboto Mono, monospace">
+      <Typography variant="body2" fontWeight={700} fontFamily="IBM Plex Mono, monospace">
         ${d.close.toFixed(2)}
       </Typography>
       <Typography
@@ -124,7 +124,7 @@ export default function PriceChart({ bars, symbol, height = 300 }: PriceChartPro
         />
 
         <YAxis
-          tick={{ fontSize: 11, fill: '#9CA3AF', fontFamily: 'Roboto Mono, monospace' }}
+          tick={{ fontSize: 11, fill: '#9CA3AF', fontFamily: 'IBM Plex Mono, monospace' }}
           tickLine={false}
           axisLine={false}
           tickFormatter={(v: number) => `$${v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v.toFixed(0)}`}

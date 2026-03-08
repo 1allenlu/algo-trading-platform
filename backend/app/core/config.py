@@ -37,11 +37,21 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
 
-    # ── Alpaca (Phase 13) ─────────────────────────────────────────────────────
+    # ── Alpaca (Phase 13 / 19) ────────────────────────────────────────────────
     # Free paper-trading keys at https://alpaca.markets → Paper Trading
     # Leave empty to use DB prices only (no external API needed)
     ALPACA_API_KEY:    str = ""
     ALPACA_SECRET_KEY: str = ""
+    # Phase 19: symbols streamed via Alpaca WebSocket (or simulated when no keys)
+    ALPACA_SYMBOLS: list[str] = ["SPY", "QQQ", "AAPL", "MSFT", "NVDA", "AMZN", "TSLA"]
+
+    # ── Notifications (Phase 20) ──────────────────────────────────────────────
+    SMTP_HOST:     str = ""
+    SMTP_PORT:     int = 587
+    SMTP_USER:     str = ""
+    SMTP_PASSWORD: str = ""
+    NOTIFY_EMAIL:  str = ""          # Recipient address for alert emails
+    SLACK_WEBHOOK_URL: str = ""      # Slack incoming webhook URL
 
     # ── Auth (Phase 17) ───────────────────────────────────────────────────────
     # Set JWT_SECRET_KEY to enable JWT authentication. Leave empty to skip.

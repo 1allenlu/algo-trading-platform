@@ -9,6 +9,13 @@ from app.api.deps import get_db
 from app.core.config import settings
 from app.models.schemas import HealthResponse
 
+# Set at startup by main.py so health endpoint can report it
+_price_source: str = "simulator"
+
+def set_price_source(source: str) -> None:
+    global _price_source
+    _price_source = source
+
 router = APIRouter()
 
 
@@ -50,5 +57,6 @@ async def health_check(db: AsyncSession = Depends(get_db)) -> HealthResponse:
         status=overall,
         database=db_status,
         redis=redis_status,
-        version="0.1.0",
+        version="0.24.0",
+        price_source=_price_source,
     )

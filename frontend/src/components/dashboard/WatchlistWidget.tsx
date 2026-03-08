@@ -76,11 +76,11 @@ export default function WatchlistWidget({ prices, status }: WatchlistWidgetProps
 
                 return (
                   <TableRow key={sym} hover>
-                    <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontWeight: 700, color: 'primary.main' }}>
+                    <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontWeight: 700, color: 'primary.main' }}>
                       {sym}
                     </TableCell>
 
-                    <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.82rem', fontWeight: 600 }}>
+                    <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.82rem', fontWeight: 600 }}>
                       {tick ? `$${tick.price.toFixed(2)}` : '—'}
                     </TableCell>
 
@@ -93,7 +93,7 @@ export default function WatchlistWidget({ prices, status }: WatchlistWidgetProps
                           }
                           <Typography
                             variant="caption"
-                            fontFamily="Roboto Mono, monospace"
+                            fontFamily="IBM Plex Mono, monospace"
                             sx={{ color: isUp ? '#00C896' : '#FF6B6B', fontWeight: 600 }}
                           >
                             {tick.change >= 0 ? '+' : ''}${tick.change.toFixed(2)}
@@ -105,13 +105,13 @@ export default function WatchlistWidget({ prices, status }: WatchlistWidgetProps
                     </TableCell>
 
                     <TableCell sx={{
-                      fontFamily: 'Roboto Mono, monospace', fontSize: '0.8rem', fontWeight: 700,
+                      fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem', fontWeight: 700,
                       color: tick ? (isUp ? '#00C896' : '#FF6B6B') : 'text.secondary',
                     }}>
                       {tick ? `${tick.change_pct >= 0 ? '+' : ''}${(tick.change_pct * 100).toFixed(2)}%` : '—'}
                     </TableCell>
 
-                    <TableCell sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.75rem', color: 'text.secondary' }}>
+                    <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.75rem', color: 'text.secondary' }}>
                       {tick ? `$${tick.low.toFixed(2)} – $${tick.high.toFixed(2)}` : '—'}
                     </TableCell>
                   </TableRow>

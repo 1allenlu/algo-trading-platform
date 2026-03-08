@@ -76,7 +76,7 @@ function KpiCard({ label, value, sub, positive }: KpiCardProps) {
         <Typography
           variant="h6"
           fontWeight={700}
-          fontFamily="Roboto Mono, monospace"
+          fontFamily="IBM Plex Mono, monospace"
           sx={{ color: valueColor, lineHeight: 1.2 }}
         >
           {value}
@@ -212,7 +212,7 @@ function TradeStatsPanel({ summary }: { summary: AnalyticsSummary }) {
                 {positive === false && <TrendingDown sx={{ fontSize: 13, color: '#FF6B6B' }} />}
                 <Typography
                   variant="body2"
-                  fontFamily="Roboto Mono, monospace"
+                  fontFamily="IBM Plex Mono, monospace"
                   fontWeight={700}
                   sx={{ color: positive === null ? 'text.primary' : positive ? '#00C896' : '#FF6B6B' }}
                 >

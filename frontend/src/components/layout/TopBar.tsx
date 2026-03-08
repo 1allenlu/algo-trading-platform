@@ -87,7 +87,7 @@ export default function TopBar() {
           size="small"
           variant="outlined"
           color={health?.database === 'healthy' ? 'success' : health ? 'error' : 'default'}
-          sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.7rem' }}
+          sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.7rem' }}
         />
 
         {/* Redis status */}
@@ -96,8 +96,21 @@ export default function TopBar() {
           size="small"
           variant="outlined"
           color={health?.redis === 'healthy' ? 'success' : health ? 'error' : 'default'}
-          sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.7rem' }}
+          sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.7rem' }}
         />
+
+        {/* Phase 19: price source */}
+        {health?.price_source && (
+          <Tooltip title={health.price_source === 'alpaca' ? 'Live prices from Alpaca' : 'Simulated prices (set Alpaca keys for live data)'}>
+            <Chip
+              label={health.price_source === 'alpaca' ? '● Live' : '◌ Sim'}
+              size="small"
+              variant="outlined"
+              color={health.price_source === 'alpaca' ? 'success' : 'default'}
+              sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.7rem' }}
+            />
+          </Tooltip>
+        )}
 
         <Tooltip title="Refresh health check">
           <IconButton size="small" onClick={() => refetch()}>
@@ -112,7 +125,7 @@ export default function TopBar() {
               label={user}
               size="small"
               variant="outlined"
-              sx={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.7rem', cursor: 'default' }}
+              sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.7rem', cursor: 'default' }}
             />
           </Tooltip>
         )}

@@ -52,6 +52,34 @@ async def get_current_user(token: str | None = Depends(_oauth2_scheme)) -> str:
     return username
 
 
+async def require_admin(current_user: str = Depends(get_current_user)) -> str:
+    """
+    Dependency that requires the caller to be an admin role.
+
+    When auth is disabled (JWT_SECRET_KEY empty), always passes through.
+    When auth is enabled + DB has users, checks the user's role.
+    Falls back gracefully if users table doesn't exist yet.
+    """
+    if current_user == "anonymous":
+        return current_user   # Auth disabled — allow all in dev
+
+    try:
+        from sqlalchemy import select
+        from app.models.database import User
+        async with AsyncSessionLocal() as session:
+            user = await session.scalar(select(User).where(User.username == current_user))
+            if user is not None and user.role != "admin":
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Admin role required",
+                )
+    except HTTPException:
+        raise
+    except Exception:
+        pass   # DB errors (e.g. table not yet created) → don't block
+    return current_user
+
+
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     Yield an async database session for the duration of a request.

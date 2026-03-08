@@ -223,6 +223,18 @@ class AlertService:
             except Exception as exc:
                 logger.error(f"AlertService: WS broadcast failed: {exc}")
 
+        # Phase 20: fire-and-forget email/Slack notification
+        if event_id is not None:
+            try:
+                import asyncio
+                from app.services.notification_service import notify_alert
+                asyncio.create_task(notify_alert(
+                    rule,
+                    {"current_value": value, "message": msg, "triggered_at": now.isoformat()},
+                ))
+            except Exception as exc:
+                logger.warning(f"AlertService: notification dispatch error: {exc}")
+
 
 # ── Module-level singleton ────────────────────────────────────────────────────
 # Created once in main.py lifespan; imported by the price simulator and routes.

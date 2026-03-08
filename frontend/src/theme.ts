@@ -46,10 +46,12 @@ export const theme = createTheme({
   },
 
   typography: {
-    fontFamily: '"Inter", "Helvetica Neue", Arial, sans-serif',
-    h4: { fontWeight: 700 },
+    fontFamily: '"IBM Plex Sans", "Helvetica Neue", Arial, sans-serif',
+    h4: { fontWeight: 600 },
     h5: { fontWeight: 600 },
-    h6: { fontWeight: 600 },
+    h6: { fontWeight: 500 },
+    body1: { fontSize: '0.875rem' },
+    body2: { fontSize: '0.8125rem' },
   },
 
   shape: { borderRadius: 8 },
@@ -81,7 +83,7 @@ export const theme = createTheme({
     },
     MuiChip: {
       styleOverrides: {
-        root: { fontFamily: '"Roboto Mono", monospace', fontSize: '0.75rem' },
+        root: { fontFamily: '"IBM Plex Mono", monospace', fontSize: '0.72rem' },
       },
     },
     MuiToggleButton: {

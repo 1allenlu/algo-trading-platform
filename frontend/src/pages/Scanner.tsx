@@ -149,7 +149,7 @@ function ResultsTable({ rows }: { rows: SymbolSnapshot[] }) {
               </TableCell>
 
               <TableCell>
-                <Typography variant="caption" fontFamily="Roboto Mono, monospace" fontWeight={600}>
+                <Typography variant="caption" fontFamily="IBM Plex Mono, monospace" fontWeight={600}>
                   ${fmt(r.price, 2)}
                 </Typography>
               </TableCell>
@@ -175,7 +175,7 @@ function ResultsTable({ rows }: { rows: SymbolSnapshot[] }) {
                     <Typography
                       variant="caption"
                       fontWeight={700}
-                      sx={{ color: rsiColor(r.rsi_14), fontFamily: 'Roboto Mono, monospace' }}
+                      sx={{ color: rsiColor(r.rsi_14), fontFamily: 'IBM Plex Mono, monospace' }}
                     >
                       {fmt(r.rsi_14, 1)}
                     </Typography>

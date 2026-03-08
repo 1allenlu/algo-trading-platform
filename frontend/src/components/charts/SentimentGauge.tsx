@@ -57,7 +57,7 @@ function StatRow({ label, value, color }: { label: string; value: string; color?
       <Typography variant="caption" color="text.secondary">
         {label}
       </Typography>
-      <Typography variant="caption" fontWeight={700} sx={{ color: color ?? 'text.primary', fontFamily: 'Roboto Mono, monospace' }}>
+      <Typography variant="caption" fontWeight={700} sx={{ color: color ?? 'text.primary', fontFamily: 'IBM Plex Mono, monospace' }}>
         {value}
       </Typography>
     </Box>
@@ -128,7 +128,7 @@ export default function SentimentGauge({ data }: SentimentGaugeProps) {
 
       {/* Score + label */}
       <Box sx={{ textAlign: 'center', mt: -1 }}>
-        <Typography variant="h5" fontWeight={800} sx={{ color, fontFamily: 'Roboto Mono, monospace' }}>
+        <Typography variant="h5" fontWeight={800} sx={{ color, fontFamily: 'IBM Plex Mono, monospace' }}>
           {score >= 0 ? '+' : ''}{score.toFixed(2)}
         </Typography>
         <Chip

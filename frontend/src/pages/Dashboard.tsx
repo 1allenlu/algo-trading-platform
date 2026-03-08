@@ -66,7 +66,7 @@ function SymbolCard({ symbol, limit }: SymbolCardProps) {
               <Box sx={{ textAlign: 'right' }}>
                 <Typography
                   variant="h6"
-                  sx={{ fontFamily: 'Roboto Mono, monospace', lineHeight: 1.2 }}
+                  sx={{ fontFamily: 'IBM Plex Mono, monospace', lineHeight: 1.2 }}
                 >
                   ${lastClose.toFixed(2)}
                 </Typography>
@@ -79,7 +79,7 @@ function SymbolCard({ symbol, limit }: SymbolCardProps) {
                     sx={{
                       color:      isPos ? 'secondary.main' : 'error.main',
                       fontWeight: 700,
-                      fontFamily: 'Roboto Mono, monospace',
+                      fontFamily: 'IBM Plex Mono, monospace',
                     }}
                   >
                     {isPos ? '+' : ''}{totalPct.toFixed(2)}%
