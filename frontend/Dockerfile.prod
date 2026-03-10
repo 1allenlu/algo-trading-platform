@@ -3,20 +3,24 @@
 # Creates an optimised Vite production bundle in /app/dist.
 # Used by docker-compose.prod.yml to generate the static files that nginx serves.
 #
+# IMPORTANT: npm run build runs as the CMD (not RUN) so it executes at container
+# startup — after the 'frontend_dist' Docker volume is mounted at /app/dist.
+# Using RUN would bake the output into the image layer, which gets hidden by the
+# volume mount at runtime (classic Docker gotcha).
+#
 # Usage (called by docker-compose.prod.yml):
 #   docker compose -f docker-compose.prod.yml --profile build up frontend-build
 
-FROM node:20-alpine AS builder
+FROM node:20-alpine
 
 WORKDIR /app
 
-# Install dependencies first (cache layer)
+# Install dependencies (cached layer — only re-runs when package.json changes)
 COPY package.json package-lock.json* yarn.lock* ./
 RUN npm install --ignore-scripts
 
-# Copy source and build
+# Copy source (cache busted whenever source changes)
 COPY . .
-RUN npm run build
 
-# The built files land in /app/dist — mounted into the nginx container
-# via the 'frontend_dist' Docker volume.
+# Build runs at container startup so output lands in the mounted volume
+CMD ["npm", "run", "build"]

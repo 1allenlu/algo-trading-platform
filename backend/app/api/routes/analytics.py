@@ -21,6 +21,7 @@ from app.services.analytics_service import (
     get_summary,
     get_trades_csv,
 )
+from app.services.attribution_service import get_factor_attribution
 
 router = APIRouter()
 
@@ -60,6 +61,17 @@ async def analytics_rolling(
     Default window = 20 trading days (~1 month).
     """
     return await get_rolling_metrics(db, window=window)
+
+
+@router.get("/attribution")
+async def analytics_attribution(db: AsyncSession = Depends(get_db)) -> dict:
+    """
+    Factor attribution — Phase 29.
+
+    Returns beta / alpha vs SPY, rolling factor exposures, and
+    Brinson-Hood-Beebower allocation + selection effects per symbol.
+    """
+    return await get_factor_attribution(db)
 
 
 @router.get("/export")

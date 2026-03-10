@@ -8,7 +8,7 @@ Architecture note:
   - The SQLAlchemy models mirror the hypertable schema so the ORM can query them
 """
 
-from sqlalchemy import BigInteger, Boolean, Column, Date, DateTime, Float, Index, Integer, String, Text
+from sqlalchemy import BigInteger, Boolean, Column, Date, DateTime, Float, func, Index, Integer, String, Text
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -283,6 +283,44 @@ class PaperEquityHistory(Base):
 
     def __repr__(self) -> str:
         return f"<PaperEquityHistory {self.recorded_at} equity={self.equity:.2f}>"
+
+
+# ── Live Orders (Phase 25) ────────────────────────────────────────────────────
+
+class LiveOrder(Base):
+    """
+    A live order submitted to Alpaca (paper or real-money account).
+
+    Lifecycle:
+      'pending'  → 'accepted' (Alpaca acknowledged the order)
+      'accepted' → 'filled'   (execution complete)
+      'accepted' → 'canceled' (via DELETE /api/live/orders/{id})
+      'pending'  → 'rejected' (Alpaca rejected — see error_message)
+    """
+
+    __tablename__ = "live_orders"
+
+    id               = Column(Integer,  primary_key=True, autoincrement=True)
+    alpaca_order_id  = Column(String(64), nullable=True)   # UUID from Alpaca
+    symbol           = Column(String(20), nullable=False)
+    side             = Column(String(4),  nullable=False)   # "buy" | "sell"
+    order_type       = Column(String(10), nullable=False)   # "market" | "limit"
+    qty              = Column(Float,      nullable=False)
+    filled_qty       = Column(Float,      nullable=False, default=0.0)
+    limit_price      = Column(Float,      nullable=True)
+    filled_avg_price = Column(Float,      nullable=True)
+    status           = Column(String(20), nullable=False, default="pending")
+    error_message    = Column(Text,       nullable=True)
+    submitted_at     = Column(DateTime(timezone=True), server_default=func.now())
+    filled_at        = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("ix_live_orders_alpaca_id", "alpaca_order_id"),
+        Index("ix_live_orders_status",    "status"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<LiveOrder {self.side.upper()} {self.qty} {self.symbol} status={self.status}>"
 
 
 # ── Alerts (Phase 8) ──────────────────────────────────────────────────────────

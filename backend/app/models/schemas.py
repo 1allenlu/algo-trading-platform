@@ -489,3 +489,64 @@ class AlertEventWsMessage(BaseModel):
     message:       str
     triggered_at:  str    # ISO 8601
 
+
+# ── Live Trading (Phase 25) ───────────────────────────────────────────────────
+
+class LiveOrderSchema(BaseModel):
+    """A live order row — returned by GET /api/live/orders and POST /api/live/orders."""
+    id:               int
+    alpaca_order_id:  str | None
+    symbol:           str
+    side:             str           # "buy" | "sell"
+    order_type:       str           # "market" | "limit"
+    qty:              float
+    filled_qty:       float
+    status:           str           # "pending" | "accepted" | "filled" | "canceled" | "rejected"
+    limit_price:      float | None
+    filled_avg_price: float | None
+    error_message:    str | None
+    submitted_at:     str           # ISO 8601
+
+
+class LivePosition(BaseModel):
+    """One Alpaca position — symbol, size, unrealized P&L."""
+    symbol:              str
+    qty:                 float
+    avg_entry:           float
+    current_price:       float
+    market_value:        float
+    unrealized_pnl:      float
+    unrealized_pnl_pct:  float
+
+
+class LiveAccountInfo(BaseModel):
+    """Alpaca account snapshot — equity, cash, buying power, day P&L."""
+    equity:          float
+    cash:            float
+    buying_power:    float
+    day_pnl:         float
+    day_pnl_pct:     float
+    portfolio_value: float
+    trading_mode:    str    # "paper" | "live"
+
+
+class LiveTradingState(BaseModel):
+    """Full live trading snapshot — returned by GET /api/live/state."""
+    alpaca_enabled: bool
+    account:        LiveAccountInfo | None = None
+    positions:      list[LivePosition]    = []
+    orders:         list[LiveOrderSchema] = []
+
+
+class SubmitLiveOrderRequest(BaseModel):
+    """POST /api/live/orders — submit a market or limit order to Alpaca."""
+    symbol:      str
+    side:        str   = Field(pattern="^(buy|sell)$")
+    qty:         float = Field(gt=0)
+    order_type:  str   = Field(default="market", pattern="^(market|limit)$")
+    limit_price: float | None = Field(default=None, description="Required for limit orders")
+
+    model_config = ConfigDict(json_schema_extra={
+        "example": {"symbol": "SPY", "side": "buy", "qty": 1, "order_type": "market"}
+    })
+

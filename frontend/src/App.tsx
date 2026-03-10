@@ -17,6 +17,8 @@ import ScannerPage from '@/pages/Scanner'
 import AutoTradePage from '@/pages/AutoTrade'
 import SignalsPage from '@/pages/Signals'
 import NewsPage from '@/pages/News'
+import LiveTradingPage from '@/pages/LiveTrading'
+import OptionsPage from '@/pages/Options'
 import LoginPage from '@/pages/Login'
 import IntroPage from '@/pages/Intro'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
@@ -60,6 +62,8 @@ function AppLayout() {
             <Route path="/backtest"   element={<Backtest />} />
             <Route path="/risk"       element={<Risk />} />
             <Route path="/trading"    element={<Trading />} />
+            <Route path="/live"       element={<LiveTradingPage />} />
+            <Route path="/options"    element={<OptionsPage />} />
             <Route path="/alerts"     element={<AlertsPage />} />
             <Route path="/analytics"  element={<AnalyticsPage />} />
             <Route path="/optimize"   element={<OptimizePage />} />

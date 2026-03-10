@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING
 from loguru import logger
 from sqlalchemy import select
 
+from app.core.config import settings
 from app.models.database import AsyncSessionLocal, MarketData
 
 if TYPE_CHECKING:
@@ -35,8 +36,8 @@ if TYPE_CHECKING:
 
 # ── Simulation parameters ─────────────────────────────────────────────────────
 
-# Symbols to broadcast — must have data in the market_data table
-DEFAULT_SYMBOLS = ["SPY", "QQQ", "AAPL", "MSFT", "NVDA", "AMZN", "TSLA"]
+# Symbols to broadcast — driven by ALPACA_SYMBOLS setting (must have data in market_data)
+DEFAULT_SYMBOLS = settings.ALPACA_SYMBOLS
 
 TICK_INTERVAL_S  = 1.0     # Base seconds between tick batches
 TICK_JITTER_S    = 0.2     # ± random jitter to feel organic

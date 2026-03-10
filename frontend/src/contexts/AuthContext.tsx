@@ -132,7 +132,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   // Don't render children until we've checked the stored token
-  if (!ready) return null
+  if (!ready) return (
+    <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0a0e1a', color: '#9CA3AF', fontFamily: 'monospace', fontSize: 14 }}>
+      Loading…
+    </div>
+  )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

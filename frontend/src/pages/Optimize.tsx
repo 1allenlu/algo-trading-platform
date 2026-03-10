@@ -60,6 +60,7 @@ import {
   OptimizationRunDetail,
   OptimizationRunSummary,
   TrialResult,
+  WFOResult,
 } from '@/services/api'
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -330,6 +331,160 @@ function ResultsTable({ results, objective }: { results: TrialResult[]; objectiv
   )
 }
 
+// ── Walk-Forward Panel — Phase 28 ─────────────────────────────────────────────
+
+interface WFOPanelProps {
+  strategy:  string
+  symbols:   string
+  gridJson:  string
+  objective: string
+}
+
+function WFOPanel({ strategy, symbols, gridJson, objective }: WFOPanelProps) {
+  const [nWindows,   setNWindows]   = useState(5)
+  const [trainRatio, setTrainRatio] = useState(0.7)
+  const [running,    setRunning]    = useState(false)
+  const [result,     setResult]     = useState<WFOResult | null>(null)
+  const [err,        setErr]        = useState<string | null>(null)
+
+  async function handleRun() {
+    let paramGrid: Record<string, unknown[]>
+    try {
+      paramGrid = JSON.parse(gridJson)
+    } catch {
+      setErr('Fix the param grid JSON first')
+      return
+    }
+    const symList = symbols.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean)
+    if (!symList.length) { setErr('Enter at least one symbol'); return }
+
+    setRunning(true)
+    setErr(null)
+    setResult(null)
+    try {
+      const res = await api.wfo.run({
+        strategy, symbols: symList, param_grid: paramGrid,
+        objective, n_windows: nWindows, train_ratio: trainRatio,
+      })
+      setResult(res)
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'WFO failed'
+      setErr(msg)
+    } finally {
+      setRunning(false)
+    }
+  }
+
+  return (
+    <Box sx={{ mt: 4 }}>
+      <Divider sx={{ mb: 2 }}>
+        <Typography variant="caption" color="text.disabled">Walk-Forward Optimization</Typography>
+      </Divider>
+      <Paper variant="outlined" sx={{ p: 2.5 }}>
+        <Typography variant="subtitle2" fontWeight={700} mb={1}>
+          Walk-Forward Optimization — Phase 28
+        </Typography>
+        <Typography variant="body2" color="text.secondary" mb={2}>
+          Splits data into rolling windows. Grid-searches on train, evaluates OOS on test.
+          Measures parameter stability across market regimes.
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', mb: 2 }}>
+          <TextField
+            label="Windows"
+            type="number"
+            value={nWindows}
+            size="small"
+            sx={{ width: 110 }}
+            onChange={(e) => setNWindows(Math.max(2, Math.min(10, +e.target.value)))}
+            inputProps={{ min: 2, max: 10 }}
+          />
+          <TextField
+            label="Train ratio"
+            type="number"
+            value={trainRatio}
+            size="small"
+            sx={{ width: 120 }}
+            onChange={(e) => setTrainRatio(Math.max(0.5, Math.min(0.9, +e.target.value)))}
+            inputProps={{ step: 0.05, min: 0.5, max: 0.9 }}
+          />
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={running ? <CircularProgress size={14} color="inherit" /> : <RunIcon />}
+            onClick={handleRun}
+            disabled={running}
+          >
+            {running ? 'Running…' : 'Run WFO'}
+          </Button>
+          {running && (
+            <Typography variant="caption" color="text.secondary">
+              This may take a moment — runs {nWindows} windows in-process…
+            </Typography>
+          )}
+        </Box>
+        {err && <Alert severity="error" sx={{ mb: 1.5 }}>{err}</Alert>}
+
+        {result && (
+          <>
+            {/* Summary row */}
+            <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', mb: 2, p: 1.5, bgcolor: 'rgba(74,158,255,0.06)', borderRadius: 1 }}>
+              {[
+                { label: 'Avg OOS Sharpe', value: result.summary.avg_oos_sharpe.toFixed(3) },
+                { label: 'Avg OOS Return', value: `${(result.summary.avg_oos_return * 100).toFixed(2)}%` },
+                { label: 'Stability',      value: `${(result.summary.stability_score * 100).toFixed(0)}%` },
+              ].map(({ label, value }) => (
+                <Box key={label}>
+                  <Typography variant="caption" color="text.secondary" display="block">{label}</Typography>
+                  <Typography variant="body1" fontFamily="IBM Plex Mono, monospace" fontWeight={700}>{value}</Typography>
+                </Box>
+              ))}
+              <Box>
+                <Typography variant="caption" color="text.secondary" display="block">Recommended Params</Typography>
+                <Typography variant="caption" fontFamily="IBM Plex Mono, monospace">
+                  {JSON.stringify(result.summary.recommended_params)}
+                </Typography>
+              </Box>
+            </Box>
+
+            {/* Per-window table */}
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  {['Window', 'Test Period', 'OOS Sharpe', 'OOS Return', 'OOS MaxDD', 'Best Params'].map((h) => (
+                    <TableCell key={h} align="right" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>{h}</TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {result.windows.map((w) => (
+                  <TableRow key={w.window_idx}>
+                    <TableCell align="right" sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.75rem' }}>#{w.window_idx + 1}</TableCell>
+                    <TableCell align="right" sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>
+                      {w.test_start?.slice(0, 7)} → {w.test_end?.slice(0, 7)}
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.75rem', color: w.oos_sharpe >= 0 ? '#00C896' : '#FF6B6B' }}>
+                      {w.oos_sharpe.toFixed(3)}
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.75rem', color: w.oos_return >= 0 ? '#00C896' : '#FF6B6B' }}>
+                      {w.oos_return >= 0 ? '+' : ''}{(w.oos_return * 100).toFixed(2)}%
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.75rem', color: '#FF6B6B' }}>
+                      -{(Math.abs(w.oos_max_dd) * 100).toFixed(2)}%
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.68rem', color: 'text.secondary' }}>
+                      {JSON.stringify(w.best_params)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </>
+        )}
+      </Paper>
+    </Box>
+  )
+}
+
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function OptimizePage() {
@@ -573,6 +728,9 @@ export default function OptimizePage() {
           <ResultsTable results={currentRun.results} objective={objective} />
         </Box>
       ) : null}
+
+      {/* ── Walk-Forward Optimization — Phase 28 ───────────────────────── */}
+      <WFOPanel strategy={strategy} symbols={symbols} gridJson={gridJson} objective={objective} />
 
       {/* ── Recent runs history ─────────────────────────────────────────── */}
       {recentRuns.length > 0 && (

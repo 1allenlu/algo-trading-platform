@@ -108,6 +108,58 @@ export interface UserInfo {
   last_login_at: string | null
 }
 
+// ── Live Trading types — Phase 25 ────────────────────────────────────────────
+
+export interface LiveOrder {
+  id:               number
+  alpaca_order_id:  string | null
+  symbol:           string
+  side:             'buy' | 'sell'
+  order_type:       'market' | 'limit'
+  qty:              number
+  filled_qty:       number
+  status:           'pending' | 'accepted' | 'filled' | 'canceled' | 'rejected'
+  limit_price:      number | null
+  filled_avg_price: number | null
+  error_message:    string | null
+  submitted_at:     string   // ISO 8601
+}
+
+export interface LivePosition {
+  symbol:             string
+  qty:                number
+  avg_entry:          number
+  current_price:      number
+  market_value:       number
+  unrealized_pnl:     number
+  unrealized_pnl_pct: number
+}
+
+export interface LiveAccountInfo {
+  equity:          number
+  cash:            number
+  buying_power:    number
+  day_pnl:         number
+  day_pnl_pct:     number
+  portfolio_value: number
+  trading_mode:    'paper' | 'live'
+}
+
+export interface LiveTradingState {
+  alpaca_enabled: boolean
+  account:        LiveAccountInfo | null
+  positions:      LivePosition[]
+  orders:         LiveOrder[]
+}
+
+export interface SubmitLiveOrderRequest {
+  symbol:      string
+  side:        'buy' | 'sell'
+  qty:         number
+  order_type?: 'market' | 'limit'
+  limit_price?: number
+}
+
 // ── ML types (mirrors backend app/models/schemas.py) ─────────────────────────
 
 export interface MLModelInfo {
@@ -670,6 +722,110 @@ export interface StartOptimizationResponse {
   status:       string
 }
 
+// ── Options types — Phase 27 ──────────────────────────────────────────────────
+
+export interface OptionContract {
+  strike:             number
+  last_price:         number | null
+  bid:                number | null
+  ask:                number | null
+  change:             number | null
+  change_pct:         number | null
+  volume:             number
+  open_interest:      number
+  implied_volatility: number
+  in_the_money:       boolean
+  contract_type:      'call' | 'put'
+}
+
+export interface OptionsChain {
+  symbol:        string
+  current_price: number | null
+  expiration:    string | null
+  expirations:   string[]
+  calls:         OptionContract[]
+  puts:          OptionContract[]
+}
+
+// ── Walk-Forward Optimization types — Phase 28 ────────────────────────────────
+
+export interface WFORequest {
+  strategy:    string
+  symbols:     string[]
+  param_grid:  Record<string, unknown[]>
+  objective?:  string
+  n_windows?:  number
+  train_ratio?: number
+}
+
+export interface WFOWindowMetrics {
+  sharpe_ratio:  number | null
+  total_return:  number | null
+  max_drawdown:  number | null
+}
+
+export interface WFOWindow {
+  window_idx:    number
+  train_start:   string | null
+  train_end:     string | null
+  test_start:    string | null
+  test_end:      string | null
+  best_params:   Record<string, unknown>
+  train_metrics: WFOWindowMetrics
+  test_metrics:  WFOWindowMetrics
+  oos_sharpe:    number
+  oos_return:    number
+  oos_max_dd:    number
+}
+
+export interface WFOSummary {
+  avg_oos_sharpe:     number
+  avg_oos_return:     number
+  stability_score:    number
+  recommended_params: Record<string, unknown>
+  best_window_idx:    number
+}
+
+export interface WFOResult {
+  strategy:    string
+  symbols:     string[]
+  objective:   string
+  n_windows:   number
+  train_ratio: number
+  windows:     WFOWindow[]
+  summary:     WFOSummary
+}
+
+// ── Factor Attribution types — Phase 29 ───────────────────────────────────────
+
+export interface RollingFactorPoint {
+  date:          string
+  beta:          number
+  alpha:         number
+  portfolio_ret: number
+  benchmark_ret: number
+}
+
+export interface BrinsonRow {
+  symbol:            string
+  weight:            number
+  symbol_return:     number
+  allocation_effect: number
+  selection_effect:  number
+  total_effect:      number
+}
+
+export interface FactorAttribution {
+  beta:              number | null
+  alpha_ann:         number | null
+  r_squared:         number | null
+  tracking_error:    number | null
+  information_ratio: number | null
+  rolling:           RollingFactorPoint[]
+  brinson:           BrinsonRow[]
+  benchmark_symbol:  string
+}
+
 // ── Auth types — Phase 17 ─────────────────────────────────────────────────────
 
 export interface TokenResponse {
@@ -961,5 +1117,50 @@ export const api = {
       const base = (import.meta.env.VITE_API_URL ?? '') as string
       window.open(`${base}/api/backtest/${runId}/report`, '_blank')
     },
+  },
+
+  // ── Phase 27: Options chain ────────────────────────────────────────────────
+  options: {
+    getExpirations: (symbol: string): Promise<string[]> =>
+      apiClient.get<string[]>(`/api/options/${symbol}/expirations`).then((r) => r.data),
+
+    getChain: (symbol: string, expiry?: string): Promise<OptionsChain> =>
+      apiClient
+        .get<OptionsChain>(`/api/options/${symbol}`, { params: expiry ? { expiry } : {} })
+        .then((r) => r.data),
+  },
+
+  // ── Phase 28: Walk-Forward Optimization ────────────────────────────────────
+  wfo: {
+    run: (req: WFORequest): Promise<WFOResult> =>
+      apiClient.post<WFOResult>('/api/optimize/wfo', req).then((r) => r.data),
+  },
+
+  // ── Phase 29: Factor Attribution ───────────────────────────────────────────
+  attribution: {
+    get: (): Promise<FactorAttribution> =>
+      apiClient.get<FactorAttribution>('/api/analytics/attribution').then((r) => r.data),
+  },
+
+  // ── Phase 25: Live order execution ─────────────────────────────────────────
+  live: {
+    getState: (): Promise<LiveTradingState> =>
+      apiClient.get<LiveTradingState>('/api/live/state').then((r) => r.data),
+
+    submitOrder: (req: SubmitLiveOrderRequest): Promise<LiveOrder> =>
+      apiClient.post<LiveOrder>('/api/live/orders', req).then((r) => r.data),
+
+    getOrders: (): Promise<LiveOrder[]> =>
+      apiClient.get<LiveOrder[]>('/api/live/orders').then((r) => r.data),
+
+    cancelOrder: (orderId: number): Promise<{ message: string }> =>
+      apiClient
+        .delete<{ message: string }>(`/api/live/orders/${orderId}`)
+        .then((r) => r.data),
+
+    syncOrder: (orderId: number): Promise<LiveOrder> =>
+      apiClient
+        .post<LiveOrder>(`/api/live/orders/${orderId}/sync`)
+        .then((r) => r.data),
   },
 }

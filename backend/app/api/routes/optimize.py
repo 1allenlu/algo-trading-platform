@@ -21,6 +21,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.models.database import AsyncSessionLocal, OptimizationRun
 from app.services.optimization_service import (
     PARAM_SPACES,
@@ -177,3 +178,61 @@ async def get_optimization(
         "created_at":       run.created_at.isoformat(),
         "completed_at":     run.completed_at.isoformat() if run.completed_at else None,
     }
+
+
+# ── Walk-Forward Optimization — Phase 28 ──────────────────────────────────────
+
+class WFORequest(BaseModel):
+    strategy:    str               = Field(description="Strategy name")
+    symbols:     list[str]         = Field(description="Symbol list")
+    param_grid:  dict[str, list]   = Field(description="Parameter search grid")
+    objective:   str               = Field(default="sharpe")
+    n_windows:   int               = Field(default=5,   ge=2, le=10)
+    train_ratio: float             = Field(default=0.7, ge=0.5, le=0.9)
+
+
+@router.post("/wfo", status_code=202)
+async def run_wfo(body: WFORequest) -> dict:
+    """
+    Walk-Forward Optimization — Phase 28.
+
+    Splits historical data into N rolling windows.
+    For each window: grid-search on the train slice, then evaluate the
+    best params on the unseen test slice (OOS).
+
+    Runs synchronously in a background thread — blocks until complete.
+    Use smaller param grids for faster results.
+    """
+    import asyncio
+    import concurrent.futures
+
+    from quant_engine.backtest.wfo import run_walk_forward
+
+    combos = generate_combinations(body.param_grid)
+    if not combos:
+        raise HTTPException(status_code=400, detail="param_grid produced no combinations")
+
+    loop = asyncio.get_running_loop()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+        result = await loop.run_in_executor(
+            pool,
+            lambda: run_walk_forward(
+                strategy    = body.strategy,
+                symbols     = [s.upper() for s in body.symbols],
+                param_grid  = body.param_grid,
+                database_url = settings.DATABASE_URL,
+                n_windows   = body.n_windows,
+                train_ratio = body.train_ratio,
+                objective   = body.objective,
+                max_trials  = min(len(combos), MAX_TRIALS),
+            ),
+        )
+
+    if "error" in result:
+        raise HTTPException(status_code=422, detail=result["error"])
+
+    logger.info(
+        f"[wfo] {body.strategy} {body.symbols} n_windows={body.n_windows} "
+        f"avg_oos_sharpe={result['summary'].get('avg_oos_sharpe', 'n/a')}"
+    )
+    return result

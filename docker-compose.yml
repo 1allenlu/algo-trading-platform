@@ -69,6 +69,9 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH:-}
+      # Phase 25: live order execution (ALPACA_PAPER=true = paper account, false = real money)
+      ALPACA_PAPER: ${ALPACA_PAPER:-true}
+      MAX_ORDER_VALUE: ${MAX_ORDER_VALUE:-10000}
       # Phase 20: alert notifications (optional — leave empty to disable)
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}

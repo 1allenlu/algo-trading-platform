@@ -25,6 +25,11 @@ import {
   CardContent,
   CircularProgress,
   Grid,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
   Tooltip,
   Typography,
 } from '@mui/material'
@@ -50,7 +55,8 @@ import {
 } from 'recharts'
 import { useEffect, useState } from 'react'
 import { api } from '@/services/api'
-import type { AnalyticsSummary, PnlAttribution, RollingPoint } from '@/services/api'
+import type { AnalyticsSummary, FactorAttribution, PnlAttribution, RollingPoint } from '@/services/api'
+import { useQuery } from '@tanstack/react-query'
 
 // ── KPI Card ──────────────────────────────────────────────────────────────────
 
@@ -227,6 +233,88 @@ function TradeStatsPanel({ summary }: { summary: AnalyticsSummary }) {
   )
 }
 
+// ── Factor Attribution card — Phase 29 ────────────────────────────────────────
+
+function FactorCard({ data }: { data: FactorAttribution }) {
+  const metrics = [
+    { label: 'Beta (vs SPY)',       value: data.beta !== null ? data.beta.toFixed(3) : '—',          positive: null },
+    { label: 'Alpha (ann.)',         value: data.alpha_ann !== null ? `${(data.alpha_ann * 100).toFixed(2)}%` : '—', positive: data.alpha_ann !== null ? data.alpha_ann >= 0 : null },
+    { label: 'R²',                  value: data.r_squared !== null ? data.r_squared.toFixed(3) : '—', positive: null },
+    { label: 'Tracking Error',      value: data.tracking_error !== null ? `${(data.tracking_error * 100).toFixed(2)}%` : '—', positive: null },
+    { label: 'Information Ratio',   value: data.information_ratio !== null ? data.information_ratio.toFixed(3) : '—', positive: data.information_ratio !== null ? data.information_ratio >= 0 : null },
+  ]
+
+  return (
+    <Card>
+      <CardContent>
+        <Typography variant="subtitle2" fontWeight={700} mb={2}>
+          Factor Attribution (vs {data.benchmark_symbol})
+        </Typography>
+        <Grid container spacing={2}>
+          {/* Factor KPIs */}
+          <Grid item xs={12} sm={5}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {metrics.map(({ label, value, positive }) => (
+                <Box key={label} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5, borderBottom: '1px solid', borderColor: 'divider' }}>
+                  <Typography variant="body2" color="text.secondary">{label}</Typography>
+                  <Typography
+                    variant="body2"
+                    fontFamily="IBM Plex Mono, monospace"
+                    fontWeight={700}
+                    sx={{ color: positive === null ? 'text.primary' : positive ? '#00C896' : '#FF6B6B' }}
+                  >
+                    {value}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          </Grid>
+
+          {/* Brinson table */}
+          <Grid item xs={12} sm={7}>
+            {data.brinson.length > 0 ? (
+              <>
+                <Typography variant="caption" color="text.secondary" display="block" mb={1}>
+                  Brinson Attribution by Symbol
+                </Typography>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      {['Symbol', 'Alloc', 'Select', 'Total'].map((h) => (
+                        <TableCell key={h} align="right" sx={{ fontSize: '0.7rem', color: 'text.secondary', py: 0.5 }}>{h}</TableCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {data.brinson.map((row) => (
+                      <TableRow key={row.symbol}>
+                        <TableCell align="right" sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.75rem', py: 0.5 }}>{row.symbol}</TableCell>
+                        <TableCell align="right" sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.72rem', color: row.allocation_effect >= 0 ? '#00C896' : '#FF6B6B', py: 0.5 }}>
+                          {row.allocation_effect >= 0 ? '+' : ''}{(row.allocation_effect * 100).toFixed(2)}%
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.72rem', color: row.selection_effect >= 0 ? '#00C896' : '#FF6B6B', py: 0.5 }}>
+                          {row.selection_effect >= 0 ? '+' : ''}{(row.selection_effect * 100).toFixed(2)}%
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.72rem', fontWeight: 700, color: row.total_effect >= 0 ? '#00C896' : '#FF6B6B', py: 0.5 }}>
+                          {row.total_effect >= 0 ? '+' : ''}{(row.total_effect * 100).toFixed(2)}%
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </>
+            ) : (
+              <Typography variant="body2" color="text.secondary" sx={{ pt: 2 }}>
+                No trades to attribute yet.
+              </Typography>
+            )}
+          </Grid>
+        </Grid>
+      </CardContent>
+    </Card>
+  )
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function AnalyticsPage() {
@@ -235,6 +323,14 @@ export default function AnalyticsPage() {
   const [rolling,  setRolling]  = useState<RollingPoint[]>([])
   const [loading,  setLoading]  = useState(true)
   const [error,    setError]    = useState<string | null>(null)
+
+  // Phase 29: factor attribution (separate query, fails silently if no data)
+  const { data: attribution } = useQuery<FactorAttribution>({
+    queryKey:  ['analytics', 'attribution'],
+    queryFn:   () => api.attribution.get(),
+    staleTime: 5 * 60_000,
+    retry:     false,
+  })
 
   const load = async () => {
     setLoading(true)
@@ -370,6 +466,13 @@ export default function AnalyticsPage() {
           <TradeStatsPanel summary={summary} />
         </Grid>
       </Grid>
+
+      {/* Factor Attribution — Phase 29 */}
+      {attribution && attribution.beta !== null && (
+        <Box mb={3}>
+          <FactorCard data={attribution} />
+        </Box>
+      )}
     </Box>
   )
 }

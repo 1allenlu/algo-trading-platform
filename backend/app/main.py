@@ -24,9 +24,9 @@ from fastapi.responses import RedirectResponse
 from loguru import logger
 
 from app.api.routes import (
-    alerts, analytics, auth, autotrade, backtest, health, market_data,
-    ml, news, notifications, optimize, paper_trading, risk, scanner,
-    scheduler, signals, strategies,
+    alerts, analytics, auth, autotrade, backtest, health, live_orders,
+    market_data, ml, news, notifications, options, optimize, paper_trading,
+    risk, scanner, scheduler, signals, strategies,
 )
 from app.api.routes import websocket as ws_routes
 from app.core.config import settings
@@ -47,7 +47,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     # ── Startup ───────────────────────────────────────────────────────────────
     setup_logging()
-    logger.info(f"Starting {settings.APP_NAME} v0.24.0")
+    logger.info(f"Starting {settings.APP_NAME} v0.30.0")
     logger.info(f"Database: {settings.DATABASE_URL.split('@')[-1]}")
     logger.info(f"Debug mode: {settings.DEBUG}")
 
@@ -222,6 +222,16 @@ app.include_router(
     signals.router,
     prefix=f"{settings.API_V1_PREFIX}/signals",
     tags=["signals"],
+)
+app.include_router(
+    live_orders.router,
+    prefix=f"{settings.API_V1_PREFIX}/live",
+    tags=["live-trading"],
+)
+app.include_router(
+    options.router,
+    prefix=f"{settings.API_V1_PREFIX}/options",
+    tags=["options"],
 )
 
 # ── WebSocket routes (Phase 7 + 8) ───────────────────────────────────────────

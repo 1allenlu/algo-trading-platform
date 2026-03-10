@@ -37,13 +37,17 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
 
-    # ── Alpaca (Phase 13 / 19) ────────────────────────────────────────────────
+    # ── Alpaca (Phase 13 / 19 / 25) ──────────────────────────────────────────
     # Free paper-trading keys at https://alpaca.markets → Paper Trading
     # Leave empty to use DB prices only (no external API needed)
     ALPACA_API_KEY:    str = ""
     ALPACA_SECRET_KEY: str = ""
     # Phase 19: symbols streamed via Alpaca WebSocket (or simulated when no keys)
     ALPACA_SYMBOLS: list[str] = ["SPY", "QQQ", "AAPL", "MSFT", "NVDA", "AMZN", "TSLA"]
+    # Phase 25: True = submit to Alpaca paper account, False = real money (caution!)
+    ALPACA_PAPER: bool = True
+    # Phase 25: max single-order value in USD (pre-trade risk guard)
+    MAX_ORDER_VALUE: float = 10000.0
 
     # ── Notifications (Phase 20) ──────────────────────────────────────────────
     SMTP_HOST:     str = ""

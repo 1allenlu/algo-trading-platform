@@ -1,6 +1,7 @@
 /**
  * Dashboard page — Market Overview.
  *
+ * Phase 26: adds candlestick / area chart toggle (TradingView lightweight-charts).
  * Shows price charts for key symbols with selectable timeframes.
  * Each card is independently fetched + cached via React Query.
  */
@@ -22,6 +23,7 @@ import { TrendingDown, TrendingUp } from '@mui/icons-material'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/services/api'
 import PriceChart from '@/components/charts/PriceChart'
+import CandlestickChart from '@/components/charts/CandlestickChart'
 import { useLivePrices } from '@/hooks/useLivePrices'
 import WatchlistWidget from '@/components/dashboard/WatchlistWidget'
 
@@ -37,11 +39,12 @@ const TIMEFRAMES: Record<string, number> = {
 
 // ── Symbol card ───────────────────────────────────────────────────────────────
 interface SymbolCardProps {
-  symbol: string
-  limit:  number
+  symbol:    string
+  limit:     number
+  chartType: 'area' | 'candle'
 }
 
-function SymbolCard({ symbol, limit }: SymbolCardProps) {
+function SymbolCard({ symbol, limit, chartType }: SymbolCardProps) {
   const { data, isLoading, isError } = useQuery({
     queryKey: ['market', symbol, limit],
     queryFn:  () => api.market.getData(symbol, limit),
@@ -103,7 +106,9 @@ function SymbolCard({ symbol, limit }: SymbolCardProps) {
         )}
 
         {!isLoading && !isError && bars.length > 0 && (
-          <PriceChart bars={bars} symbol={symbol} height={240} />
+          chartType === 'candle'
+            ? <CandlestickChart bars={bars} height={240} />
+            : <PriceChart bars={bars} symbol={symbol} height={240} />
         )}
       </CardContent>
     </Card>
@@ -112,7 +117,8 @@ function SymbolCard({ symbol, limit }: SymbolCardProps) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function Dashboard() {
-  const [tf, setTf] = useState('1Y')
+  const [tf, setTf]           = useState('1Y')
+  const [chartType, setChartType] = useState<'area' | 'candle'>('candle')
   const limit = TIMEFRAMES[tf]
   const { prices, status: wsStatus } = useLivePrices()
 
@@ -127,26 +133,42 @@ export default function Dashboard() {
           </Typography>
         </Box>
 
-        {/* Timeframe selector */}
-        <ToggleButtonGroup
-          value={tf}
-          exclusive
-          size="small"
-          onChange={(_, v) => v && setTf(v)}
-        >
-          {Object.keys(TIMEFRAMES).map((label) => (
-            <ToggleButton key={label} value={label} sx={{ px: 2, fontSize: '0.75rem' }}>
-              {label}
+        {/* Controls: chart type + timeframe */}
+        <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+          <ToggleButtonGroup
+            value={chartType}
+            exclusive
+            size="small"
+            onChange={(_e, v: 'area' | 'candle') => v && setChartType(v)}
+          >
+            <ToggleButton value="candle" sx={{ px: 1.5, fontSize: '0.72rem', fontFamily: 'IBM Plex Mono, monospace' }}>
+              Candle
             </ToggleButton>
-          ))}
-        </ToggleButtonGroup>
+            <ToggleButton value="area"   sx={{ px: 1.5, fontSize: '0.72rem', fontFamily: 'IBM Plex Mono, monospace' }}>
+              Area
+            </ToggleButton>
+          </ToggleButtonGroup>
+
+          <ToggleButtonGroup
+            value={tf}
+            exclusive
+            size="small"
+            onChange={(_, v: string) => v && setTf(v)}
+          >
+            {Object.keys(TIMEFRAMES).map((label) => (
+              <ToggleButton key={label} value={label} sx={{ px: 2, fontSize: '0.75rem' }}>
+                {label}
+              </ToggleButton>
+            ))}
+          </ToggleButtonGroup>
+        </Box>
       </Box>
 
       {/* Chart grid */}
       <Grid container spacing={2.5}>
         {SYMBOLS.map((sym) => (
           <Grid item xs={12} md={6} key={sym}>
-            <SymbolCard symbol={sym} limit={limit} />
+            <SymbolCard symbol={sym} limit={limit} chartType={chartType} />
           </Grid>
         ))}
       </Grid>

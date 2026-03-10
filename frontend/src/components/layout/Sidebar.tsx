@@ -2,6 +2,7 @@ import { Box, Drawer, Tooltip, Typography } from '@mui/material'
 import {
   Assessment as BacktestIcon,
   AutoMode as AutoTradeIcon,
+  Bolt as LiveIcon,
   CandlestickChart as TradingIcon,
   Dashboard as DashboardIcon,
   Insights as AnalyticsIcon,
@@ -15,6 +16,7 @@ import {
   TrendingUp as StrategiesIcon,
   AccountBalance as RiskIcon,
   SignalCellularAlt as SignalsIcon,
+  Layers as OptionsIcon,
 } from '@mui/icons-material'
 import { useLocation, useNavigate } from 'react-router-dom'
 import type { ReactNode } from 'react'
@@ -40,6 +42,8 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: 'Dashboard',  path: '/dashboard', icon: <DashboardIcon sx={{ fontSize: 17 }} /> },
       { label: 'Trading',    path: '/trading',   icon: <TradingIcon   sx={{ fontSize: 17 }} /> },
+      { label: 'Live',       path: '/live',      icon: <LiveIcon      sx={{ fontSize: 17 }} /> },
+      { label: 'Options',    path: '/options',   icon: <OptionsIcon   sx={{ fontSize: 17 }} /> },
       { label: 'News',       path: '/news',      icon: <NewsIcon      sx={{ fontSize: 17 }} /> },
     ],
   },
@@ -139,7 +143,7 @@ export default function Sidebar({ width }: SidebarProps) {
               mt: '2px',
             }}
           >
-            v0.24.0
+            v0.30.0
           </Typography>
         </Box>
       </Box>
