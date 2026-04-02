@@ -1,6 +1,6 @@
 {
-  "name": "TradingOS",
-  "short_name": "TradingOS",
+  "name": "QuantStream",
+  "short_name": "QuantStream",
   "description": "Algorithmic trading platform — quant strategies, ML signals, live order execution",
   "theme_color": "#0B0E14",
   "background_color": "#0a0e1a",

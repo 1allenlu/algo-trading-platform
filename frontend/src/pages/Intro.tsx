@@ -452,7 +452,7 @@ export default function IntroPage() {
             fontWeight={800}
             sx={{ letterSpacing: '-1px', lineHeight: 1.1 }}
           >
-            TradingOS
+            QuantStream
           </Typography>
         </Box>
 
@@ -570,7 +570,7 @@ export default function IntroPage() {
         {/* ── Footer ─────────────────────────────────────────────────────── */}
         <Box sx={{ mt: 8, textAlign: 'center', pb: 4 }}>
           <Typography variant="caption" color="text.disabled">
-            TradingOS v0.36.0 — Phase 36: Full Featured
+            QuantStream v0.42.0 — Phase 42: Full Featured
           </Typography>
         </Box>
       </Box>

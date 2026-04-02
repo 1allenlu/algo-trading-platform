@@ -1,6 +1,6 @@
 version: '3.8'
 
-# ─── Trading Platform — Docker Compose ───────────────────────────────────────
+# ─── QuantStream — Docker Compose ────────────────────────────────────────────
 # Services:
 #   postgres  — TimescaleDB (PostgreSQL 15 + time-series extension)
 #   redis     — Cache + pub/sub message bus

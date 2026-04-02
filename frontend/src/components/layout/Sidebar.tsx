@@ -143,7 +143,7 @@ function SidebarContent({ width, onNavigate }: { width: number; onNavigate?: () 
               lineHeight: 1,
             }}
           >
-            TRADING<span style={{ color: '#4A9EFF' }}>OS</span>
+            QUANT<span style={{ color: '#4A9EFF' }}>STREAM</span>
           </Typography>
           <Typography
             sx={{

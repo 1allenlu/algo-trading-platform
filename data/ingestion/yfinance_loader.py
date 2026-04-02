@@ -266,7 +266,7 @@ def main() -> None:
     args = parser.parse_args()
 
     print()
-    log(f"Trading Platform — Data Ingestion")
+    log(f"QuantStream — Data Ingestion")
     log(f"Symbols : {', '.join(args.symbols)}")
     log(f"History : {args.years} years")
     print()

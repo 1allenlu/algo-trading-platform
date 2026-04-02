@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     ]
 
     # ── Application ───────────────────────────────────────────────────────────
-    APP_NAME: str = "Trading Platform"
+    APP_NAME: str = "QuantStream"
     DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
 

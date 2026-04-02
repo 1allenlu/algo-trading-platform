@@ -1,5 +1,5 @@
 """
-Trading Platform — FastAPI application entry point.
+QuantStream — FastAPI application entry point.
 
 Startup sequence:
   1. Configure structured logging (loguru)
@@ -120,7 +120,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 app = FastAPI(
     title=settings.APP_NAME,
-    description="Algorithmic Trading Platform — Quant + ML + Real-time",
+    description="QuantStream — Quant + ML + Real-time Algorithmic Trading",
     version="0.24.0",
     docs_url="/docs",
     redoc_url="/redoc",

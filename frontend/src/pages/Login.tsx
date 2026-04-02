@@ -96,7 +96,7 @@ export default function LoginPage() {
             </Box>
             <Box>
               <Typography variant="h6" fontWeight={700} lineHeight={1.1}>
-                TradingOS
+                QuantStream
               </Typography>
               <Typography variant="caption" color="text.secondary">
                 Quant · ML · Live
@@ -111,7 +111,7 @@ export default function LoginPage() {
             </Typography>
           </Box>
           <Typography variant="body2" color="text.secondary" mb={3}>
-            Enter your credentials to access the trading platform.
+            Enter your credentials to access QuantStream.
           </Typography>
 
           <Divider sx={{ mb: 3 }} />

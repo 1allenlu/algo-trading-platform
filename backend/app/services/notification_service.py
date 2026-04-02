@@ -113,8 +113,8 @@ async def send_test(channel: str) -> dict:
     Send a test notification to verify configuration.
     Returns {"ok": bool, "message": str}.
     """
-    subject = "Trading Platform — Test Notification"
-    body    = "This is a test notification from your Trading Platform."
+    subject = "QuantStream — Test Notification"
+    body    = "This is a test notification from your QuantStream."
 
     if channel == "email":
         if not (settings.SMTP_HOST and settings.SMTP_USER and settings.NOTIFY_EMAIL):

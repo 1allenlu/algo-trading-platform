@@ -255,7 +255,7 @@ def main() -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     print()
-    log("Trading Platform — ML Training")
+    log("QuantStream — ML Training")
     log(f"Symbol : {args.symbol}")
     log(f"Model  : {args.model}")
     print()

@@ -1,6 +1,6 @@
 version: '3.8'
 
-# ─── TradingOS — Production Docker Compose ────────────────────────────────────
+# ─── QuantStream — Production Docker Compose ──────────────────────────────────
 #
 # Differences from docker-compose.yml (development):
 #   - nginx reverse proxy replaces Vite dev server (serves React build)
