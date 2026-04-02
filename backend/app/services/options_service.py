@@ -96,8 +96,8 @@ def _format_contracts(df: Any, contract_type: str) -> list[dict]:
             "ask":                _safe_float(row.get("ask")),
             "change":             _safe_float(row.get("change")),
             "change_pct":         _safe_float(row.get("percentChange")),
-            "volume":             int(row.get("volume") or 0),
-            "open_interest":      int(row.get("openInterest") or 0),
+            "volume":             int(_safe_float(row.get("volume")) or 0),
+            "open_interest":      int(_safe_float(row.get("openInterest")) or 0),
             "implied_volatility": round(iv, 4),   # annualised fraction (e.g. 0.35 = 35%)
             "in_the_money":       bool(row.get("inTheMoney", False)),
             "contract_type":      contract_type,

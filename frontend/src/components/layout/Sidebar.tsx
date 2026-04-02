@@ -2,7 +2,6 @@ import { Box, Drawer, Tooltip, Typography } from '@mui/material'
 import {
   Assessment as BacktestIcon,
   AutoMode as AutoTradeIcon,
-  Bolt as LiveIcon,
   CandlestickChart as TradingIcon,
   Dashboard as DashboardIcon,
   Insights as AnalyticsIcon,
@@ -17,6 +16,8 @@ import {
   AccountBalance as RiskIcon,
   SignalCellularAlt as SignalsIcon,
   Layers as OptionsIcon,
+  CurrencyBitcoin as CryptoIcon,
+  EventNote as EarningsIcon,
 } from '@mui/icons-material'
 import { useLocation, useNavigate } from 'react-router-dom'
 import type { ReactNode } from 'react'
@@ -42,7 +43,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: 'Dashboard',  path: '/dashboard', icon: <DashboardIcon sx={{ fontSize: 17 }} /> },
       { label: 'Trading',    path: '/trading',   icon: <TradingIcon   sx={{ fontSize: 17 }} /> },
-      { label: 'Live',       path: '/live',      icon: <LiveIcon      sx={{ fontSize: 17 }} /> },
+      { label: 'Crypto',     path: '/crypto',    icon: <CryptoIcon    sx={{ fontSize: 17 }} /> },
       { label: 'Options',    path: '/options',   icon: <OptionsIcon   sx={{ fontSize: 17 }} /> },
       { label: 'News',       path: '/news',      icon: <NewsIcon      sx={{ fontSize: 17 }} /> },
     ],
@@ -56,6 +57,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: 'Risk',       path: '/risk',       icon: <RiskIcon        sx={{ fontSize: 17 }} /> },
       { label: 'Analytics',  path: '/analytics',  icon: <AnalyticsIcon   sx={{ fontSize: 17 }} /> },
       { label: 'Signals',    path: '/signals',    icon: <SignalsIcon     sx={{ fontSize: 17 }} /> },
+      { label: 'Earnings',   path: '/earnings',   icon: <EarningsIcon    sx={{ fontSize: 17 }} /> },
     ],
   },
   {

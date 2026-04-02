@@ -81,6 +81,25 @@ const PRESETS: Record<string, { label: string; req: ScanRequest }> = {
     label: 'All Symbols',
     req: { sort_by: 'symbol', sort_desc: false },
   },
+  crypto_momentum: {
+    label: 'Crypto Momentum',
+    req: {
+      symbols: ['BTC-USD','ETH-USD','SOL-USD','BNB-USD','ADA-USD','AVAX-USD','LINK-USD','DOT-USD','XRP-USD','DOGE-USD'],
+      price_above_sma50: true,
+      near_52w_high_pct: 15,
+      sort_by: 'vs_52w_high',
+      sort_desc: false,
+    },
+  },
+  crypto_oversold: {
+    label: 'Crypto Oversold',
+    req: {
+      symbols: ['BTC-USD','ETH-USD','SOL-USD','BNB-USD','ADA-USD','AVAX-USD','LINK-USD','DOT-USD','XRP-USD','DOGE-USD'],
+      rsi_max: 35,
+      sort_by: 'rsi',
+      sort_desc: false,
+    },
+  },
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────

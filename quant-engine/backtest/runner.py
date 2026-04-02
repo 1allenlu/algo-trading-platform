@@ -152,6 +152,11 @@ async def run_backtest(
         log("OK", f"  {sym}: {len(df)} bars  ({df.index[0].date()} → {df.index[-1].date()})")
 
     # ── 2. Generate signals ───────────────────────────────────────────────────
+    # Extract cost params first (dunder-prefixed to avoid clashing with
+    # strategy-specific params) before passing params to the strategy.
+    commission = params.pop("__commission__", 0.001)
+    slippage   = params.pop("__slippage__",   0.0005)
+
     log("INFO", f"Generating signals ({strategy})...")
     strat   = get_strategy(strategy, params)
     signals = strat.generate_signals(price_data)
@@ -168,10 +173,6 @@ async def run_backtest(
     benchmark = prices_df.iloc[:, 0]
 
     # ── 4. Run backtest engine ────────────────────────────────────────────────
-    # Extract cost params injected by the API route (dunder-prefixed to avoid
-    # clashing with strategy-specific params).  Fall back to engine defaults.
-    commission = params.pop("__commission__", 0.001)
-    slippage   = params.pop("__slippage__",   0.0005)
 
     log("INFO", f"Running backtest engine (commission={commission:.4%}, slippage={slippage:.4%})...")
     engine  = BacktestEngine(

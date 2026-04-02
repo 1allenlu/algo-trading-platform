@@ -839,6 +839,54 @@ export interface MeResponse {
   auth_enabled: boolean
 }
 
+// ── Phase 31: Intraday ────────────────────────────────────────────────────────
+
+export interface IntradayBar {
+  symbol:    string
+  timestamp: string    // ISO 8601
+  timeframe: string    // '1m' | '5m' | '15m' | '1h'
+  open:      number
+  high:      number
+  low:       number
+  close:     number
+  volume:    number
+}
+
+export interface IntradayResponse {
+  symbol:    string
+  timeframe: string
+  bars:      IntradayBar[]
+  count:     number
+}
+
+// ── Phase 32: Crypto ──────────────────────────────────────────────────────────
+
+export interface CryptoSymbolInfo {
+  symbol:      string
+  name:        string
+  category:    string
+  last_price:  number | null
+  change_pct:  number | null
+  volume:      number | null
+  has_data:    boolean
+}
+
+// ── Phase 33: Earnings ────────────────────────────────────────────────────────
+
+export interface EarningsHistoryEntry {
+  date:         string
+  eps_estimate: number | null
+  eps_actual:   number | null
+  surprise_pct: number | null
+}
+
+export interface EarningsCalendarEntry {
+  symbol:             string
+  next_earnings_date: string | null
+  eps_estimate:       number | null
+  earnings_history:   EarningsHistoryEntry[]
+}
+
 // ── API functions ─────────────────────────────────────────────────────────────
 
 export const api = {
@@ -1162,5 +1210,38 @@ export const api = {
       apiClient
         .post<LiveOrder>(`/api/live/orders/${orderId}/sync`)
         .then((r) => r.data),
+  },
+
+  // ── Phase 31: Intraday data ─────────────────────────────────────────────────
+  intraday: {
+    getBars: (symbol: string, timeframe: string, limit = 500): Promise<IntradayResponse> =>
+      apiClient
+        .get<IntradayResponse>(`/api/intraday/${symbol}`, { params: { timeframe, limit } })
+        .then((r) => r.data),
+
+    ingest: (symbol: string, timeframe: string): Promise<{ inserted: number; symbol: string; timeframe: string }> =>
+      apiClient
+        .post('/api/intraday/ingest', { symbol, timeframe })
+        .then((r) => r.data),
+  },
+
+  // ── Phase 32: Crypto ────────────────────────────────────────────────────────
+  crypto: {
+    getSymbols: (): Promise<CryptoSymbolInfo[]> =>
+      apiClient.get<CryptoSymbolInfo[]>('/api/crypto/symbols').then((r) => r.data),
+
+    ingest: (): Promise<{ results: Array<{ symbol: string; inserted: number }>; total_symbols: number }> =>
+      apiClient.post('/api/crypto/ingest').then((r) => r.data),
+  },
+
+  // ── Phase 33: Earnings calendar ─────────────────────────────────────────────
+  earnings: {
+    getCalendar: (symbols: string): Promise<EarningsCalendarEntry[]> =>
+      apiClient
+        .get<EarningsCalendarEntry[]>('/api/earnings/calendar', { params: { symbols } })
+        .then((r) => r.data),
+
+    getForSymbol: (symbol: string): Promise<EarningsCalendarEntry> =>
+      apiClient.get<EarningsCalendarEntry>(`/api/earnings/${symbol}`).then((r) => r.data),
   },
 }

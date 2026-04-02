@@ -65,29 +65,51 @@ def _label(score: float) -> str:
 
 
 def _score_article(article: dict[str, Any]) -> NewsArticle:
-    """Score a single yfinance news article with VADER."""
-    title      = article.get("title", "")
-    publisher  = article.get("publisher", "")
-    link       = article.get("link", "")
-    pub_ts     = article.get("providerPublishTime", 0)
-    summary    = (title + " " + article.get("summary", ""))[:200]
+    """Score a single yfinance news article with VADER.
+
+    yfinance ≥ 0.2.50 wraps everything inside article["content"].
+    Older versions used flat keys (title, publisher, link, …).
+    This function handles both formats.
+    """
+    import re
+    from datetime import datetime, timezone
+
+    # ── Normalise new nested format ───────────────────────────────────────────
+    content = article.get("content", None)
+    if content:
+        title     = content.get("title", "")
+        publisher = (content.get("provider") or {}).get("displayName", "")
+        link      = (content.get("clickThroughUrl") or content.get("canonicalUrl") or {}).get("url", "")
+        pub_str   = content.get("pubDate", "")
+        raw_sum   = content.get("summary", "")
+        # Strip any HTML tags from summary
+        raw_sum   = re.sub(r"<[^>]+>", "", raw_sum)
+    else:
+        # Legacy flat format
+        title     = article.get("title", "")
+        publisher = article.get("publisher", "")
+        link      = article.get("link", "")
+        pub_str   = ""
+        pub_ts    = article.get("providerPublishTime", 0)
+        raw_sum   = article.get("summary", "")
+
+        # Convert Unix timestamp → ISO 8601 for legacy format
+        try:
+            pub_str = datetime.fromtimestamp(pub_ts, tz=timezone.utc).isoformat()
+        except Exception:
+            pub_str = ""
+
+    summary = (title + " " + raw_sum)[:200]
 
     # VADER scores the combined title + summary for best signal
     scores   = _analyzer.polarity_scores(summary)
     compound = scores["compound"]
 
-    # Convert Unix timestamp → ISO 8601
-    try:
-        from datetime import datetime, timezone
-        published = datetime.fromtimestamp(pub_ts, tz=timezone.utc).isoformat()
-    except Exception:
-        published = ""
-
     return NewsArticle(
         title     = title,
         publisher = publisher,
         link      = link,
-        published = published,
+        published = pub_str,
         compound  = round(compound, 4),
         label     = _label(compound),
         summary   = summary,

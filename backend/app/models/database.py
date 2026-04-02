@@ -77,6 +77,36 @@ class MarketData(Base):
 
 # ── ML Models ─────────────────────────────────────────────────────────────────
 
+class IntradayData(Base):
+    """
+    Sub-daily OHLCV bars — Phase 31.
+
+    Stores 1m / 5m / 15m / 1h candles fetched from yfinance.
+    Partitioned into 1-day TimescaleDB chunks (many rows per day).
+    Composite PK (symbol, timestamp, timeframe) prevents duplicates.
+    """
+
+    __tablename__ = "intraday_data"
+
+    symbol    = Column(String(20),              primary_key=True, nullable=False)
+    timestamp = Column(DateTime(timezone=True), primary_key=True, nullable=False)
+    timeframe = Column(String(5),               primary_key=True, nullable=False)  # '1m'|'5m'|'15m'|'1h'
+    open      = Column(Float,                   nullable=False)
+    high      = Column(Float,                   nullable=False)
+    low       = Column(Float,                   nullable=False)
+    close     = Column(Float,                   nullable=False)
+    volume    = Column(BigInteger,              nullable=False)
+
+    __table_args__ = (
+        Index("ix_intraday_symbol_tf_ts", "symbol", "timeframe", "timestamp"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<IntradayData {self.symbol} {self.timeframe} @ {self.timestamp} close={self.close}>"
+
+
+# ── ML Models ─────────────────────────────────────────────────────────────────
+
 class MLModel(Base):
     """
     Trained ML model metadata.

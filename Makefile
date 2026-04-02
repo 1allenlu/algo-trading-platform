@@ -1,12 +1,13 @@
-.PHONY: help up down logs shell-backend shell-db ingest migrate train predict train-all backtest fmt lint test prod-build prod-up prod-down auth-hash
+.PHONY: help up down logs shell-backend shell-db ingest ingest-intraday migrate train predict train-all backtest fmt lint test prod-build prod-up prod-down auth-hash
 
 # ─── Colors ───────────────────────────────────────────────────────────────────
 CYAN  := \033[0;36m
 RESET := \033[0m
 
 # ─── Defaults ─────────────────────────────────────────────────────────────────
-symbol ?= SPY
-model  ?= xgboost
+symbol    ?= SPY
+model     ?= xgboost
+timeframe ?= 5m
 
 help:
 	@echo ""
@@ -66,6 +67,14 @@ ingest:
 	@echo "$(CYAN)Downloading historical market data (this takes ~2 min)...$(RESET)"
 	docker compose exec backend \
 		python /data/ingestion/yfinance_loader.py \
+		--database-url postgresql://trading:trading@postgres:5432/trading_db
+
+ingest-intraday:
+	@echo "$(CYAN)Downloading intraday data for $(symbol) @ $(timeframe)...$(RESET)"
+	docker compose exec backend \
+		python /data/ingestion/intraday_loader.py \
+		--symbol $(symbol) \
+		--timeframe $(timeframe) \
 		--database-url postgresql://trading:trading@postgres:5432/trading_db
 
 migrate:

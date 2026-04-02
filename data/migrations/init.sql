@@ -43,6 +43,34 @@ SELECT create_hypertable(
 CREATE INDEX IF NOT EXISTS ix_market_data_symbol_ts
     ON market_data (symbol, timestamp DESC);
 
+-- ── Phase 31: Intraday Data ───────────────────────────────────────────────────
+-- Stores sub-daily OHLCV bars at 1m / 5m / 15m / 1h resolution.
+-- Uses the same TimescaleDB hypertable pattern as market_data, but with
+-- 1-day chunks (many more rows per day than daily data).
+
+CREATE TABLE IF NOT EXISTS intraday_data (
+    symbol      VARCHAR(20)      NOT NULL,
+    timestamp   TIMESTAMPTZ      NOT NULL,   -- Bar open time, always UTC
+    timeframe   VARCHAR(5)       NOT NULL,   -- '1m' | '5m' | '15m' | '1h'
+    open        DOUBLE PRECISION NOT NULL,
+    high        DOUBLE PRECISION NOT NULL,
+    low         DOUBLE PRECISION NOT NULL,
+    close       DOUBLE PRECISION NOT NULL,
+    volume      BIGINT           NOT NULL,
+    PRIMARY KEY (symbol, timestamp, timeframe)
+);
+
+SELECT create_hypertable(
+    'intraday_data',
+    'timestamp',
+    chunk_time_interval => INTERVAL '1 day',
+    if_not_exists       => TRUE,
+    migrate_data        => TRUE
+);
+
+CREATE INDEX IF NOT EXISTS ix_intraday_symbol_tf_ts
+    ON intraday_data (symbol, timeframe, timestamp DESC);
+
 -- ── Phase 2: ML Models & Predictions ─────────────────────────────────────────
 
 -- Trained model metadata (metrics + feature importance)
