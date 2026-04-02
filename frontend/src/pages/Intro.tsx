@@ -17,9 +17,13 @@ import {
   Assessment as BacktestIcon,
   AutoGraph as AutoGraphIcon,
   AutoMode as AutoTradeIcon,
+  BookOutlined as JournalIcon,
   CandlestickChart as TradingIcon,
+  CurrencyBitcoin as CryptoIcon,
   Dashboard as DashboardIcon,
+  EventNote as EarningsIcon,
   Insights as AnalyticsIcon,
+  Layers as OptionsIcon,
   NotificationsOutlined as AlertsIcon,
   Psychology as MLIcon,
   QueryStats as RiskIcon,
@@ -36,6 +40,7 @@ import {
   Schedule as SchedulerIcon,
   PictureAsPdf as PdfIcon,
   ManageAccounts as UsersIcon,
+  Waves as RegimeIcon,
   WifiTethering as LivePriceIcon,
 } from '@mui/icons-material'
 import { useNavigate } from 'react-router-dom'
@@ -243,6 +248,86 @@ const FEATURES = [
     description: 'One-click PDF report from any completed backtest: header, metrics table (Sharpe, CAGR, max drawdown), dark-themed equity curve chart, and top-20 trades table.',
     tags:        ['reportlab', 'matplotlib', 'PDF'],
   },
+  {
+    icon:        <TradingIcon sx={{ fontSize: 28 }} />,
+    title:       'Advanced Charting',
+    phase:       'Phase 26',
+    color:       '#4A9EFF',
+    description: 'lightweight-charts v5 candlestick chart on the dashboard with OHLCV tooltip, area/candle toggle, and intraday timeframe chips (5m, 15m, 1H).',
+    tags:        ['lightweight-charts', 'OHLCV', 'Intraday'],
+  },
+  {
+    icon:        <OptionsIcon sx={{ fontSize: 28 }} />,
+    title:       'Options Chain',
+    phase:       'Phase 27',
+    color:       '#10B981',
+    description: 'Live options chain via yfinance: calls & puts table with strike, bid/ask, IV, open interest, ITM highlighting, and expiration date picker.',
+    tags:        ['yfinance', 'IV', 'Options'],
+  },
+  {
+    icon:        <OptimizeIcon sx={{ fontSize: 28 }} />,
+    title:       'Walk-Forward Optimization',
+    phase:       'Phase 28',
+    color:       '#8B5CF6',
+    description: 'Walk-forward backtesting with configurable train/test windows. OOS Sharpe, return, and drawdown per window. Stability score + recommended params.',
+    tags:        ['Walk-Forward', 'OOS', 'Optimization'],
+  },
+  {
+    icon:        <AnalyticsIcon sx={{ fontSize: 28 }} />,
+    title:       'Factor Attribution',
+    phase:       'Phase 29',
+    color:       '#EC4899',
+    description: 'CAPM beta/alpha, R², tracking error, information ratio + rolling 252-day window chart. Brinson BHB allocation vs selection effects per asset.',
+    tags:        ['CAPM', 'Brinson BHB', 'Attribution'],
+  },
+  {
+    icon:        <DashboardIcon sx={{ fontSize: 28 }} />,
+    title:       'Intraday Data',
+    phase:       'Phase 31',
+    color:       '#06B6D4',
+    description: 'Sub-daily OHLCV bars (1m/5m/15m/1h) via yfinance stored in TimescaleDB. Dashboard chip toggles switch between daily and intraday candlestick views.',
+    tags:        ['TimescaleDB', 'Intraday', 'yfinance'],
+  },
+  {
+    icon:        <CryptoIcon sx={{ fontSize: 28 }} />,
+    title:       'Crypto Integration',
+    phase:       'Phase 32',
+    color:       '#F59E0B',
+    description: 'Crypto overview for BTC, ETH, SOL, and 7 more. Price table with 7-day sparklines, 24h change, and volume — stored alongside equities in market_data.',
+    tags:        ['BTC', 'ETH', 'Crypto'],
+  },
+  {
+    icon:        <EarningsIcon sx={{ fontSize: 28 }} />,
+    title:       'Earnings Calendar',
+    phase:       'Phase 33',
+    color:       '#84CC16',
+    description: 'Earnings countdown calendar sorted by next report date. Expandable rows show quarterly EPS history with analyst estimate vs actual + surprise %.',
+    tags:        ['Earnings', 'EPS', 'Calendar'],
+  },
+  {
+    icon:        <RiskIcon sx={{ fontSize: 28 }} />,
+    title:       'Monte Carlo Simulation',
+    phase:       'Phase 34',
+    color:       '#EF4444',
+    description: 'GBM portfolio simulation with 1,000 paths. Fan chart shows P5/P25/P50/P75/P95 bands. Stats: probability of profit, median return, max drawdown distribution.',
+    tags:        ['GBM', 'Monte Carlo', 'Risk'],
+  },
+  {
+    icon:        <RegimeIcon sx={{ fontSize: 28 }} />,
+    title:       'Regime Detection',
+    phase:       'Phase 35',
+    color:       '#A78BFA',
+    description: 'Rule-based market regime classifier: Bull / Bear / Sideways using rolling 20-day return thresholds. Color-coded regime spans overlay the price chart.',
+    tags:        ['Regime', 'Bull/Bear', 'Classification'],
+  },
+  {
+    icon:        <JournalIcon sx={{ fontSize: 28 }} />,
+    title:       'Trade Journal',
+    phase:       'Phase 36',
+    color:       '#06D6A0',
+    description: 'Auto-populated from paper trading fills. FIFO buy/sell matching with realised P&L. Add notes, comma-separated tags, and 1–5 star ratings to review your trades.',
+    tags:        ['Journal', 'P&L', 'Trade Review'],
+  },
 ]
 
 const TECH_STACK = [
@@ -265,7 +350,7 @@ const TECH_STACK = [
 ]
 
 const STATS = [
-  { value: '18',   label: 'Phases Built' },
+  { value: '36',   label: 'Phases Built' },
   { value: '42',   label: 'ML Features' },
   { value: '3',    label: 'Quant Strategies' },
   { value: '1Hz',  label: 'Live Price Feed' },
@@ -381,7 +466,7 @@ export default function IntroPage() {
         </Typography>
 
         <Typography variant="body2" color="text.disabled" mb={4}>
-          12 phases · Full-stack · TypeScript + Python · Docker
+          36 phases · Full-stack · TypeScript + Python · Docker
         </Typography>
 
         {/* Stats row */}
@@ -485,7 +570,7 @@ export default function IntroPage() {
         {/* ── Footer ─────────────────────────────────────────────────────── */}
         <Box sx={{ mt: 8, textAlign: 'center', pb: 4 }}>
           <Typography variant="caption" color="text.disabled">
-            TradingOS v0.24.0 — Phase 24: Full Featured
+            TradingOS v0.36.0 — Phase 36: Full Featured
           </Typography>
         </Box>
       </Box>

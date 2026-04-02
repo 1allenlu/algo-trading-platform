@@ -20,6 +20,7 @@ import NewsPage from '@/pages/News'
 import OptionsPage from '@/pages/Options'
 import CryptoPage from '@/pages/Crypto'
 import EarningsPage from '@/pages/Earnings'
+import JournalPage from '@/pages/Journal'
 import LoginPage from '@/pages/Login'
 import IntroPage from '@/pages/Intro'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
@@ -73,6 +74,7 @@ function AppLayout() {
             <Route path="/news"       element={<NewsPage />} />
             <Route path="/crypto"     element={<CryptoPage />} />
             <Route path="/earnings"   element={<EarningsPage />} />
+            <Route path="/journal"    element={<JournalPage />} />
             <Route path="/settings"   element={<Settings />} />
           </Routes>
         </Box>

@@ -566,3 +566,45 @@ class User(Base):
 
     def __repr__(self) -> str:
         return f"<User {self.username} role={self.role} active={self.is_active}>"
+
+
+# ── Trade Journal (Phase 36) ──────────────────────────────────────────────────
+
+class TradeJournal(Base):
+    """
+    One row per paper-trading fill.  Created automatically when a paper order
+    fills; the user can enrich the row later with notes, tags, and a rating.
+
+    Relationship to paper orders:
+      order_id is a soft reference to paper_orders.id (stored as string to
+      avoid FK constraint issues with order deletions on reset).
+
+    P&L lifecycle:
+      buy  fill  → entry row created (exit_price=None, pnl=None)
+      sell fill  → closest open buy row closed (exit_price + pnl populated)
+    """
+
+    __tablename__ = "trade_journal"
+
+    id          = Column(Integer,    primary_key=True, autoincrement=True)
+    order_id    = Column(String(64), nullable=True)     # soft ref to paper_orders.id
+    symbol      = Column(String(20), nullable=False)
+    side        = Column(String(4),  nullable=False)    # "buy" | "sell"
+    qty         = Column(Float,      nullable=False)
+    entry_price = Column(Float,      nullable=False)
+    exit_price  = Column(Float,      nullable=True)     # set when trade closed
+    pnl         = Column(Float,      nullable=True)     # realised P&L in dollars
+    notes       = Column(Text,       nullable=True)
+    tags        = Column(String(200), nullable=True)    # comma-separated
+    rating      = Column(Integer,    nullable=True)     # 1–5
+    entry_date  = Column(DateTime(timezone=True), nullable=False)
+    exit_date   = Column(DateTime(timezone=True), nullable=True)
+    created_at  = Column(DateTime(timezone=True), nullable=False, default=func.now())
+
+    __table_args__ = (
+        Index("ix_trade_journal_symbol",     "symbol"),
+        Index("ix_trade_journal_entry_date", "entry_date"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<TradeJournal {self.side.upper()} {self.qty} {self.symbol} pnl={self.pnl}>"

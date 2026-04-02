@@ -32,6 +32,8 @@ from app.models.schemas import (
     MLModelsResponse,
     MLPredictResponse,
     PredictionBar,
+    RegimeBar,
+    RegimeResponse,
     SHAPFeatureContribution,
     SHAPResponse,
     SentimentComponents,
@@ -497,4 +499,63 @@ async def get_shap_values(
         predicted_dir=direction,
         features=[SHAPFeatureContribution(**f) for f in data["features"]],
         count=len(data["features"]),
+    )
+
+
+# ── GET /api/ml/regimes/{symbol} (Phase 35) ───────────────────────────────────
+
+@router.get(
+    "/regimes/{symbol}",
+    response_model=RegimeResponse,
+    summary="Market regime classification (Phase 35)",
+)
+async def get_regimes(
+    symbol: str,
+    limit:  Annotated[int, Query(ge=30, le=1260)] = 252,
+    db:     AsyncSession = Depends(get_db),
+) -> RegimeResponse:
+    """
+    Classify each trading day as Bull / Bear / Sideways using a rolling
+    20-day return threshold (>+5% = bull, <-5% = bear, else sideways).
+
+    Returns the most recent `limit` bars with regime labels, plus aggregate
+    statistics (bull_pct, bear_pct, sideways_pct) and the current regime.
+    """
+    symbol = symbol.upper().strip()
+
+    rows = await db.execute(
+        select(MarketData.timestamp, MarketData.close)
+        .where(MarketData.symbol == symbol)
+        .order_by(MarketData.timestamp.asc())
+    )
+    data = rows.fetchall()
+
+    if not data:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No market data for '{symbol}'. Run `make ingest` first.",
+        )
+
+    closes = pd.Series(
+        [float(r[1]) for r in data],
+        index=pd.to_datetime([r[0] for r in data]),
+        name=symbol,
+    )
+
+    try:
+        from app.services.regime_service import detect_regimes
+        result = detect_regimes(closes, limit=limit)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+    except Exception as exc:
+        logger.exception(f"Regime detection failed: {exc}")
+        raise HTTPException(500, f"Regime detection failed: {exc}")
+
+    return RegimeResponse(
+        symbol       = symbol,
+        bars         = [RegimeBar(**b) for b in result["bars"]],
+        current      = result["current"],
+        bull_pct     = result["bull_pct"],
+        bear_pct     = result["bear_pct"],
+        sideways_pct = result["sideways_pct"],
     )

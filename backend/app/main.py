@@ -25,8 +25,9 @@ from loguru import logger
 
 from app.api.routes import (
     alerts, analytics, auth, autotrade, backtest, crypto, earnings, health,
-    intraday, live_orders, market_data, ml, news, notifications, options,
-    optimize, paper_trading, risk, scanner, scheduler, signals, strategies,
+    intraday, journal, live_orders, market_data, ml, news, notifications,
+    options, optimize, paper_trading, risk, scanner, scheduler, signals,
+    strategies,
 )
 from app.api.routes import websocket as ws_routes
 from app.core.config import settings
@@ -47,7 +48,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     # ── Startup ───────────────────────────────────────────────────────────────
     setup_logging()
-    logger.info(f"Starting {settings.APP_NAME} v0.33.0")
+    logger.info(f"Starting {settings.APP_NAME} v0.36.0")
     logger.info(f"Database: {settings.DATABASE_URL.split('@')[-1]}")
     logger.info(f"Debug mode: {settings.DEBUG}")
 
@@ -247,6 +248,11 @@ app.include_router(
     earnings.router,
     prefix=f"{settings.API_V1_PREFIX}/earnings",
     tags=["earnings"],
+)
+app.include_router(
+    journal.router,
+    prefix=f"{settings.API_V1_PREFIX}/journal",
+    tags=["journal"],
 )
 
 # ── WebSocket routes (Phase 7 + 8) ───────────────────────────────────────────

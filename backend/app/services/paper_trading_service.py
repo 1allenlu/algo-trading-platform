@@ -159,6 +159,20 @@ async def _fill_order(
     order.status           = "filled"
     order.updated_at       = datetime.now(timezone.utc)
 
+    # Phase 36: auto-record fill in trade journal
+    try:
+        from app.services.journal_service import record_fill
+        await record_fill(
+            session    = session,
+            order_id   = str(order.id),
+            symbol     = order.symbol,
+            side       = order.side,
+            qty        = qty,
+            fill_price = fill_price,
+        )
+    except Exception:
+        pass  # Journal write failure must never block order execution
+
 
 # ── Limit order processing ────────────────────────────────────────────────────
 

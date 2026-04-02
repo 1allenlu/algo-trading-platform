@@ -35,7 +35,16 @@ import {
   Typography,
 } from '@mui/material'
 import { BarChart as RiskIcon, Search as AnalyzeIcon } from '@mui/icons-material'
-import type { EfficientFrontierResponse, PortfolioRiskResponse } from '@/services/api'
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
+import type { EfficientFrontierResponse, MonteCarloResponse, PortfolioRiskResponse } from '@/services/api'
 import { api } from '@/services/api'
 import CorrelationHeatmap from '@/components/charts/CorrelationHeatmap'
 import EfficientFrontierChart from '@/components/charts/EfficientFrontierChart'
@@ -134,6 +143,90 @@ function AssetTable({ data }: { data: PortfolioRiskResponse }) {
   )
 }
 
+// ── Monte Carlo fan chart ─────────────────────────────────────────────────────
+function MonteCarloChart({ data }: { data: MonteCarloResponse }) {
+  const { paths, stats } = data
+
+  // Show every 5th day to keep chart responsive
+  const chartData = paths.filter((_, i) => i % 5 === 0 || i === paths.length - 1)
+
+  const pct = (v: number) => `${(v * 100).toFixed(1)}%`
+
+  return (
+    <Card sx={{ border: '1px solid', borderColor: 'divider', mt: 3 }}>
+      <CardContent>
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2 }}>
+          <Box>
+            <Typography variant="subtitle2" fontWeight={700}>
+              Monte Carlo Simulation — {data.n_sims.toLocaleString()} Paths · {data.horizon_days}d Horizon
+            </Typography>
+            <Typography variant="caption" color="text.disabled">
+              GBM projection based on historical return distribution · Fan bands show P5/P25/P50/P75/P95
+            </Typography>
+          </Box>
+          <Stack direction="row" spacing={2} flexWrap="wrap" justifyContent="flex-end">
+            {[
+              { label: 'Prob. Profit',    value: pct(stats.prob_profit),          good: stats.prob_profit > 0.5 },
+              { label: 'Median Return',   value: pct(stats.median_return),        good: stats.median_return > 0 },
+              { label: 'P5 Return',       value: pct(stats.p5_return),            good: stats.p5_return > -0.1 },
+              { label: 'Med Max Drawdown',value: pct(stats.median_max_drawdown),  good: stats.median_max_drawdown < 0.15 },
+            ].map(({ label, value, good }) => (
+              <Box key={label} sx={{ textAlign: 'right' }}>
+                <Typography variant="caption" color="text.disabled" display="block">{label}</Typography>
+                <Typography
+                  variant="body2"
+                  fontWeight={700}
+                  fontFamily="IBM Plex Mono, monospace"
+                  sx={{ color: good ? '#06d6a0' : '#ff6b6b' }}
+                >
+                  {value}
+                </Typography>
+              </Box>
+            ))}
+          </Stack>
+        </Box>
+
+        <ResponsiveContainer width="100%" height={280}>
+          <AreaChart data={chartData} margin={{ top: 4, right: 16, bottom: 4, left: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+            <XAxis
+              dataKey="day"
+              tickFormatter={(v) => `${v}d`}
+              tick={{ fontSize: 10, fill: '#6B7280' }}
+            />
+            <YAxis
+              tickFormatter={(v) => `${((v - 1) * 100).toFixed(0)}%`}
+              tick={{ fontSize: 10, fill: '#6B7280' }}
+              width={52}
+            />
+            <Tooltip
+              contentStyle={{ background: '#111827', border: '1px solid #374151', fontSize: '0.75rem' }}
+              formatter={(v: number, name: string) => [
+                `${((v - 1) * 100).toFixed(1)}%`,
+                name.toUpperCase(),
+              ]}
+            />
+            {/* P5–P95 outer band */}
+            <Area dataKey="p5"  stroke="transparent" fill="transparent" />
+            <Area dataKey="p95" stroke="transparent" fill="rgba(74,158,255,0.08)" />
+            {/* P25–P75 inner band */}
+            <Area dataKey="p25" stroke="transparent" fill="transparent" />
+            <Area dataKey="p75" stroke="transparent" fill="rgba(74,158,255,0.14)" />
+            {/* Median line */}
+            <Area
+              dataKey="p50"
+              stroke="#4A9EFF"
+              strokeWidth={2}
+              fill="transparent"
+              dot={false}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
+  )
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function Risk() {
   const [selectedSymbols, setSelectedSymbols] = useState(['SPY', 'QQQ', 'AAPL', 'MSFT'])
@@ -142,6 +235,7 @@ export default function Risk() {
   const [error, setError]               = useState<string | null>(null)
   const [riskData, setRiskData]         = useState<PortfolioRiskResponse | null>(null)
   const [frontierData, setFrontierData] = useState<EfficientFrontierResponse | null>(null)
+  const [mcData, setMcData]             = useState<MonteCarloResponse | null>(null)
 
   const toggleSymbol = (sym: string) =>
     setSelectedSymbols((prev) =>
@@ -161,12 +255,14 @@ export default function Risk() {
     try {
       const n = selectedSymbols.length
       const weights = Array(n).fill(1 / n)
-      const [risk, frontier] = await Promise.all([
+      const [risk, frontier, mc] = await Promise.all([
         api.risk.getAnalysis(selectedSymbols, weights),
         api.risk.getFrontier(selectedSymbols),
+        api.risk.getMonteCarlo(selectedSymbols, weights),
       ])
       setRiskData(risk)
       setFrontierData(frontier)
+      setMcData(mc)
     } catch (err: unknown) {
       const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
       setError(detail ?? 'Analysis failed. Check that data has been ingested.')
@@ -357,6 +453,9 @@ export default function Risk() {
           </Grid>
 
           <AssetTable data={riskData} />
+
+          {/* Monte Carlo fan chart */}
+          {mcData && <MonteCarloChart data={mcData} />}
         </>
       )}
     </Box>

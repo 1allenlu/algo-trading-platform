@@ -887,6 +887,90 @@ export interface EarningsCalendarEntry {
   earnings_history:   EarningsHistoryEntry[]
 }
 
+// ── Phase 34: Monte Carlo ─────────────────────────────────────────────────────
+
+export interface MonteCarloPathPoint {
+  day: number
+  p5:  number
+  p25: number
+  p50: number
+  p75: number
+  p95: number
+}
+
+export interface MonteCarloStats {
+  prob_profit:          number
+  median_return:        number
+  p5_return:            number
+  median_max_drawdown:  number
+  p95_max_drawdown:     number
+}
+
+export interface MonteCarloResponse {
+  symbols:       string[]
+  weights:       number[]
+  n_sims:        number
+  horizon_days:  number
+  paths:         MonteCarloPathPoint[]
+  stats:         MonteCarloStats
+  initial_value: number
+}
+
+// ── Phase 35: Regime Detection ────────────────────────────────────────────────
+
+export interface RegimeBar {
+  date:   string
+  close:  number
+  regime: 'bull' | 'bear' | 'sideways'
+  ret20:  number
+}
+
+export interface RegimeResponse {
+  symbol:       string
+  bars:         RegimeBar[]
+  current:      'bull' | 'bear' | 'sideways'
+  bull_pct:     number
+  bear_pct:     number
+  sideways_pct: number
+}
+
+// ── Phase 36: Trade Journal ───────────────────────────────────────────────────
+
+export interface JournalEntry {
+  id:          number
+  order_id:    string | null
+  symbol:      string
+  side:        'buy' | 'sell'
+  qty:         number
+  entry_price: number
+  exit_price:  number | null
+  pnl:         number | null
+  notes:       string | null
+  tags:        string | null
+  rating:      number | null
+  entry_date:  string
+  exit_date:   string | null
+  created_at:  string
+}
+
+export interface JournalStats {
+  total_trades:  number
+  win_trades:    number
+  loss_trades:   number
+  win_rate:      number
+  total_pnl:     number
+  avg_pnl:       number
+  avg_win:       number
+  avg_loss:      number
+  avg_rating:    number | null
+}
+
+export interface JournalListResponse {
+  entries: JournalEntry[]
+  stats:   JournalStats
+  count:   number
+}
+
 // ── API functions ─────────────────────────────────────────────────────────────
 
 export const api = {
@@ -950,6 +1034,12 @@ export const api = {
       apiClient
         .get<SHAPResponse>(`/api/ml/shap/${symbol}`, { params: { top_n: topN } })
         .then((r) => r.data),
+
+    // Phase 35: Regime Detection
+    getRegimes: (symbol: string, limit = 252): Promise<RegimeResponse> =>
+      apiClient
+        .get<RegimeResponse>(`/api/ml/regimes/${symbol}`, { params: { limit } })
+        .then((r) => r.data),
   },
 
   strategies: {
@@ -999,6 +1089,23 @@ export const api = {
       apiClient
         .get<EfficientFrontierResponse>('/api/risk/frontier', {
           params: { symbols: symbols.join(',') },
+        })
+        .then((r) => r.data),
+
+    getMonteCarlo: (
+      symbols: string[],
+      weights?: number[],
+      nSims = 1000,
+      horizonDays = 252,
+    ): Promise<MonteCarloResponse> =>
+      apiClient
+        .get<MonteCarloResponse>('/api/risk/monte_carlo', {
+          params: {
+            symbols:      symbols.join(','),
+            n_sims:       nSims,
+            horizon_days: horizonDays,
+            ...(weights ? { weights: weights.join(',') } : {}),
+          },
         })
         .then((r) => r.data),
   },
@@ -1243,5 +1350,21 @@ export const api = {
 
     getForSymbol: (symbol: string): Promise<EarningsCalendarEntry> =>
       apiClient.get<EarningsCalendarEntry>(`/api/earnings/${symbol}`).then((r) => r.data),
+  },
+
+  // ── Phase 36: Trade Journal ──────────────────────────────────────────────────
+  journal: {
+    list: (limit = 200): Promise<JournalListResponse> =>
+      apiClient
+        .get<JournalListResponse>('/api/journal', { params: { limit } })
+        .then((r) => r.data),
+
+    update: (id: number, notes?: string | null, tags?: string | null, rating?: number | null): Promise<JournalEntry> =>
+      apiClient
+        .patch<JournalEntry>(`/api/journal/${id}`, { notes, tags, rating })
+        .then((r) => r.data),
+
+    delete: (id: number): Promise<{ message: string }> =>
+      apiClient.delete<{ message: string }>(`/api/journal/${id}`).then((r) => r.data),
   },
 }

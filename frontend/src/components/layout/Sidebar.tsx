@@ -2,6 +2,7 @@ import { Box, Drawer, Tooltip, Typography } from '@mui/material'
 import {
   Assessment as BacktestIcon,
   AutoMode as AutoTradeIcon,
+  BookOutlined as JournalIcon,
   CandlestickChart as TradingIcon,
   Dashboard as DashboardIcon,
   Insights as AnalyticsIcon,
@@ -67,6 +68,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: 'Scanner',    path: '/scanner',   icon: <ScannerIcon    sx={{ fontSize: 17 }} /> },
       { label: 'Auto Trade', path: '/autotrade', icon: <AutoTradeIcon  sx={{ fontSize: 17 }} /> },
       { label: 'Alerts',     path: '/alerts',    icon: <AlertsIcon     sx={{ fontSize: 17 }} /> },
+      { label: 'Journal',    path: '/journal',   icon: <JournalIcon    sx={{ fontSize: 17 }} /> },
     ],
   },
   {
@@ -145,7 +147,7 @@ export default function Sidebar({ width }: SidebarProps) {
               mt: '2px',
             }}
           >
-            v0.30.0
+            v0.36.0
           </Typography>
         </Box>
       </Box>

@@ -550,3 +550,103 @@ class SubmitLiveOrderRequest(BaseModel):
         "example": {"symbol": "SPY", "side": "buy", "qty": 1, "order_type": "market"}
     })
 
+
+# ── Monte Carlo (Phase 34) ────────────────────────────────────────────────────
+
+class MonteCarloPathPoint(BaseModel):
+    """One day of the fan chart — percentile values relative to starting price = 1.0."""
+    day: int
+    p5:  float
+    p25: float
+    p50: float
+    p75: float
+    p95: float
+
+
+class MonteCarloStats(BaseModel):
+    """Summary statistics across all simulated paths."""
+    prob_profit:          float   # Fraction of paths ending > 1.0
+    median_return:        float   # Median terminal return (fractional)
+    p5_return:            float   # 5th-percentile terminal return (worst case)
+    median_max_drawdown:  float   # Median of per-path max drawdown (fractional)
+    p95_max_drawdown:     float   # 95th-pct max drawdown (severe scenario)
+
+
+class MonteCarloResponse(BaseModel):
+    """Response for GET /api/risk/monte_carlo."""
+    symbols:       list[str]
+    weights:       list[float]
+    n_sims:        int
+    horizon_days:  int
+    paths:         list[MonteCarloPathPoint]
+    stats:         MonteCarloStats
+    initial_value: float = 1.0
+
+
+# ── Regime Detection (Phase 35) ───────────────────────────────────────────────
+
+class RegimeBar(BaseModel):
+    """One trading day's regime classification."""
+    date:   str    # ISO 8601 date
+    close:  float
+    regime: str    # "bull" | "bear" | "sideways"
+    ret20:  float  # 20-day rolling return used for classification
+
+
+class RegimeResponse(BaseModel):
+    """Response for GET /api/ml/regimes/{symbol}."""
+    symbol:      str
+    bars:        list[RegimeBar]
+    current:     str    # Current regime label
+    bull_pct:    float  # Fraction of bars classified as bull
+    bear_pct:    float  # Fraction of bars classified as bear
+    sideways_pct: float
+
+
+# ── Trade Journal (Phase 36) ──────────────────────────────────────────────────
+
+class JournalEntrySchema(BaseModel):
+    """A single trade journal entry."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id:          int
+    order_id:    str | None
+    symbol:      str
+    side:        str            # "buy" | "sell"
+    qty:         float
+    entry_price: float
+    exit_price:  float | None
+    pnl:         float | None   # Realised P&L (filled on sell close)
+    notes:       str | None
+    tags:        str | None     # Comma-separated tag string
+    rating:      int | None     # 1–5 stars
+    entry_date:  datetime
+    exit_date:   datetime | None
+    created_at:  datetime
+
+
+class JournalStatsSchema(BaseModel):
+    """Aggregate trade journal statistics."""
+    total_trades:   int
+    win_trades:     int
+    loss_trades:    int
+    win_rate:       float
+    total_pnl:      float
+    avg_pnl:        float
+    avg_win:        float
+    avg_loss:       float
+    avg_rating:     float | None
+
+
+class JournalListResponse(BaseModel):
+    entries: list[JournalEntrySchema]
+    stats:   JournalStatsSchema
+    count:   int
+
+
+class JournalUpdateRequest(BaseModel):
+    """PATCH /api/journal/{id} — update notes/tags/rating on an existing entry."""
+    notes:  str | None = None
+    tags:   str | None = None
+    rating: int | None = Field(default=None, ge=1, le=5)
+

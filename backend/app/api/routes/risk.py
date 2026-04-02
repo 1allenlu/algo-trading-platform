@@ -22,6 +22,9 @@ from app.models.schemas import (
     AssetRiskMetrics,
     EfficientFrontierResponse,
     FrontierPoint,
+    MonteCarloPathPoint,
+    MonteCarloResponse,
+    MonteCarloStats,
     PortfolioRiskResponse,
 )
 
@@ -183,4 +186,66 @@ async def get_efficient_frontier(
         frontier   = [FrontierPoint(**p) for p in result["frontier"]],
         max_sharpe = _to_fp(result["max_sharpe"]),
         min_vol    = _to_fp(result["min_vol"]),
+    )
+
+
+# ── Monte Carlo simulation (Phase 34) ────────────────────────────────────────
+
+@router.get("/monte_carlo", response_model=MonteCarloResponse)
+async def get_monte_carlo(
+    symbols:      str = Query(..., description="Comma-separated tickers, e.g. SPY,QQQ"),
+    weights:      str | None = Query(None, description="Comma-separated weights summing to 1"),
+    n_sims:       int = Query(1000, ge=100, le=5000,  description="Number of simulation paths"),
+    horizon_days: int = Query(252,  ge=21,  le=1260,  description="Projection horizon (trading days)"),
+    session:      AsyncSession = Depends(get_db),
+) -> MonteCarloResponse:
+    """
+    Run a GBM Monte Carlo portfolio simulation.
+
+    Returns per-day percentile fan bands (p5/p25/p50/p75/p95) and summary
+    stats (prob_profit, median_return, max drawdown distribution).
+    Uses the closing prices already stored in the market_data table — no
+    external API call required.
+    """
+    symbol_list = [s.strip().upper() for s in symbols.split(",") if s.strip()]
+
+    weight_list: list[float] | None = None
+    if weights:
+        try:
+            weight_list = [float(w) for w in weights.split(",") if w.strip()]
+        except ValueError:
+            raise HTTPException(400, "Weights must be comma-separated numbers")
+        if len(weight_list) != len(symbol_list):
+            raise HTTPException(400, "Number of weights must match number of symbols")
+
+    logger.info(f"Monte Carlo: {symbol_list} n_sims={n_sims} horizon={horizon_days}")
+
+    closes = await _load_closes(symbol_list, session)
+
+    try:
+        from app.services.monte_carlo_service import run_monte_carlo
+        result = run_monte_carlo(
+            closes       = closes,
+            weights      = weight_list,
+            n_sims       = n_sims,
+            horizon_days = horizon_days,
+        )
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+    except Exception as exc:
+        logger.exception(f"Monte Carlo failed: {exc}")
+        raise HTTPException(500, f"Monte Carlo simulation failed: {exc}")
+
+    # Build equal-weight list for response if not provided
+    n = len(symbol_list)
+    out_weights = weight_list if weight_list else [round(1.0 / n, 6)] * n
+
+    return MonteCarloResponse(
+        symbols      = symbol_list,
+        weights      = out_weights,
+        n_sims       = n_sims,
+        horizon_days = horizon_days,
+        paths        = [MonteCarloPathPoint(**p) for p in result["paths"]],
+        stats        = MonteCarloStats(**result["stats"]),
+        initial_value = result["initial_value"],
     )

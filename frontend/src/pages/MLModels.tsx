@@ -43,7 +43,20 @@ import {
   Psychology as MLIcon,
   Refresh as TrainIcon,
   AutoAwesome as SignalIcon,
+  Waves as RegimeIcon,
 } from '@mui/icons-material'
+import {
+  Bar,
+  CartesianGrid,
+  Cell,
+  ComposedChart,
+  Line,
+  ReferenceArea,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, type MLModelInfo } from '@/services/api'
 import FeatureImportanceChart from '@/components/charts/FeatureImportanceChart'
@@ -673,6 +686,126 @@ function ModelComparisonTable({ models }: { models: MLModelInfo[] }) {
   )
 }
 
+// ── Regime Detection panel (Phase 35) ─────────────────────────────────────────
+const REGIME_COLORS: Record<string, string> = {
+  bull:     '#06d6a0',
+  bear:     '#ff6b6b',
+  sideways: '#f59e0b',
+}
+
+function RegimePanel({ symbol }: { symbol: string }) {
+  const { data, isLoading, isError } = useQuery({
+    queryKey:  ['ml', 'regimes', symbol],
+    queryFn:   () => api.ml.getRegimes(symbol, 252),
+    staleTime: 60_000,
+  })
+
+  if (isLoading) return (
+    <Card sx={{ border: '1px solid', borderColor: 'divider' }}>
+      <CardContent sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+        <CircularProgress size={28} />
+      </CardContent>
+    </Card>
+  )
+
+  if (isError || !data) return (
+    <Card sx={{ border: '1px solid', borderColor: 'divider' }}>
+      <CardContent>
+        <Alert severity="info">No data for {symbol}. Run <code>make ingest</code> first.</Alert>
+      </CardContent>
+    </Card>
+  )
+
+  // Build regime spans for ReferenceArea overlays
+  const spans: { start: string; end: string; regime: string }[] = []
+  if (data.bars.length > 0) {
+    let cur = data.bars[0]
+    for (let i = 1; i < data.bars.length; i++) {
+      if (data.bars[i].regime !== cur.regime) {
+        spans.push({ start: cur.date, end: data.bars[i - 1].date, regime: cur.regime })
+        cur = data.bars[i]
+      }
+    }
+    spans.push({ start: cur.date, end: data.bars[data.bars.length - 1].date, regime: cur.regime })
+  }
+
+  // Downsample for chart performance
+  const chartData = data.bars.filter((_, i) => i % 3 === 0 || i === data.bars.length - 1)
+
+  const currentColor = REGIME_COLORS[data.current] ?? '#9CA3AF'
+
+  return (
+    <Card sx={{ border: '1px solid', borderColor: 'divider' }}>
+      <CardContent>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <RegimeIcon sx={{ color: 'primary.main', fontSize: 18 }} />
+            <Typography variant="subtitle2" fontWeight={700}>
+              {symbol} — Market Regime History
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+            <Chip
+              label={`Current: ${data.current.toUpperCase()}`}
+              size="small"
+              sx={{ bgcolor: `${currentColor}22`, color: currentColor, fontWeight: 700 }}
+            />
+            {(['bull', 'bear', 'sideways'] as const).map((r) => {
+              const pct = r === 'bull' ? data.bull_pct : r === 'bear' ? data.bear_pct : data.sideways_pct
+              return (
+                <Typography key={r} variant="caption" sx={{ color: REGIME_COLORS[r] }}>
+                  {r.charAt(0).toUpperCase() + r.slice(1)} {(pct * 100).toFixed(0)}%
+                </Typography>
+              )
+            })}
+          </Box>
+        </Box>
+
+        <ResponsiveContainer width="100%" height={220}>
+          <ComposedChart data={chartData} margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+            <XAxis
+              dataKey="date"
+              tickFormatter={(d) => d.slice(5)}   // "MM-DD"
+              tick={{ fontSize: 10, fill: '#6B7280' }}
+              interval={Math.floor(chartData.length / 6)}
+            />
+            <YAxis tick={{ fontSize: 10, fill: '#6B7280' }} width={52} />
+            <Tooltip
+              contentStyle={{ background: '#111827', border: '1px solid #374151', fontSize: '0.75rem' }}
+              formatter={(v: number, name: string) =>
+                name === 'close' ? [`$${v.toFixed(2)}`, 'Close'] : [v, name]
+              }
+            />
+            {/* Regime background spans */}
+            {spans.map((s, i) => (
+              <ReferenceArea
+                key={i}
+                x1={s.start} x2={s.end}
+                fill={REGIME_COLORS[s.regime]}
+                fillOpacity={0.08}
+              />
+            ))}
+            {/* Price line */}
+            <Line
+              type="monotone"
+              dataKey="close"
+              stroke="#4A9EFF"
+              strokeWidth={1.5}
+              dot={false}
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
+
+        <Typography variant="caption" color="text.disabled" sx={{ mt: 0.5, display: 'block' }}>
+          Rule: Bull = 20d return &gt;+5%, Bear = &lt;−5%, Sideways = otherwise.
+          Colored background spans show regime periods.
+        </Typography>
+      </CardContent>
+    </Card>
+  )
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function MLModels() {
   const [selectedSymbol, setSelectedSymbol] = useState<Symbol>('SPY')
@@ -834,10 +967,24 @@ export default function MLModels() {
         </Box>
       )}
 
+      {/* ── Section 6: Regime Detection (Phase 35) ──────────────────────── */}
+      <Box sx={{ mt: 4 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
+          <RegimeIcon sx={{ color: 'primary.main', fontSize: 22 }} />
+          <Typography variant="h6" fontWeight={700}>Market Regime Detection</Typography>
+          <Chip label="Phase 35" size="small" color="warning" sx={{ fontSize: '0.65rem' }} />
+        </Box>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Rule-based regime classifier using 20-day rolling return thresholds.
+          Background colors show Bull / Bear / Sideways periods on the price chart.
+        </Typography>
+        <RegimePanel symbol={selectedSymbol} />
+      </Box>
+
       {/* Phase indicator */}
       <Box sx={{ mt: 4, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
         <Typography variant="caption" color="text.disabled">
-          Phase 15 — LSTM Predictions UI · XGBoost vs LSTM Comparison | Phase 6 — Advanced ML
+          Phase 35 — Regime Detection | Phase 15 — LSTM Comparison | Phase 6 — Advanced ML
         </Typography>
       </Box>
     </Box>
