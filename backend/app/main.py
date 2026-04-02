@@ -24,9 +24,9 @@ from fastapi.responses import RedirectResponse
 from loguru import logger
 
 from app.api.routes import (
-    alerts, analytics, auth, autotrade, backtest, crypto, earnings, health,
-    intraday, journal, live_orders, market_data, ml, news, notifications,
-    options, optimize, paper_trading, risk, scanner, scheduler, signals,
+    alerts, analytics, auth, autotrade, backtest, crypto, earnings, fundamentals,
+    health, intraday, journal, live_orders, market_data, ml, news, notifications,
+    options, optimize, paper_trading, patterns, rl, risk, scanner, scheduler, signals,
     strategies,
 )
 from app.api.routes import websocket as ws_routes
@@ -48,7 +48,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     # ── Startup ───────────────────────────────────────────────────────────────
     setup_logging()
-    logger.info(f"Starting {settings.APP_NAME} v0.36.0")
+    logger.info(f"Starting {settings.APP_NAME} v0.42.0")
     logger.info(f"Database: {settings.DATABASE_URL.split('@')[-1]}")
     logger.info(f"Debug mode: {settings.DEBUG}")
 
@@ -253,6 +253,21 @@ app.include_router(
     journal.router,
     prefix=f"{settings.API_V1_PREFIX}/journal",
     tags=["journal"],
+)
+app.include_router(
+    fundamentals.router,
+    prefix=f"{settings.API_V1_PREFIX}/fundamentals",
+    tags=["fundamentals"],
+)
+app.include_router(
+    patterns.router,
+    prefix=f"{settings.API_V1_PREFIX}/patterns",
+    tags=["patterns"],
+)
+app.include_router(
+    rl.router,
+    prefix=f"{settings.API_V1_PREFIX}/rl",
+    tags=["rl"],
 )
 
 # ── WebSocket routes (Phase 7 + 8) ───────────────────────────────────────────

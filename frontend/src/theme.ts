@@ -1,122 +1,159 @@
 import { createTheme } from '@mui/material/styles'
 
 /**
- * Trading Platform theme — deep navy palette.
+ * Trading Platform theme factory.
  *
- * Color roles:
- *   primary   (#4A9EFF sky blue)  — interactive elements, links, neutral info
- *   secondary (#00C896 teal)      — positive returns, buy side, profits
+ * Call `createAppTheme('dark')` or `createAppTheme('light')`.
+ * Mode is persisted by ThemeContext in localStorage ('tradingos-theme').
+ *
+ * Color roles (consistent across both modes):
+ *   primary   (#4A9EFF sky blue)  — interactive elements, active nav, buttons
+ *   secondary (#00C896 teal)      — buy side, positive returns, profits
  *   error     (#EF4444 red)       — errors, sell alerts
  *   warning   (#F59E0B amber)     — caution states
  *   info      (#8B5CF6 purple)    — pending states
  */
-export const theme = createTheme({
-  palette: {
-    mode: 'dark',
-    primary: {
-      main:  '#4A9EFF',   // Sky blue — links, active nav, buttons
-      dark:  '#2980E8',
-      light: '#7DBFFF',
-    },
-    secondary: {
-      main:  '#00C896',   // Teal green — buy / positive / profit
-      light: '#00E0A8',
-    },
-    error: {
-      main:  '#EF4444',   // True red — errors
-      light: '#FF6B6B',   // Coral — sell / danger (softer)
-    },
-    warning: {
-      main: '#F59E0B',    // Orange amber
-      light: '#FFB020',
-    },
-    info: {
-      main: '#8B5CF6',    // Purple — pending states
-    },
-    background: {
-      default: '#0A0E17',   // Deep navy — main content area
-      paper:   '#12161F',   // Card & sidebar backgrounds
-    },
-    text: {
-      primary:   '#E8EAED',   // Near white
-      secondary: '#9CA3AF',   // Light gray — labels, metadata
-      disabled:  '#4B5563',   // Very muted
-    },
-    divider: '#2D3548',
-  },
+export function createAppTheme(mode: 'dark' | 'light') {
+  const isDark = mode === 'dark'
 
-  typography: {
-    fontFamily: '"IBM Plex Sans", "Helvetica Neue", Arial, sans-serif',
-    h4: { fontWeight: 600 },
-    h5: { fontWeight: 600 },
-    h6: { fontWeight: 500 },
-    body1: { fontSize: '0.875rem' },
-    body2: { fontSize: '0.8125rem' },
-  },
+  return createTheme({
+    palette: {
+      mode,
+      primary: {
+        main:  '#4A9EFF',
+        dark:  '#2980E8',
+        light: '#7DBFFF',
+      },
+      secondary: {
+        main:  '#00C896',
+        light: '#00E0A8',
+      },
+      error: {
+        main:  '#EF4444',
+        light: '#FF6B6B',
+      },
+      warning: {
+        main:  '#F59E0B',
+        light: '#FFB020',
+      },
+      info: {
+        main: '#8B5CF6',
+      },
+      background: isDark
+        ? {
+            default: '#0A0E17',   // Deep navy — main content area
+            paper:   '#12161F',   // Card & sidebar backgrounds
+          }
+        : {
+            default: '#F0F2F5',   // Soft gray — main content area
+            paper:   '#FFFFFF',   // White cards
+          },
+      text: isDark
+        ? {
+            primary:   '#E8EAED',
+            secondary: '#9CA3AF',
+            disabled:  '#4B5563',
+          }
+        : {
+            primary:   '#0F172A',
+            secondary: '#475569',
+            disabled:  '#94A3B8',
+          },
+      divider: isDark ? '#2D3548' : '#E2E8F0',
+    },
 
-  shape: { borderRadius: 8 },
+    typography: {
+      fontFamily: '"IBM Plex Sans", "Helvetica Neue", Arial, sans-serif',
+      h4: { fontWeight: 600 },
+      h5: { fontWeight: 600 },
+      h6: { fontWeight: 500 },
+      body1: { fontSize: '0.875rem' },
+      body2: { fontSize: '0.8125rem' },
+    },
 
-  components: {
-    MuiCard: {
-      styleOverrides: {
-        root: {
-          backgroundImage: 'none',
-          backgroundColor: '#12161F',
-          border: '1px solid #2D3548',
-        },
-      },
-    },
-    MuiPaper: {
-      styleOverrides: {
-        root: { backgroundImage: 'none' },
-      },
-    },
-    MuiInputBase: {
-      styleOverrides: {
-        root: { backgroundColor: '#232938' },
-      },
-    },
-    MuiOutlinedInput: {
-      styleOverrides: {
-        notchedOutline: { borderColor: '#2D3548' },
-      },
-    },
-    MuiChip: {
-      styleOverrides: {
-        root: { fontFamily: '"IBM Plex Mono", monospace', fontSize: '0.72rem' },
-      },
-    },
-    MuiToggleButton: {
-      styleOverrides: {
-        root: {
-          borderColor: '#2D3548',
-          '&.Mui-selected': {
-            backgroundColor: 'rgba(74, 158, 255, 0.15)',
-            color: '#4A9EFF',
-            borderColor: '#4A9EFF',
+    shape: { borderRadius: 8 },
+
+    components: {
+      MuiCard: {
+        styleOverrides: {
+          root: {
+            backgroundImage: 'none',
+            backgroundColor: isDark ? '#12161F' : '#FFFFFF',
+            border: `1px solid ${isDark ? '#2D3548' : '#E2E8F0'}`,
           },
         },
       },
-    },
-    MuiTableCell: {
-      styleOverrides: {
-        head: {
-          backgroundColor: '#1A1F2E',
-          borderBottomColor: '#2D3548',
-          color: '#9CA3AF',
+      MuiPaper: {
+        styleOverrides: {
+          root: { backgroundImage: 'none' },
         },
-        body: { borderBottomColor: '#1E2330' },
+      },
+      MuiDrawer: {
+        styleOverrides: {
+          paper: {
+            backgroundImage: 'none',
+            backgroundColor: isDark ? '#0B0E14' : '#F8FAFC',
+            borderRightColor: isDark ? '#1C2030' : '#E2E8F0',
+          },
+        },
+      },
+      MuiAppBar: {
+        styleOverrides: {
+          root: {
+            backgroundImage: 'none',
+          },
+        },
+      },
+      MuiInputBase: {
+        styleOverrides: {
+          root: { backgroundColor: isDark ? '#232938' : '#F1F5F9' },
+        },
+      },
+      MuiOutlinedInput: {
+        styleOverrides: {
+          notchedOutline: { borderColor: isDark ? '#2D3548' : '#CBD5E1' },
+        },
+      },
+      MuiChip: {
+        styleOverrides: {
+          root: { fontFamily: '"IBM Plex Mono", monospace', fontSize: '0.72rem' },
+        },
+      },
+      MuiToggleButton: {
+        styleOverrides: {
+          root: {
+            borderColor: isDark ? '#2D3548' : '#CBD5E1',
+            '&.Mui-selected': {
+              backgroundColor: 'rgba(74, 158, 255, 0.15)',
+              color: '#4A9EFF',
+              borderColor: '#4A9EFF',
+            },
+          },
+        },
+      },
+      MuiTableCell: {
+        styleOverrides: {
+          head: {
+            backgroundColor: isDark ? '#1A1F2E' : '#F8FAFC',
+            borderBottomColor: isDark ? '#2D3548' : '#E2E8F0',
+            color: isDark ? '#9CA3AF' : '#64748B',
+          },
+          body: { borderBottomColor: isDark ? '#1E2330' : '#F1F5F9' },
+        },
+      },
+      MuiDivider: {
+        styleOverrides: {
+          root: { borderColor: isDark ? '#2D3548' : '#E2E8F0' },
+        },
       },
     },
-    MuiDivider: {
-      styleOverrides: {
-        root: { borderColor: '#2D3548' },
-      },
-    },
-  },
-})
+  })
+}
 
-// Convenience color constants for use in chart components
+// Keep a default dark export for backwards compat (used nowhere now but kept for safety)
+export const theme = createAppTheme('dark')
+
+// Convenience color constants for chart components (always dark — charts stay dark)
 export const CHART_COLORS = {
   positive:   '#00C896',
   negative:   '#FF6B6B',

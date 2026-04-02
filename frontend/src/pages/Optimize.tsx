@@ -98,9 +98,95 @@ function num(v: number | null, decimals = 2): string {
   return v.toFixed(decimals)
 }
 
-/** Convert default param space dict to editable JSON string for a textarea */
-function gridToJson(grid: Record<string, unknown[]>): string {
-  return JSON.stringify(grid, null, 2)
+// ── Param Builder ──────────────────────────────────────────────────────────────
+// Replaces the raw JSON textarea. For each parameter the backend exposes,
+// renders a row of toggleable chips. Users click which values to include.
+
+interface ParamBuilderProps {
+  candidates:  Record<string, unknown[]>          // all options from backend
+  selections:  Record<string, Set<unknown>>       // currently selected values
+  onChange:    (param: string, value: unknown) => void  // toggle one value
+}
+
+function ParamBuilder({ candidates, selections, onChange }: ParamBuilderProps) {
+  if (!Object.keys(candidates).length) return null
+
+  // Compute trial count: product of selected sizes
+  const trialCount = Object.entries(selections).reduce((acc, [, sel]) => {
+    return acc * Math.max(sel.size, 1)
+  }, 1)
+
+  const paramLabels: Record<string, string> = {
+    lookback:          'Lookback window',
+    entry_threshold:   'Entry z-score threshold',
+    exit_threshold:    'Exit z-score threshold',
+    stop_loss:         'Stop-loss (z-score)',
+    lookback_months:   'Lookback (months)',
+    top_n:             'Top N holdings',
+    window:            'Bollinger window',
+    num_std:           'Std-dev bands',
+    position_size:     'Position size (fraction)',
+  }
+
+  return (
+    <Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+        <Typography variant="subtitle2" fontWeight={700}>
+          Parameter Grid
+        </Typography>
+        <Chip
+          label={`${trialCount} trial${trialCount !== 1 ? 's' : ''}`}
+          size="small"
+          color={trialCount > 50 ? 'warning' : 'primary'}
+          variant="outlined"
+          sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.7rem' }}
+        />
+      </Box>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+        {Object.entries(candidates).map(([param, values]) => {
+          const sel = selections[param] ?? new Set()
+          return (
+            <Box key={param}>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ display: 'block', mb: 0.75, fontFamily: 'IBM Plex Mono, monospace' }}
+              >
+                {paramLabels[param] ?? param}
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+                {values.map((v) => {
+                  const isSelected = sel.has(v)
+                  return (
+                    <Chip
+                      key={String(v)}
+                      label={String(v)}
+                      size="small"
+                      onClick={() => onChange(param, v)}
+                      color={isSelected ? 'primary' : 'default'}
+                      variant={isSelected ? 'filled' : 'outlined'}
+                      sx={{
+                        fontFamily: 'IBM Plex Mono, monospace',
+                        fontSize: '0.75rem',
+                        cursor: 'pointer',
+                        transition: 'all 0.12s',
+                        opacity: isSelected ? 1 : 0.6,
+                      }}
+                    />
+                  )
+                })}
+              </Box>
+            </Box>
+          )
+        })}
+      </Box>
+      {trialCount > 50 && (
+        <Typography variant="caption" color="warning.main" sx={{ display: 'block', mt: 1 }}>
+          Capped at 50 trials. Deselect some values to reduce combinations.
+        </Typography>
+      )}
+    </Box>
+  )
 }
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
@@ -334,13 +420,13 @@ function ResultsTable({ results, objective }: { results: TrialResult[]; objectiv
 // ── Walk-Forward Panel — Phase 28 ─────────────────────────────────────────────
 
 interface WFOPanelProps {
-  strategy:  string
-  symbols:   string
-  gridJson:  string
-  objective: string
+  strategy:   string
+  symbols:    string
+  paramGrid:  Record<string, unknown[]>
+  objective:  string
 }
 
-function WFOPanel({ strategy, symbols, gridJson, objective }: WFOPanelProps) {
+function WFOPanel({ strategy, symbols, paramGrid, objective }: WFOPanelProps) {
   const [nWindows,   setNWindows]   = useState(5)
   const [trainRatio, setTrainRatio] = useState(0.7)
   const [running,    setRunning]    = useState(false)
@@ -348,11 +434,8 @@ function WFOPanel({ strategy, symbols, gridJson, objective }: WFOPanelProps) {
   const [err,        setErr]        = useState<string | null>(null)
 
   async function handleRun() {
-    let paramGrid: Record<string, unknown[]>
-    try {
-      paramGrid = JSON.parse(gridJson)
-    } catch {
-      setErr('Fix the param grid JSON first')
+    if (!Object.keys(paramGrid).length) {
+      setErr('Select at least one parameter value above first')
       return
     }
     const symList = symbols.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean)
@@ -489,40 +572,61 @@ function WFOPanel({ strategy, symbols, gridJson, objective }: WFOPanelProps) {
 
 export default function OptimizePage() {
   // Config state
-  const [strategy,   setStrategy]   = useState('mean_reversion')
-  const [symbols,    setSymbols]    = useState('SPY')
-  const [objective,  setObjective]  = useState('sharpe')
-  const [gridJson,   setGridJson]   = useState('')
-  const [gridError,  setGridError]  = useState<string | null>(null)
+  const [strategy,    setStrategy]    = useState('mean_reversion')
+  const [symbols,     setSymbols]     = useState('SPY')
+  const [objective,   setObjective]   = useState('sharpe')
+  // Param builder: candidates = all possible values (from backend); selections = chosen subset
+  const [candidates,  setCandidates]  = useState<Record<string, unknown[]>>({})
+  const [selections,  setSelections]  = useState<Record<string, Set<unknown>>>({})
 
   // Run state
-  const [submitting, setSubmitting] = useState(false)
-  const [submitErr,  setSubmitErr]  = useState<string | null>(null)
-  const [currentRun, setCurrentRun] = useState<OptimizationRunDetail | null>(null)
-  const [recentRuns, setRecentRuns] = useState<OptimizationRunSummary[]>([])
+  const [submitting,  setSubmitting]  = useState(false)
+  const [submitErr,   setSubmitErr]   = useState<string | null>(null)
+  const [currentRun,  setCurrentRun]  = useState<OptimizationRunDetail | null>(null)
+  const [recentRuns,  setRecentRuns]  = useState<OptimizationRunSummary[]>([])
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  // Load default param grids from backend on mount
-  useEffect(() => {
+  // Load candidates + default selections from backend
+  function loadParamSpace(strat: string) {
     api.optimize.getDefaultParams().then((spaces) => {
-      if (spaces[strategy]) {
-        setGridJson(gridToJson(spaces[strategy]))
+      const space = spaces[strat] ?? {}
+      setCandidates(space)
+      // Default: all values selected
+      const defaultSel: Record<string, Set<unknown>> = {}
+      for (const [k, vals] of Object.entries(space)) {
+        defaultSel[k] = new Set(vals)
       }
-    }).catch(() => {/* ignore, keep blank */})
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+      setSelections(defaultSel)
+    }).catch(() => {})
+  }
 
-  // When strategy changes, load its default grid
+  useEffect(() => { loadParamSpace(strategy) }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When strategy changes, reload param space + default symbols
   useEffect(() => {
     setSymbols(DEFAULT_SYMBOLS[strategy] ?? 'SPY')
-    api.optimize.getDefaultParams().then((spaces) => {
-      if (spaces[strategy]) setGridJson(gridToJson(spaces[strategy]))
-    }).catch(() => {})
+    loadParamSpace(strategy)
   }, [strategy])
 
   // Load recent runs on mount
   useEffect(() => {
     api.optimize.list().then(setRecentRuns).catch(() => {})
   }, [])
+
+  // Toggle one value in selections
+  function handleParamToggle(param: string, value: unknown) {
+    setSelections((prev) => {
+      const next = { ...prev }
+      const sel  = new Set(prev[param] ?? [])
+      if (sel.has(value)) {
+        if (sel.size > 1) sel.delete(value)  // keep at least one value selected
+      } else {
+        sel.add(value)
+      }
+      next[param] = sel
+      return next
+    })
+  }
 
   // Poll active run for progress
   const pollRun = useCallback((runId: number) => {
@@ -546,30 +650,21 @@ export default function OptimizePage() {
     if (currentRun) api.optimize.get(currentRun.id).then(setCurrentRun).catch(() => {})
   }
 
-  function parseGrid(): Record<string, unknown[]> | null {
-    try {
-      const parsed = JSON.parse(gridJson)
-      if (typeof parsed !== 'object' || Array.isArray(parsed)) {
-        setGridError('Must be a JSON object: {"param": [v1, v2, ...]}')
-        return null
-      }
-      for (const [k, v] of Object.entries(parsed)) {
-        if (!Array.isArray(v)) {
-          setGridError(`"${k}" must be an array of values`)
-          return null
-        }
-      }
-      setGridError(null)
-      return parsed as Record<string, unknown[]>
-    } catch (e) {
-      setGridError(`Invalid JSON: ${(e as Error).message}`)
-      return null
+  // Build param grid from selections
+  function buildParamGrid(): Record<string, unknown[]> {
+    const grid: Record<string, unknown[]> = {}
+    for (const [k, sel] of Object.entries(selections)) {
+      grid[k] = Array.from(sel)
     }
+    return grid
   }
 
   async function handleRun() {
-    const paramGrid = parseGrid()
-    if (!paramGrid) return
+    const paramGrid = buildParamGrid()
+    if (!Object.keys(paramGrid).length) {
+      setSubmitErr('No parameters selected')
+      return
+    }
 
     const symList = symbols.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean)
     if (!symList.length) {
@@ -668,21 +763,15 @@ export default function OptimizePage() {
             />
           </Grid>
 
-          {/* Param grid JSON editor */}
+          {/* Param builder — visual chip selector */}
           <Grid item xs={12}>
-            <TextField
-              label='Param grid (JSON) — e.g. {"window": [10, 20, 30]}'
-              value={gridJson}
-              onChange={(e) => setGridJson(e.target.value)}
-              multiline
-              minRows={4}
-              maxRows={10}
-              fullWidth
-              size="small"
-              error={!!gridError}
-              helperText={gridError ?? 'Each key maps to an array of values to try. Max 50 combinations.'}
-              inputProps={{ style: { fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem' } }}
-            />
+            <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
+              <ParamBuilder
+                candidates={candidates}
+                selections={selections}
+                onChange={handleParamToggle}
+              />
+            </Paper>
           </Grid>
 
           {/* Run button */}
@@ -730,7 +819,7 @@ export default function OptimizePage() {
       ) : null}
 
       {/* ── Walk-Forward Optimization — Phase 28 ───────────────────────── */}
-      <WFOPanel strategy={strategy} symbols={symbols} gridJson={gridJson} objective={objective} />
+      <WFOPanel strategy={strategy} symbols={symbols} paramGrid={buildParamGrid()} objective={objective} />
 
       {/* ── Recent runs history ─────────────────────────────────────────── */}
       {recentRuns.length > 0 && (

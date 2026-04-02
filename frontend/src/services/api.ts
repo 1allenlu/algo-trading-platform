@@ -971,6 +971,92 @@ export interface JournalListResponse {
   count:   number
 }
 
+// ── Phase 42: Reinforcement Learning Agent ────────────────────────────────────
+
+export interface RLPrediction {
+  symbol:      string
+  action:      'buy' | 'hold' | 'sell'
+  q_values:    [number, number, number]   // [hold, buy, sell]
+  state:       {
+    rsi_bucket:       number
+    momentum_bucket:  number
+    position:         number
+  }
+  confidence:  number
+  bars_used:   number
+  note?:       string
+}
+
+export interface RLStatus {
+  symbol:   string
+  trained:  boolean
+  size_kb?: number
+  modified?: number
+}
+
+export interface RLTrainResponse {
+  symbol:     string
+  status:     string
+  n_episodes: number
+  message:    string
+}
+
+// ── Phase 41: Pattern Recognition ────────────────────────────────────────────
+
+export interface PatternSignal {
+  date:    string   // ISO date YYYY-MM-DD
+  pattern: string   // e.g. "Doji", "Hammer", "Bullish Engulfing"
+  signal:  'bullish' | 'bearish' | 'neutral'
+  close:   number
+}
+
+export interface PatternResponse {
+  symbol:       string
+  patterns:     PatternSignal[]
+  count:        number
+  bars_scanned: number
+}
+
+// ── Phase 40: Fundamentals ────────────────────────────────────────────────────
+
+export interface FundamentalsData {
+  symbol:            string
+  company_name:      string | null
+  sector:            string | null
+  industry:          string | null
+  // Valuation
+  pe_ratio:          number | null
+  forward_pe:        number | null
+  pb_ratio:          number | null
+  ps_ratio:          number | null
+  peg_ratio:         number | null
+  ev_ebitda:         number | null
+  // Earnings
+  eps_ttm:           number | null
+  eps_forward:       number | null
+  // Income
+  revenue_ttm:       number | null
+  gross_profit:      number | null
+  ebitda:            number | null
+  profit_margin:     number | null
+  revenue_growth:    number | null
+  earnings_growth:   number | null
+  // Size
+  market_cap:        number | null
+  enterprise_value:  number | null
+  shares_outstanding: number | null
+  // Returns / risk
+  dividend_yield:    number | null
+  beta:              number | null
+  // 52-week range
+  week52_high:       number | null
+  week52_low:        number | null
+  // Analyst
+  target_mean_price: number | null
+  analyst_count:     number | null
+  recommendation:    string | null
+}
+
 // ── API functions ─────────────────────────────────────────────────────────────
 
 export const api = {
@@ -1366,5 +1452,33 @@ export const api = {
 
     delete: (id: number): Promise<{ message: string }> =>
       apiClient.delete<{ message: string }>(`/api/journal/${id}`).then((r) => r.data),
+  },
+
+  // ── Phase 40: Fundamentals ──────────────────────────────────────────────────
+  fundamentals: {
+    get: (symbol: string): Promise<FundamentalsData> =>
+      apiClient.get<FundamentalsData>(`/api/fundamentals/${symbol}`).then((r) => r.data),
+  },
+
+  // ── Phase 41: Pattern Recognition ──────────────────────────────────────────
+  patterns: {
+    get: (symbol: string, limit = 252): Promise<PatternResponse> =>
+      apiClient
+        .get<PatternResponse>(`/api/patterns/${symbol}`, { params: { limit } })
+        .then((r) => r.data),
+  },
+
+  // ── Phase 42: Reinforcement Learning Agent ──────────────────────────────────
+  rl: {
+    train: (symbol: string, nEpisodes = 50): Promise<RLTrainResponse> =>
+      apiClient
+        .post<RLTrainResponse>(`/api/rl/train/${symbol}`, null, { params: { n_episodes: nEpisodes } })
+        .then((r) => r.data),
+
+    predict: (symbol: string): Promise<RLPrediction> =>
+      apiClient.get<RLPrediction>(`/api/rl/predict/${symbol}`).then((r) => r.data),
+
+    status: (symbol: string): Promise<RLStatus> =>
+      apiClient.get<RLStatus>(`/api/rl/status/${symbol}`).then((r) => r.data),
   },
 }

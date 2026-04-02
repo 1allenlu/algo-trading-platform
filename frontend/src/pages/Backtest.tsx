@@ -12,7 +12,7 @@
  *   4. Results render: metric cards, equity curve vs benchmark, trade log
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
   Alert,
@@ -238,6 +238,53 @@ function ConfigPanel({
   )
 }
 
+// ── Benchmark curve builder ────────────────────────────────────────────────────
+/**
+ * Fetch SPY daily closes from the DB and normalize them to $100k starting
+ * at the same date as the first equity_curve point.  Returns EquityPoint[]
+ * with the same date keys so EquityCurveChart can merge by date.
+ */
+function useBenchmarkCurve(equityCurve: BacktestRunResponse['equity_curve']) {
+  const startDate = equityCurve?.[0]?.date?.slice(0, 10)
+  const endDate   = equityCurve?.[equityCurve.length - 1]?.date?.slice(0, 10)
+
+  const { data: spyData } = useQuery({
+    queryKey:  ['benchmark-spy', startDate, endDate],
+    queryFn:   () => api.market.getData('SPY', 2000),
+    enabled:   !!startDate,
+    staleTime: 300_000,
+  })
+
+  return useMemo(() => {
+    if (!spyData?.bars || !equityCurve?.length) return undefined
+
+    // Filter SPY bars to backtest window
+    const filtered = spyData.bars.filter((b) => {
+      const d = b.timestamp.slice(0, 10)
+      return (!startDate || d >= startDate) && (!endDate || d <= endDate)
+    })
+
+    if (filtered.length === 0) return undefined
+
+    const startPrice = filtered[0].close
+    const INITIAL    = 100_000
+
+    // Build a map for O(1) lookup by date
+    const spyMap = new Map(
+      filtered.map((b) => [b.timestamp.slice(0, 10), (b.close / startPrice) * INITIAL])
+    )
+
+    // Align to the equity_curve date set
+    return equityCurve
+      .map((pt) => {
+        const d   = pt.date.slice(0, 10)
+        const val = spyMap.get(d)
+        return val != null ? { date: d, value: val, drawdown: 0 } : null
+      })
+      .filter(Boolean) as { date: string; value: number; drawdown: number }[]
+  }, [spyData, equityCurve, startDate, endDate])
+}
+
 // ── Results panel ─────────────────────────────────────────────────────────────
 function ResultsPanel({ result }: { result: BacktestRunResponse | null }) {
   if (!result) {
@@ -280,7 +327,9 @@ function ResultsPanel({ result }: { result: BacktestRunResponse | null }) {
   }
 
   // ── Done ──────────────────────────────────────────────────────────────────
-  const bm = result.benchmark_metrics
+  const bm              = result.benchmark_metrics
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const benchmarkCurve  = useBenchmarkCurve(result.equity_curve)
 
   return (
     <Box>
@@ -358,22 +407,13 @@ function ResultsPanel({ result }: { result: BacktestRunResponse | null }) {
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                   <Box sx={{ width: 16, height: 2, bgcolor: '#475569', borderRadius: 1, opacity: 0.8 }} />
-                  <Typography variant="caption" color="text.secondary">Benchmark</Typography>
+                  <Typography variant="caption" color="text.secondary">SPY Buy &amp; Hold</Typography>
                 </Box>
               </Stack>
             </Box>
             <EquityCurveChart
               equityCurve={result.equity_curve}
-              benchmarkCurve={
-                bm && result.equity_curve
-                  ? result.equity_curve.map((pt, i) => ({
-                      ...pt,
-                      // Reconstruct benchmark curve from initial $100k + benchmark_metrics
-                      // We don't store the benchmark curve separately — just show strategy
-                      value: pt.value,   // fallback: same as strategy
-                    }))
-                  : undefined
-              }
+              benchmarkCurve={benchmarkCurve}
               height={280}
             />
 

@@ -4,7 +4,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter } from 'react-router-dom'
 import { ThemeProvider, CssBaseline } from '@mui/material'
 import App from './App'
-import { theme } from './theme'
+import { createAppTheme } from './theme'
+import { ThemeContextProvider, useThemeMode } from './contexts/ThemeContext'
 
 /** Top-level error boundary — shows error details instead of blank screen */
 class RootErrorBoundary extends Component<
@@ -67,15 +68,30 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
   })
 }
 
+/**
+ * Inner provider that reads ThemeContext and builds the MUI theme dynamically.
+ * Must be a child of ThemeContextProvider so useThemeMode() works.
+ */
+function ThemedApp() {
+  const { mode } = useThemeMode()
+  const muiTheme  = createAppTheme(mode)
+
+  return (
+    <ThemeProvider theme={muiTheme}>
+      <CssBaseline />
+      <App />
+    </ThemeProvider>
+  )
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <RootErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
-          <ThemeProvider theme={theme}>
-            <CssBaseline />   {/* MUI global CSS reset + dark background */}
-            <App />
-          </ThemeProvider>
+          <ThemeContextProvider>
+            <ThemedApp />
+          </ThemeContextProvider>
         </BrowserRouter>
       </QueryClientProvider>
     </RootErrorBoundary>

@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
-import { Box } from '@mui/material'
+import { Box, useMediaQuery, useTheme } from '@mui/material'
 import { Route, Routes } from 'react-router-dom'
 import Sidebar from '@/components/layout/Sidebar'
 import TopBar from '@/components/layout/TopBar'
@@ -21,6 +22,9 @@ import OptionsPage from '@/pages/Options'
 import CryptoPage from '@/pages/Crypto'
 import EarningsPage from '@/pages/Earnings'
 import JournalPage from '@/pages/Journal'
+import FundamentalsPage from '@/pages/Fundamentals'
+import PatternsPage from '@/pages/Patterns'
+import RLAgentPage from '@/pages/RLAgent'
 import LoginPage from '@/pages/Login'
 import IntroPage from '@/pages/Intro'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
@@ -32,10 +36,18 @@ const SIDEBAR_WIDTH = 240
  * Wraps content with the permanent sidebar + top bar.
  */
 function AppLayout() {
+  const theme        = useTheme()
+  const isMobile     = useMediaQuery(theme.breakpoints.down('md'))
+  const [mobileOpen, setMobileOpen] = useState(false)
+
   return (
     <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
-      {/* Permanent sidebar */}
-      <Sidebar width={SIDEBAR_WIDTH} />
+      {/* Sidebar — permanent on desktop, temporary drawer on mobile */}
+      <Sidebar
+        width={SIDEBAR_WIDTH}
+        mobileOpen={mobileOpen}
+        onMobileClose={() => setMobileOpen(false)}
+      />
 
       {/* Main area: top bar + scrollable page content */}
       <Box
@@ -44,9 +56,11 @@ function AppLayout() {
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
+          // On mobile the sidebar is overlaid (temporary), so no left margin needed
+          width: { xs: '100%', md: `calc(100% - ${SIDEBAR_WIDTH}px)` },
         }}
       >
-        <TopBar />
+        <TopBar onMenuClick={isMobile ? () => setMobileOpen(true) : undefined} />
 
         <Box
           component="main"
@@ -74,7 +88,10 @@ function AppLayout() {
             <Route path="/news"       element={<NewsPage />} />
             <Route path="/crypto"     element={<CryptoPage />} />
             <Route path="/earnings"   element={<EarningsPage />} />
-            <Route path="/journal"    element={<JournalPage />} />
+            <Route path="/journal"       element={<JournalPage />} />
+            <Route path="/fundamentals" element={<FundamentalsPage />} />
+            <Route path="/patterns"     element={<PatternsPage />} />
+            <Route path="/rl"           element={<RLAgentPage />} />
             <Route path="/settings"   element={<Settings />} />
           </Routes>
         </Box>

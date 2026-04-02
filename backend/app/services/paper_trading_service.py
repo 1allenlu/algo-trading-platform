@@ -66,9 +66,22 @@ async def _get_price(symbol: str, session: AsyncSession) -> float:
         .order_by(MarketData.timestamp.desc())
         .limit(1)
     )
-    if row is None:
-        raise ValueError(f"No price data for {symbol}. Run 'make ingest' first.")
-    return float(row)
+    if row is not None:
+        return float(row)
+
+    # Last resort: fetch latest close from yfinance on-demand (no ingest required)
+    try:
+        import yfinance as yf
+        ticker = yf.Ticker(symbol.upper())
+        hist = ticker.history(period="2d")
+        if not hist.empty:
+            price = float(hist["Close"].iloc[-1])
+            logger.info(f"[paper] yfinance on-demand price for {symbol}: {price}")
+            return price
+    except Exception as yf_exc:
+        logger.warning(f"[paper] yfinance fallback failed for {symbol}: {yf_exc}")
+
+    raise ValueError(f"No price data for {symbol}. Try a symbol with data in the DB or configure Alpaca keys.")
 
 
 # ── Account helpers ───────────────────────────────────────────────────────────

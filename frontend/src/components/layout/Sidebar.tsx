@@ -1,4 +1,4 @@
-import { Box, Drawer, Tooltip, Typography } from '@mui/material'
+import { Box, Drawer, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material'
 import {
   Assessment as BacktestIcon,
   AutoMode as AutoTradeIcon,
@@ -19,12 +19,17 @@ import {
   Layers as OptionsIcon,
   CurrencyBitcoin as CryptoIcon,
   EventNote as EarningsIcon,
+  BarChart as FundamentalsIcon,
+  Grain as PatternIcon,
+  AutoFixHigh as RLIcon,
 } from '@mui/icons-material'
 import { useLocation, useNavigate } from 'react-router-dom'
 import type { ReactNode } from 'react'
 
 interface SidebarProps {
-  width: number
+  width:         number
+  mobileOpen:    boolean
+  onMobileClose: () => void
 }
 
 interface NavItem {
@@ -58,7 +63,10 @@ const NAV_SECTIONS: NavSection[] = [
       { label: 'Risk',       path: '/risk',       icon: <RiskIcon        sx={{ fontSize: 17 }} /> },
       { label: 'Analytics',  path: '/analytics',  icon: <AnalyticsIcon   sx={{ fontSize: 17 }} /> },
       { label: 'Signals',    path: '/signals',    icon: <SignalsIcon     sx={{ fontSize: 17 }} /> },
-      { label: 'Earnings',   path: '/earnings',   icon: <EarningsIcon    sx={{ fontSize: 17 }} /> },
+      { label: 'Earnings',      path: '/earnings',      icon: <EarningsIcon      sx={{ fontSize: 17 }} /> },
+      { label: 'Fundamentals', path: '/fundamentals', icon: <FundamentalsIcon  sx={{ fontSize: 17 }} /> },
+      { label: 'Patterns',    path: '/patterns',    icon: <PatternIcon sx={{ fontSize: 17 }} /> },
+      { label: 'RL Agent',   path: '/rl',          icon: <RLIcon      sx={{ fontSize: 17 }} /> },
     ],
   },
   {
@@ -79,24 +87,22 @@ const NAV_SECTIONS: NavSection[] = [
   },
 ]
 
-export default function Sidebar({ width }: SidebarProps) {
+function SidebarContent({ width, onNavigate }: { width: number; onNavigate?: () => void }) {
   const location = useLocation()
-  const navigate = useNavigate()
+  const navigate  = useNavigate()
+  const theme     = useTheme()
+  const isDark    = theme.palette.mode === 'dark'
 
   return (
-    <Drawer
-      variant="permanent"
+    <Box
       sx={{
         width,
-        flexShrink: 0,
-        '& .MuiDrawer-paper': {
-          width,
-          boxSizing: 'border-box',
-          bgcolor: '#0B0E14',
-          borderRight: '1px solid #1C2030',
-          display: 'flex',
-          flexDirection: 'column',
-        },
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        bgcolor: 'background.paper',
+        borderRight: '1px solid',
+        borderColor: 'divider',
       }}
     >
       {/* ── Logo ── */}
@@ -108,7 +114,8 @@ export default function Sidebar({ width }: SidebarProps) {
           display: 'flex',
           alignItems: 'center',
           gap: 1.25,
-          borderBottom: '1px solid #1C2030',
+          borderBottom: '1px solid',
+          borderColor: 'divider',
         }}
       >
         <Box
@@ -132,7 +139,7 @@ export default function Sidebar({ width }: SidebarProps) {
               fontSize: '0.85rem',
               fontWeight: 600,
               letterSpacing: '0.04em',
-              color: '#E8EAED',
+              color: 'text.primary',
               lineHeight: 1,
             }}
           >
@@ -142,12 +149,12 @@ export default function Sidebar({ width }: SidebarProps) {
             sx={{
               fontFamily: '"IBM Plex Mono", monospace',
               fontSize: '0.6rem',
-              color: '#4B5563',
+              color: 'text.disabled',
               letterSpacing: '0.06em',
               mt: '2px',
             }}
           >
-            v0.36.0
+            v0.42.0
           </Typography>
         </Box>
       </Box>
@@ -156,7 +163,6 @@ export default function Sidebar({ width }: SidebarProps) {
       <Box sx={{ flex: 1, overflowY: 'auto', py: 1.5 }}>
         {NAV_SECTIONS.map((section) => (
           <Box key={section.heading} sx={{ mb: 0.5 }}>
-            {/* Section heading */}
             <Typography
               sx={{
                 px: 2.5,
@@ -164,7 +170,7 @@ export default function Sidebar({ width }: SidebarProps) {
                 fontSize: '0.6rem',
                 fontWeight: 600,
                 letterSpacing: '0.12em',
-                color: '#374151',
+                color: 'text.disabled',
                 textTransform: 'uppercase',
                 fontFamily: '"IBM Plex Mono", monospace',
               }}
@@ -172,7 +178,6 @@ export default function Sidebar({ width }: SidebarProps) {
               {section.heading}
             </Typography>
 
-            {/* Items */}
             {section.items.map(({ label, path, icon }) => {
               const isActive =
                 location.pathname === path ||
@@ -181,7 +186,10 @@ export default function Sidebar({ width }: SidebarProps) {
               return (
                 <Tooltip key={path} title="" placement="right">
                   <Box
-                    onClick={() => navigate(path)}
+                    onClick={() => {
+                      navigate(path)
+                      onNavigate?.()   // close mobile drawer after nav
+                    }}
                     sx={{
                       position: 'relative',
                       display: 'flex',
@@ -194,7 +202,6 @@ export default function Sidebar({ width }: SidebarProps) {
                       cursor: 'pointer',
                       transition: 'background 0.12s',
                       bgcolor: isActive ? 'rgba(74,158,255,0.08)' : 'transparent',
-                      // Left accent bar
                       '&::before': isActive
                         ? {
                             content: '""',
@@ -210,13 +217,15 @@ export default function Sidebar({ width }: SidebarProps) {
                       '&:hover': {
                         bgcolor: isActive
                           ? 'rgba(74,158,255,0.11)'
-                          : 'rgba(255,255,255,0.04)',
+                          : isDark
+                            ? 'rgba(255,255,255,0.04)'
+                            : 'rgba(0,0,0,0.04)',
                       },
                     }}
                   >
                     <Box
                       sx={{
-                        color: isActive ? '#4A9EFF' : '#6B7280',
+                        color: isActive ? '#4A9EFF' : 'text.secondary',
                         display: 'flex',
                         alignItems: 'center',
                         flexShrink: 0,
@@ -228,7 +237,7 @@ export default function Sidebar({ width }: SidebarProps) {
                       sx={{
                         fontSize: '0.8125rem',
                         fontWeight: isActive ? 500 : 400,
-                        color: isActive ? '#E8EAED' : '#9CA3AF',
+                        color: isActive ? 'text.primary' : 'text.secondary',
                         letterSpacing: '0.01em',
                         lineHeight: 1,
                         userSelect: 'none',
@@ -245,24 +254,52 @@ export default function Sidebar({ width }: SidebarProps) {
       </Box>
 
       {/* ── Footer ── */}
-      <Box
-        sx={{
-          px: 2.5,
-          py: 1.5,
-          borderTop: '1px solid #1C2030',
-        }}
-      >
+      <Box sx={{ px: 2.5, py: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
         <Typography
           sx={{
             fontFamily: '"IBM Plex Mono", monospace',
             fontSize: '0.58rem',
-            color: '#2D3548',
+            color: 'text.disabled',
             letterSpacing: '0.05em',
           }}
         >
           QUANT · ML · LIVE
         </Typography>
       </Box>
+    </Box>
+  )
+}
+
+export default function Sidebar({ width, mobileOpen, onMobileClose }: SidebarProps) {
+  const theme    = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+
+  if (isMobile) {
+    return (
+      <Drawer
+        variant="temporary"
+        open={mobileOpen}
+        onClose={onMobileClose}
+        ModalProps={{ keepMounted: true }}   // better mobile perf
+        sx={{
+          '& .MuiDrawer-paper': { width, boxSizing: 'border-box', border: 'none' },
+        }}
+      >
+        <SidebarContent width={width} onNavigate={onMobileClose} />
+      </Drawer>
+    )
+  }
+
+  return (
+    <Drawer
+      variant="permanent"
+      sx={{
+        width,
+        flexShrink: 0,
+        '& .MuiDrawer-paper': { width, boxSizing: 'border-box', border: 'none' },
+      }}
+    >
+      <SidebarContent width={width} />
     </Drawer>
   )
 }

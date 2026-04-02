@@ -16,7 +16,10 @@ import {
 } from '@mui/material'
 import {
   Circle as DotIcon,
+  DarkMode as DarkModeIcon,
+  LightMode as LightModeIcon,
   Logout as LogoutIcon,
+  Menu as MenuIcon,
   NotificationsOutlined as BellIcon,
   Refresh as RefreshIcon,
 } from '@mui/icons-material'
@@ -27,9 +30,10 @@ import { api } from '@/services/api'
 import { useLivePrices } from '@/hooks/useLivePrices'
 import { useAlerts } from '@/hooks/useAlerts'
 import { useAuth } from '@/contexts/AuthContext'
+import { useThemeMode } from '@/contexts/ThemeContext'
 import TickerBar from '@/components/layout/TickerBar'
 
-export default function TopBar() {
+export default function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
   const { data: health, refetch, isFetching } = useQuery({
     queryKey: ['health'],
     queryFn: api.health.check,
@@ -40,6 +44,7 @@ export default function TopBar() {
   const { alerts, unreadCount, clearUnread } = useAlerts()
   const navigate = useNavigate()
   const { user, authEnabled, logout } = useAuth()
+  const { mode, toggleTheme } = useThemeMode()
 
   // Bell popover state
   const bellRef = useRef<HTMLButtonElement>(null)
@@ -66,6 +71,15 @@ export default function TopBar() {
       sx={{ bgcolor: 'background.paper', borderBottom: '1px solid', borderColor: 'divider' }}
     >
       <Toolbar variant="dense" sx={{ gap: 1.5 }}>
+        {/* Hamburger — mobile only */}
+        <IconButton
+          size="small"
+          onClick={onMenuClick}
+          sx={{ display: { md: 'none' }, color: 'text.secondary', mr: 0.5 }}
+        >
+          <MenuIcon fontSize="small" />
+        </IconButton>
+
         {/* Live price ticker (Phase 7) */}
         <TickerBar prices={prices} status={wsStatus} />
 
@@ -115,6 +129,16 @@ export default function TopBar() {
         <Tooltip title="Refresh health check">
           <IconButton size="small" onClick={() => refetch()}>
             <RefreshIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+
+        {/* Theme toggle */}
+        <Tooltip title={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+          <IconButton size="small" onClick={toggleTheme} sx={{ color: 'text.secondary' }}>
+            {mode === 'dark'
+              ? <LightModeIcon fontSize="small" />
+              : <DarkModeIcon  fontSize="small" />
+            }
           </IconButton>
         </Tooltip>
 
