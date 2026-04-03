@@ -62,6 +62,7 @@ import { api, type MLModelInfo } from '@/services/api'
 import FeatureImportanceChart from '@/components/charts/FeatureImportanceChart'
 import SHAPWaterfallChart from '@/components/charts/SHAPWaterfallChart'
 import SentimentGauge from '@/components/charts/SentimentGauge'
+import InfoTooltip from '@/components/common/InfoTooltip'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const SYMBOLS = ['SPY', 'QQQ', 'AAPL', 'MSFT', 'NVDA'] as const
@@ -112,9 +113,24 @@ function ModelCard({ model }: { model: MLModelInfo }) {
 
         {/* Metric row */}
         <Box sx={{ display: 'flex', justifyContent: 'space-around' }}>
-          <MetricBadge label="Accuracy"         value={model.accuracy}  colorize />
-          <MetricBadge label="Balance Score"    value={model.f1_score}  colorize />
-          <MetricBadge label="Prediction Score" value={model.roc_auc}   colorize />
+          <Box sx={{ textAlign: 'center' }}>
+            <MetricBadge label="Accuracy" value={model.accuracy} colorize />
+            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+              <InfoTooltip text="What % of UP/DOWN predictions were correct. 50% = random guessing, 55%+ is meaningful." size={11} />
+            </Box>
+          </Box>
+          <Box sx={{ textAlign: 'center' }}>
+            <MetricBadge label="Balance Score" value={model.f1_score} colorize />
+            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+              <InfoTooltip text="Balances accuracy between UP and DOWN predictions. Important when one direction is rarer than the other." size={11} />
+            </Box>
+          </Box>
+          <Box sx={{ textAlign: 'center' }}>
+            <MetricBadge label="Prediction Score" value={model.roc_auc} colorize />
+            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+              <InfoTooltip text="How well the model separates UP from DOWN days. 0.5 = random, 1.0 = perfect. Above 0.55 is useful." size={11} />
+            </Box>
+          </Box>
         </Box>
 
         <Divider sx={{ my: 1.5 }} />

@@ -10,6 +10,7 @@ import { useState } from 'react'
 import {
   Alert,
   Box,
+  Button,
   Card,
   CardContent,
   CardHeader,
@@ -20,13 +21,23 @@ import {
   ToggleButtonGroup,
   Typography,
 } from '@mui/material'
-import { TrendingDown, TrendingUp } from '@mui/icons-material'
+import {
+  TrendingDown,
+  TrendingUp,
+  CandlestickChart as TradeIcon,
+  Assessment as BacktestIcon,
+  Search as ScannerIcon,
+  SignalCellularAlt as SignalsIcon,
+  Psychology as MLIcon,
+} from '@mui/icons-material'
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { api } from '@/services/api'
 import PriceChart from '@/components/charts/PriceChart'
 import CandlestickChart from '@/components/charts/CandlestickChart'
 import { useLivePrices } from '@/hooks/useLivePrices'
 import WatchlistWidget from '@/components/dashboard/WatchlistWidget'
+import GettingStarted from '@/components/dashboard/GettingStarted'
 
 // ── Config ────────────────────────────────────────────────────────────────────
 const SYMBOLS = ['SPY', 'QQQ', 'NVDA', 'AAPL'] as const
@@ -130,6 +141,109 @@ function SymbolCard({ symbol, chartType, dailyLimit, intraday }: SymbolCardProps
   )
 }
 
+// ── Portfolio snapshot strip ──────────────────────────────────────────────────
+function PortfolioSnapshot() {
+  const navigate = useNavigate()
+  const { data, isLoading } = useQuery({
+    queryKey:  ['analytics', 'summary'],
+    queryFn:   () => api.analytics.getSummary(),
+    staleTime: 60_000,
+    retry:     false,
+  })
+
+  const QUICK_ACTIONS = [
+    { label: 'Paper Trade',  icon: <TradeIcon sx={{ fontSize: 16 }} />,    path: '/trading',  color: '#00C896' },
+    { label: 'Backtest',     icon: <BacktestIcon sx={{ fontSize: 16 }} />, path: '/backtest', color: '#4A9EFF' },
+    { label: 'Scan Markets', icon: <ScannerIcon sx={{ fontSize: 16 }} />,  path: '/scanner',  color: '#F59E0B' },
+    { label: 'Signals',      icon: <SignalsIcon sx={{ fontSize: 16 }} />,  path: '/signals',  color: '#8B5CF6' },
+    { label: 'AI Models',    icon: <MLIcon sx={{ fontSize: 16 }} />,       path: '/ml',       color: '#EC4899' },
+  ]
+
+  return (
+    <Card sx={{ mb: 3, border: '1px solid', borderColor: 'divider' }}>
+      <CardContent sx={{ pb: '16px !important' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2 }}>
+
+          {/* Portfolio stats */}
+          <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', alignItems: 'center' }}>
+            {isLoading ? (
+              <Skeleton width={280} height={40} />
+            ) : data ? (
+              <>
+                <Box>
+                  <Typography variant="caption" color="text.disabled" display="block">Portfolio Value</Typography>
+                  <Typography variant="h5" fontWeight={700} fontFamily="IBM Plex Mono, monospace">
+                    ${data.equity.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.disabled" display="block">Total Return</Typography>
+                  <Typography
+                    variant="h6"
+                    fontWeight={700}
+                    fontFamily="IBM Plex Mono, monospace"
+                    sx={{ color: data.total_return >= 0 ? '#00C896' : '#FF6B6B' }}
+                  >
+                    {data.total_return >= 0 ? '+' : ''}{(data.total_return * 100).toFixed(2)}%
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.disabled" display="block">Trades</Typography>
+                  <Typography variant="h6" fontWeight={700} fontFamily="IBM Plex Mono, monospace">
+                    {data.n_trades}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.disabled" display="block">Win Rate</Typography>
+                  <Typography
+                    variant="h6"
+                    fontWeight={700}
+                    fontFamily="IBM Plex Mono, monospace"
+                    sx={{ color: data.win_rate >= 0.5 ? '#00C896' : '#FF6B6B' }}
+                  >
+                    {(data.win_rate * 100).toFixed(0)}%
+                  </Typography>
+                </Box>
+              </>
+            ) : (
+              <Box>
+                <Typography variant="body2" color="text.secondary">No trading history yet.</Typography>
+                <Typography variant="caption" color="text.disabled">Place a paper trade to see your portfolio stats here.</Typography>
+              </Box>
+            )}
+          </Box>
+
+          {/* Quick actions */}
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+            {QUICK_ACTIONS.map(({ label, icon, path, color }) => (
+              <Button
+                key={label}
+                size="small"
+                startIcon={icon}
+                onClick={() => navigate(path)}
+                sx={{
+                  textTransform: 'none',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  color,
+                  borderColor: `${color}44`,
+                  border: '1px solid',
+                  borderRadius: 1.5,
+                  px: 1.5,
+                  py: 0.5,
+                  '&:hover': { bgcolor: `${color}12`, borderColor: color },
+                }}
+              >
+                {label}
+              </Button>
+            ))}
+          </Box>
+        </Box>
+      </CardContent>
+    </Card>
+  )
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const [tf, setTf]               = useState('1Y')
@@ -152,6 +266,12 @@ export default function Dashboard() {
 
   return (
     <Box>
+      {/* Onboarding checklist */}
+      <GettingStarted />
+
+      {/* Portfolio snapshot + quick actions */}
+      <PortfolioSnapshot />
+
       {/* Header row */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', mb: 3, flexWrap: 'wrap', gap: 1.5 }}>
         <Box>

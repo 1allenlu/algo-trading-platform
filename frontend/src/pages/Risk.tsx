@@ -48,6 +48,7 @@ import type { EfficientFrontierResponse, MonteCarloResponse, PortfolioRiskRespon
 import { api } from '@/services/api'
 import CorrelationHeatmap from '@/components/charts/CorrelationHeatmap'
 import EfficientFrontierChart from '@/components/charts/EfficientFrontierChart'
+import InfoTooltip from '@/components/common/InfoTooltip'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -55,15 +56,18 @@ const AVAILABLE_SYMBOLS = ['SPY', 'QQQ', 'AAPL', 'MSFT', 'NVDA', 'AMZN', 'GOOGL'
 
 // ── Metric card ───────────────────────────────────────────────────────────────
 function MetricCard({
-  label, value, subtitle, good,
-}: { label: string; value: string; subtitle?: string; good?: boolean }) {
+  label, value, subtitle, tooltip, good,
+}: { label: string; value: string; subtitle?: string; tooltip?: string; good?: boolean }) {
   const color = good === undefined ? 'text.primary' : good ? '#06d6a0' : '#ff6b6b'
   return (
     <Card sx={{ border: '1px solid', borderColor: 'divider', height: '100%' }}>
       <CardContent sx={{ p: 2.5, '&:last-child': { pb: 2.5 } }}>
-        <Typography variant="caption" color="text.disabled" display="block" mb={0.5}>
-          {label}
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+          <Typography variant="caption" color="text.disabled">
+            {label}
+          </Typography>
+          {tooltip && <InfoTooltip text={tooltip} />}
+        </Box>
         <Typography variant="h4" fontWeight={700} fontFamily="IBM Plex Mono, monospace"
           sx={{ color, lineHeight: 1.2 }}>
           {value}
@@ -368,6 +372,7 @@ export default function Risk() {
                 label="Max Expected 1-Day Loss"
                 value={`-${(riskData.portfolio_var_95 * 100).toFixed(2)}%`}
                 subtitle={`Worst-case: -${(riskData.portfolio_cvar_95 * 100).toFixed(2)}% · 95% confidence`}
+                tooltip="On a typical bad day (95% confidence), your portfolio won't lose more than this. The worst-case number is what you'd expect in the worst 5% of days."
                 good={riskData.portfolio_var_95 < 0.025}
               />
             </Grid>
@@ -376,22 +381,25 @@ export default function Risk() {
                 label="Yearly Price Swings"
                 value={`${(riskData.portfolio_vol * 100).toFixed(1)}%`}
                 subtitle={`Based on ${riskData.n_days} trading days`}
+                tooltip="How much your portfolio value bounces around in a typical year. Lower is steadier — under 15% is considered low risk, over 25% is high risk."
                 good={riskData.portfolio_vol < 0.18}
               />
             </Grid>
             <Grid item xs={6} sm={3}>
               <MetricCard
-                label="Sharpe Ratio"
+                label="Risk-Adjusted Return"
                 value={riskData.portfolio_sharpe.toFixed(2)}
-                subtitle="Risk-free rate: 4%"
+                subtitle="Return earned per unit of risk"
+                tooltip="How much return you're getting for the risk you're taking. Above 1.0 is good, above 2.0 is excellent. A higher number means a more efficient portfolio."
                 good={riskData.portfolio_sharpe > 0.8}
               />
             </Grid>
             <Grid item xs={6} sm={3}>
               <MetricCard
-                label="Max Drawdown"
+                label="Biggest Drop"
                 value={`${(riskData.portfolio_max_drawdown * 100).toFixed(1)}%`}
-                subtitle={`Ann. return: ${(riskData.portfolio_return * 100).toFixed(1)}%`}
+                subtitle={`Yearly return: ${(riskData.portfolio_return * 100).toFixed(1)}%`}
+                tooltip="The largest peak-to-trough loss your portfolio experienced. This is the worst-case loss you would have seen if you bought at the top and sold at the bottom."
                 good={riskData.portfolio_max_drawdown > -0.2}
               />
             </Grid>

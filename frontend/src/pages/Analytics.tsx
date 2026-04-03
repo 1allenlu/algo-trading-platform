@@ -57,6 +57,7 @@ import { useEffect, useState } from 'react'
 import { api } from '@/services/api'
 import type { AnalyticsSummary, FactorAttribution, PnlAttribution, RollingPoint } from '@/services/api'
 import { useQuery } from '@tanstack/react-query'
+import InfoTooltip from '@/components/common/InfoTooltip'
 
 // ── KPI Card ──────────────────────────────────────────────────────────────────
 
@@ -64,10 +65,11 @@ interface KpiCardProps {
   label:    string
   value:    string
   sub?:     string
+  tooltip?: string
   positive?: boolean | null  // null = neutral
 }
 
-function KpiCard({ label, value, sub, positive }: KpiCardProps) {
+function KpiCard({ label, value, sub, tooltip, positive }: KpiCardProps) {
   const valueColor =
     positive === null || positive === undefined
       ? 'text.primary'
@@ -76,9 +78,12 @@ function KpiCard({ label, value, sub, positive }: KpiCardProps) {
   return (
     <Card>
       <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
-        <Typography variant="caption" color="text.secondary" display="block" mb={0.5}>
-          {label}
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+          <Typography variant="caption" color="text.secondary">
+            {label}
+          </Typography>
+          {tooltip && <InfoTooltip text={tooltip} />}
+        </Box>
         <Typography
           variant="h6"
           fontWeight={700}
@@ -383,47 +388,55 @@ export default function AnalyticsPage() {
     {
       label:    'Total Return',
       value:    `${summary.total_return >= 0 ? '+' : ''}${(summary.total_return * 100).toFixed(2)}%`,
+      tooltip:  'How much your portfolio has grown (or shrunk) overall since you started trading.',
       positive: summary.total_return >= 0,
     },
     {
       label:    'Yearly Growth (CAGR)',
       value:    summary.n_days >= 2 ? `${(summary.cagr * 100).toFixed(2)}%` : '—',
       sub:      'annualised return rate',
+      tooltip:  'Your average yearly return if the growth had been steady. Useful for comparing against benchmarks like the S&P 500.',
       positive: summary.cagr >= 0,
     },
     {
       label:    'Risk-Adjusted Return',
       value:    summary.n_days >= 5 ? summary.sharpe_ratio.toFixed(2) : '—',
       sub:      'Sharpe Ratio — higher is better',
+      tooltip:  'Return earned per unit of risk taken. Above 1.0 is good, above 2.0 is excellent. A high number means you\'re getting rewarded well for the risk.',
       positive: summary.sharpe_ratio >= 1 ? true : summary.sharpe_ratio >= 0 ? null : false,
     },
     {
       label:    'Downside Risk Score',
       value:    summary.n_days >= 5 ? summary.sortino_ratio.toFixed(2) : '—',
       sub:      'Sortino — penalises losing days only',
+      tooltip:  'Like the Risk-Adjusted Return but only counts bad days as "risk." Higher is better. Rewards strategies that have big wins but small losses.',
       positive: summary.sortino_ratio >= 1 ? true : summary.sortino_ratio >= 0 ? null : false,
     },
     {
       label:    'Biggest Drop',
       value:    `${(summary.max_drawdown * 100).toFixed(2)}%`,
       sub:      'Max Drawdown — peak-to-trough loss',
+      tooltip:  'The largest peak-to-trough loss your portfolio experienced. Under 10% is great, over 20% means you took on significant risk.',
       positive: summary.max_drawdown < 0.10 ? true : summary.max_drawdown < 0.20 ? null : false,
     },
     {
       label:    'Recovery Score',
       value:    summary.max_drawdown > 0 ? summary.calmar_ratio.toFixed(2) : '—',
       sub:      'Calmar — return vs biggest drop',
+      tooltip:  'Your yearly return divided by your biggest drop. Above 1.0 means you earned more than you lost at your worst point.',
       positive: summary.calmar_ratio >= 1 ? true : null,
     },
     {
-      label:    'Equity',
+      label:    'Portfolio Value',
       value:    `$${summary.equity.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
       sub:      'current paper value',
+      tooltip:  'Current total value of your paper trading account including open positions.',
       positive: summary.equity >= summary.starting_cash ? true : false,
     },
     {
       label:    'Trading Days',
       value:    `${summary.n_days}`,
+      tooltip:  'Number of days your paper trading account has been active.',
       positive: null,
     },
   ]
