@@ -84,13 +84,13 @@ function AssetTable({ data }: { data: PortfolioRiskResponse }) {
     <Card sx={{ border: '1px solid', borderColor: 'divider' }}>
       <CardContent>
         <Typography variant="subtitle2" fontWeight={700} mb={1.5}>
-          Per-Asset Risk Breakdown
+          Risk Breakdown by Stock
         </Typography>
         <TableContainer>
           <Table size="small">
             <TableHead>
               <TableRow>
-                {['Symbol', 'Weight', 'Ann. Return', 'Ann. Volatility', 'Sharpe', 'Max Drawdown', 'Beta (vs SPY)', 'VaR 95%'].map((h) => (
+                {['Symbol', 'Weight', 'Yearly Return', 'Yearly Swings', 'Risk-Adj. Return', 'Biggest Drop', 'Market Sensitivity', 'Max 1-Day Loss'].map((h) => (
                   <TableCell key={h} sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.secondary' }}>
                     {h}
                   </TableCell>
@@ -158,18 +158,18 @@ function MonteCarloChart({ data }: { data: MonteCarloResponse }) {
         <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2 }}>
           <Box>
             <Typography variant="subtitle2" fontWeight={700}>
-              Monte Carlo Simulation — {data.n_sims.toLocaleString()} Paths · {data.horizon_days}d Horizon
+              Future Return Simulator — {data.n_sims.toLocaleString()} Scenarios · {data.horizon_days}-Day Outlook
             </Typography>
             <Typography variant="caption" color="text.disabled">
-              GBM projection based on historical return distribution · Fan bands show P5/P25/P50/P75/P95
+              Simulates thousands of possible futures based on past price behavior · Shaded bands show likely range of outcomes
             </Typography>
           </Box>
           <Stack direction="row" spacing={2} flexWrap="wrap" justifyContent="flex-end">
             {[
-              { label: 'Prob. Profit',    value: pct(stats.prob_profit),          good: stats.prob_profit > 0.5 },
-              { label: 'Median Return',   value: pct(stats.median_return),        good: stats.median_return > 0 },
-              { label: 'P5 Return',       value: pct(stats.p5_return),            good: stats.p5_return > -0.1 },
-              { label: 'Med Max Drawdown',value: pct(stats.median_max_drawdown),  good: stats.median_max_drawdown < 0.15 },
+              { label: 'Chance of Profit',  value: pct(stats.prob_profit),          good: stats.prob_profit > 0.5 },
+              { label: 'Expected Return',   value: pct(stats.median_return),        good: stats.median_return > 0 },
+              { label: 'Worst-Case Return', value: pct(stats.p5_return),            good: stats.p5_return > -0.1 },
+              { label: 'Typical Max Drop',  value: pct(stats.median_max_drawdown),  good: stats.median_max_drawdown < 0.15 },
             ].map(({ label, value, good }) => (
               <Box key={label} sx={{ textAlign: 'right' }}>
                 <Typography variant="caption" color="text.disabled" display="block">{label}</Typography>
@@ -275,7 +275,7 @@ export default function Risk() {
     <Box>
       <Typography variant="h4" fontWeight={700} gutterBottom>Risk Management</Typography>
       <Typography variant="body2" color="text.secondary" mb={3}>
-        Portfolio VaR/CVaR, correlation analysis, and Markowitz efficient frontier optimization.
+        Understand how risky your portfolio is — how much you could lose, how your stocks move together, and which combinations give the best return for the risk.
       </Typography>
 
       {/* Config bar */}
@@ -365,17 +365,17 @@ export default function Risk() {
           <Grid container spacing={2} mb={3}>
             <Grid item xs={6} sm={3}>
               <MetricCard
-                label="Portfolio VaR (95%, 1-day)"
+                label="Max Expected 1-Day Loss"
                 value={`-${(riskData.portfolio_var_95 * 100).toFixed(2)}%`}
-                subtitle={`CVaR: -${(riskData.portfolio_cvar_95 * 100).toFixed(2)}%`}
+                subtitle={`Worst-case: -${(riskData.portfolio_cvar_95 * 100).toFixed(2)}% · 95% confidence`}
                 good={riskData.portfolio_var_95 < 0.025}
               />
             </Grid>
             <Grid item xs={6} sm={3}>
               <MetricCard
-                label="Annual Volatility"
+                label="Yearly Price Swings"
                 value={`${(riskData.portfolio_vol * 100).toFixed(1)}%`}
-                subtitle={`${riskData.n_days} trading days`}
+                subtitle={`Based on ${riskData.n_days} trading days`}
                 good={riskData.portfolio_vol < 0.18}
               />
             </Grid>
@@ -403,7 +403,10 @@ export default function Risk() {
               <Card sx={{ border: '1px solid', borderColor: 'divider', height: '100%' }}>
                 <CardContent>
                   <Typography variant="subtitle2" fontWeight={700} mb={2}>
-                    Correlation Matrix
+                    How Stocks Move Together
+                  </Typography>
+                  <Typography variant="caption" color="text.disabled" display="block" mb={1}>
+                    Dark blue = move together · Dark red = move opposite · Diversified portfolios avoid high correlation
                   </Typography>
                   <CorrelationHeatmap
                     symbols={riskData.symbols}
@@ -418,12 +421,15 @@ export default function Risk() {
                 <CardContent>
                   <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 1 }}>
                     <Typography variant="subtitle2" fontWeight={700}>
-                      Efficient Frontier
+                      Best Portfolio Combinations
+                    </Typography>
+                    <Typography variant="caption" color="text.disabled" display="block" mb={1}>
+                      Each dot is a different portfolio mix. The gold star = best return for the risk taken.
                     </Typography>
                     {frontierData?.max_sharpe?.weights && (
                       <Box sx={{ textAlign: 'right' }}>
                         <Typography variant="caption" color="text.disabled" display="block">
-                          Max Sharpe allocation
+                          Recommended allocation
                         </Typography>
                         <Typography variant="caption" fontFamily="IBM Plex Mono, monospace" color="#fbbf24" fontSize="0.68rem">
                           {frontierData.max_sharpe.weights

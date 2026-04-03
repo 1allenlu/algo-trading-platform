@@ -112,9 +112,9 @@ function ModelCard({ model }: { model: MLModelInfo }) {
 
         {/* Metric row */}
         <Box sx={{ display: 'flex', justifyContent: 'space-around' }}>
-          <MetricBadge label="Accuracy" value={model.accuracy}  colorize />
-          <MetricBadge label="F1"       value={model.f1_score}  colorize />
-          <MetricBadge label="ROC AUC"  value={model.roc_auc}   colorize />
+          <MetricBadge label="Accuracy"         value={model.accuracy}  colorize />
+          <MetricBadge label="Balance Score"    value={model.f1_score}  colorize />
+          <MetricBadge label="Prediction Score" value={model.roc_auc}   colorize />
         </Box>
 
         <Divider sx={{ my: 1.5 }} />
@@ -342,11 +342,11 @@ function SHAPPanel({ symbol }: { symbol: string }) {
   return (
     <Card sx={{ height: '100%' }}>
       <CardHeader
-        title="SHAP Explainability"
+        title="Why Did the AI Make This Call?"
         subheader={
           data
-            ? `${symbol} · P(up) = ${(data.predicted_proba * 100).toFixed(1)}% · Top ${data.count} features`
-            : `${symbol} · Feature contributions to latest prediction`
+            ? `${symbol} · ${(data.predicted_proba * 100).toFixed(1)}% chance of going UP · Top ${data.count} factors`
+            : `${symbol} · Factors that influenced the latest prediction`
         }
         titleTypographyProps={{ variant: 'subtitle1', fontWeight: 700 }}
         subheaderTypographyProps={{ variant: 'caption' }}
@@ -379,7 +379,7 @@ function SHAPPanel({ symbol }: { symbol: string }) {
         {data && (
           <>
             <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mb: 1 }}>
-              Green bars push toward UP · Red bars push toward DOWN · Base value: {data.base_value.toFixed(3)}
+              Green bars are reasons the AI thinks it will go UP · Red bars are reasons it thinks DOWN · Longer bar = stronger influence
             </Typography>
             <SHAPWaterfallChart features={data.features} height={380} />
           </>
@@ -401,8 +401,8 @@ function SentimentPanel({ symbol }: { symbol: string }) {
   return (
     <Card sx={{ height: '100%' }}>
       <CardHeader
-        title="Sentiment Score"
-        subheader={`${symbol} · RSI(14) + SMA(50/200) momentum`}
+        title="Market Mood Score"
+        subheader={`${symbol} · Based on price momentum and trend indicators`}
         titleTypographyProps={{ variant: 'subtitle1', fontWeight: 700 }}
         subheaderTypographyProps={{ variant: 'caption' }}
       />
@@ -416,7 +416,7 @@ function SentimentPanel({ symbol }: { symbol: string }) {
         {data && (
           <>
             <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mb: 1.5 }}>
-              Score: -1 (very bearish) → +1 (very bullish) · No external API required
+              -1 = very negative outlook · 0 = neutral · +1 = very positive outlook
             </Typography>
             <SentimentGauge data={data} />
 
@@ -426,9 +426,9 @@ function SentimentPanel({ symbol }: { symbol: string }) {
               Score components
             </Typography>
             {[
-              { label: 'RSI(14) signal', value: data.components.rsi_component },
-              { label: 'vs SMA50 signal', value: data.components.sma50_component },
-              { label: 'vs SMA200 signal', value: data.components.sma200_component },
+              { label: 'Recent momentum (14-day)', value: data.components.rsi_component },
+              { label: 'Short-term trend (50-day avg)', value: data.components.sma50_component },
+              { label: 'Long-term trend (200-day avg)', value: data.components.sma200_component },
             ].map(({ label, value }) => (
               <Box key={label} sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
                 <Typography variant="caption" color="text.secondary">{label}</Typography>
@@ -467,8 +467,8 @@ function SignalPanel({ symbol }: { symbol: string }) {
   return (
     <Card sx={{ height: '100%' }}>
       <CardHeader
-        title="Composite Signal"
-        subheader={`${symbol} · ML 50% + Sentiment 30% + Technical 20%`}
+        title="AI Trading Signal"
+        subheader={`${symbol} · Combines AI prediction, market mood, and price trends`}
         titleTypographyProps={{ variant: 'subtitle1', fontWeight: 700 }}
         subheaderTypographyProps={{ variant: 'caption' }}
         action={<SignalIcon sx={{ color: 'primary.main', mr: 1, mt: 0.5 }} />}
@@ -524,7 +524,7 @@ function SignalPanel({ symbol }: { symbol: string }) {
 
             {/* Sub-signal votes */}
             <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mb: 1 }}>
-              Sub-signal votes (−1 = bearish, +1 = bullish)
+              What each component is saying — green = bullish, red = bearish
             </Typography>
             {Object.entries(data.sub_signals).map(([key, sub]) => {
               const pct = ((sub.vote + 1) / 2) * 100  // Map [-1, +1] → [0, 100]

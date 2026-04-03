@@ -72,10 +72,10 @@ const STRATEGY_OPTIONS = [
 ]
 
 const OBJECTIVE_OPTIONS = [
-  { value: 'sharpe',       label: 'Sharpe Ratio' },
-  { value: 'total_return', label: 'Total Return' },
-  { value: 'calmar',       label: 'Calmar Ratio' },
-  { value: 'sortino',      label: 'Sortino Ratio' },
+  { value: 'sharpe',       label: 'Best Risk-Adjusted Return' },
+  { value: 'total_return', label: 'Highest Total Return' },
+  { value: 'calmar',       label: 'Best Recovery from Drops' },
+  { value: 'sortino',      label: 'Minimize Losing Days' },
 ]
 
 const DEFAULT_SYMBOLS: Record<string, string> = {
@@ -280,7 +280,10 @@ function ScatterPlot({ results }: { results: TrialResult[] }) {
   return (
     <Paper variant="outlined" sx={{ p: 2 }}>
       <Typography variant="subtitle2" fontWeight={700} mb={1.5}>
-        Trial Results — Return vs Sharpe ({results.length} trials)
+        All Tested Combinations — Return vs Risk-Adjusted Quality ({results.length} trials)
+      </Typography>
+      <Typography variant="caption" color="text.disabled" display="block" mb={1.5}>
+        Each dot is a different set of settings. Top-right corner = high return AND good risk management.
       </Typography>
       <ResponsiveContainer width="100%" height={280}>
         <ScatterChart margin={{ top: 10, right: 30, bottom: 20, left: 0 }}>
@@ -345,10 +348,10 @@ function ResultsTable({ results, objective }: { results: TrialResult[]; objectiv
             <TableRow>
               <TableCell sx={{ fontWeight: 700 }}>#</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>Params</TableCell>
-              <TableCell sx={{ fontWeight: 700 }} align="right">Sharpe</TableCell>
-              <TableCell sx={{ fontWeight: 700 }} align="right">Return</TableCell>
-              <TableCell sx={{ fontWeight: 700 }} align="right">Max DD</TableCell>
-              <TableCell sx={{ fontWeight: 700 }} align="right">Calmar</TableCell>
+              <TableCell sx={{ fontWeight: 700 }} align="right">Risk-Adj. Return</TableCell>
+              <TableCell sx={{ fontWeight: 700 }} align="right">Total Return</TableCell>
+              <TableCell sx={{ fontWeight: 700 }} align="right">Biggest Drop</TableCell>
+              <TableCell sx={{ fontWeight: 700 }} align="right">Recovery Score</TableCell>
               <TableCell sx={{ fontWeight: 700 }} align="right">Trades</TableCell>
             </TableRow>
           </TableHead>
@@ -465,11 +468,10 @@ function WFOPanel({ strategy, symbols, paramGrid, objective }: WFOPanelProps) {
       </Divider>
       <Paper variant="outlined" sx={{ p: 2.5 }}>
         <Typography variant="subtitle2" fontWeight={700} mb={1}>
-          Walk-Forward Optimization — Phase 28
+          Time-Period Testing
         </Typography>
         <Typography variant="body2" color="text.secondary" mb={2}>
-          Splits data into rolling windows. Grid-searches on train, evaluates OOS on test.
-          Measures parameter stability across market regimes.
+          Tests whether the best settings from one time period still work in future periods — helps confirm the strategy isn't just lucky.
         </Typography>
         <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', mb: 2 }}>
           <TextField
@@ -512,9 +514,9 @@ function WFOPanel({ strategy, symbols, paramGrid, objective }: WFOPanelProps) {
             {/* Summary row */}
             <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', mb: 2, p: 1.5, bgcolor: 'rgba(74,158,255,0.06)', borderRadius: 1 }}>
               {[
-                { label: 'Avg OOS Sharpe', value: result.summary.avg_oos_sharpe.toFixed(3) },
-                { label: 'Avg OOS Return', value: `${(result.summary.avg_oos_return * 100).toFixed(2)}%` },
-                { label: 'Stability',      value: `${(result.summary.stability_score * 100).toFixed(0)}%` },
+                { label: 'Avg Out-of-Sample Return Quality', value: result.summary.avg_oos_sharpe.toFixed(3) },
+                { label: 'Avg Out-of-Sample Return', value: `${(result.summary.avg_oos_return * 100).toFixed(2)}%` },
+                { label: 'Consistency Score', value: `${(result.summary.stability_score * 100).toFixed(0)}%` },
               ].map(({ label, value }) => (
                 <Box key={label}>
                   <Typography variant="caption" color="text.secondary" display="block">{label}</Typography>
@@ -533,7 +535,7 @@ function WFOPanel({ strategy, symbols, paramGrid, objective }: WFOPanelProps) {
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  {['Window', 'Test Period', 'OOS Sharpe', 'OOS Return', 'OOS MaxDD', 'Best Params'].map((h) => (
+                  {['Window', 'Test Period', 'Return Quality', 'Return', 'Max Drop', 'Best Settings'].map((h) => (
                     <TableCell key={h} align="right" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>{h}</TableCell>
                   ))}
                 </TableRow>
@@ -708,7 +710,7 @@ export default function OptimizePage() {
             Strategy Optimization
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Grid-search hyperparameters · ranked by objective metric
+            Automatically tests different strategy settings to find what works best — just pick a strategy, a goal, and let it run
           </Typography>
         </Box>
       </Box>
@@ -738,9 +740,9 @@ export default function OptimizePage() {
           {/* Objective */}
           <Grid item xs={12} sm={4}>
             <FormControl fullWidth size="small">
-              <InputLabel>Objective</InputLabel>
+              <InputLabel>Optimize For</InputLabel>
               <Select
-                label="Objective"
+                label="Optimize For"
                 value={objective}
                 onChange={(e) => setObjective(e.target.value)}
               >

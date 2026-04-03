@@ -107,7 +107,10 @@ function RollingChart({ data }: { data: RollingPoint[] }) {
     <Card>
       <CardContent>
         <Typography variant="subtitle2" fontWeight={700} mb={2}>
-          Rolling 20-Day Sharpe & Annualised Volatility
+          How Has My Portfolio Performed Over Time?
+        </Typography>
+        <Typography variant="caption" color="text.disabled" display="block" mb={1}>
+          Risk-adjusted return (blue) and daily price swings (yellow) — higher blue + lower yellow is ideal
         </Typography>
         <ResponsiveContainer width="100%" height={220}>
           <LineChart data={data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
@@ -202,7 +205,7 @@ function TradeStatsPanel({ summary }: { summary: AnalyticsSummary }) {
     { label: 'Avg Win',         value: `$${summary.avg_win.toFixed(2)}`,         positive: true },
     { label: 'Avg Loss',        value: `$${summary.avg_loss.toFixed(2)}`,        positive: false },
     { label: 'Profit Factor',   value: summary.profit_factor > 0 ? summary.profit_factor.toFixed(2) : '—', positive: summary.profit_factor >= 1 },
-    { label: 'Ann. Volatility', value: `${(summary.annual_vol * 100).toFixed(1)}%`, positive: null },
+    { label: 'Yearly Price Swings', value: `${(summary.annual_vol * 100).toFixed(1)}%`, positive: null },
   ]
 
   return (
@@ -237,18 +240,18 @@ function TradeStatsPanel({ summary }: { summary: AnalyticsSummary }) {
 
 function FactorCard({ data }: { data: FactorAttribution }) {
   const metrics = [
-    { label: 'Beta (vs SPY)',       value: data.beta !== null ? data.beta.toFixed(3) : '—',          positive: null },
-    { label: 'Alpha (ann.)',         value: data.alpha_ann !== null ? `${(data.alpha_ann * 100).toFixed(2)}%` : '—', positive: data.alpha_ann !== null ? data.alpha_ann >= 0 : null },
-    { label: 'R²',                  value: data.r_squared !== null ? data.r_squared.toFixed(3) : '—', positive: null },
-    { label: 'Tracking Error',      value: data.tracking_error !== null ? `${(data.tracking_error * 100).toFixed(2)}%` : '—', positive: null },
-    { label: 'Information Ratio',   value: data.information_ratio !== null ? data.information_ratio.toFixed(3) : '—', positive: data.information_ratio !== null ? data.information_ratio >= 0 : null },
+    { label: 'Market Sensitivity (Beta)',  value: data.beta !== null ? data.beta.toFixed(3) : '—',          positive: null },
+    { label: 'Extra Return vs Market',     value: data.alpha_ann !== null ? `${(data.alpha_ann * 100).toFixed(2)}%` : '—', positive: data.alpha_ann !== null ? data.alpha_ann >= 0 : null },
+    { label: 'Market Correlation (R²)',    value: data.r_squared !== null ? data.r_squared.toFixed(3) : '—', positive: null },
+    { label: 'Deviation from Benchmark',  value: data.tracking_error !== null ? `${(data.tracking_error * 100).toFixed(2)}%` : '—', positive: null },
+    { label: 'Skill Score (Info Ratio)',   value: data.information_ratio !== null ? data.information_ratio.toFixed(3) : '—', positive: data.information_ratio !== null ? data.information_ratio >= 0 : null },
   ]
 
   return (
     <Card>
       <CardContent>
         <Typography variant="subtitle2" fontWeight={700} mb={2}>
-          Factor Attribution (vs {data.benchmark_symbol})
+          How Does My Portfolio Compare to the Market? (vs {data.benchmark_symbol})
         </Typography>
         <Grid container spacing={2}>
           {/* Factor KPIs */}
@@ -275,12 +278,12 @@ function FactorCard({ data }: { data: FactorAttribution }) {
             {data.brinson.length > 0 ? (
               <>
                 <Typography variant="caption" color="text.secondary" display="block" mb={1}>
-                  Brinson Attribution by Symbol
+                  Return contribution by stock — how much each holding helped or hurt
                 </Typography>
                 <Table size="small">
                   <TableHead>
                     <TableRow>
-                      {['Symbol', 'Alloc', 'Select', 'Total'].map((h) => (
+                      {['Symbol', 'Sizing Effect', 'Stock Picking', 'Total Impact'].map((h) => (
                         <TableCell key={h} align="right" sx={{ fontSize: '0.7rem', color: 'text.secondary', py: 0.5 }}>{h}</TableCell>
                       ))}
                     </TableRow>
@@ -383,29 +386,33 @@ export default function AnalyticsPage() {
       positive: summary.total_return >= 0,
     },
     {
-      label:    'CAGR',
+      label:    'Yearly Growth (CAGR)',
       value:    summary.n_days >= 2 ? `${(summary.cagr * 100).toFixed(2)}%` : '—',
-      sub:      'annualised',
+      sub:      'annualised return rate',
       positive: summary.cagr >= 0,
     },
     {
-      label:    'Sharpe Ratio',
+      label:    'Risk-Adjusted Return',
       value:    summary.n_days >= 5 ? summary.sharpe_ratio.toFixed(2) : '—',
+      sub:      'Sharpe Ratio — higher is better',
       positive: summary.sharpe_ratio >= 1 ? true : summary.sharpe_ratio >= 0 ? null : false,
     },
     {
-      label:    'Sortino Ratio',
+      label:    'Downside Risk Score',
       value:    summary.n_days >= 5 ? summary.sortino_ratio.toFixed(2) : '—',
+      sub:      'Sortino — penalises losing days only',
       positive: summary.sortino_ratio >= 1 ? true : summary.sortino_ratio >= 0 ? null : false,
     },
     {
-      label:    'Max Drawdown',
+      label:    'Biggest Drop',
       value:    `${(summary.max_drawdown * 100).toFixed(2)}%`,
+      sub:      'Max Drawdown — peak-to-trough loss',
       positive: summary.max_drawdown < 0.10 ? true : summary.max_drawdown < 0.20 ? null : false,
     },
     {
-      label:    'Calmar Ratio',
+      label:    'Recovery Score',
       value:    summary.max_drawdown > 0 ? summary.calmar_ratio.toFixed(2) : '—',
+      sub:      'Calmar — return vs biggest drop',
       positive: summary.calmar_ratio >= 1 ? true : null,
     },
     {
