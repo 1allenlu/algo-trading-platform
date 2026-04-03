@@ -40,7 +40,10 @@ import {
   PictureAsPdf as PdfIcon,
   TrendingDown,
   TrendingUp,
+  Assessment as BacktestIcon,
 } from '@mui/icons-material'
+import EmptyState from '@/components/common/EmptyState'
+import LastUpdated from '@/components/common/LastUpdated'
 import { useQuery } from '@tanstack/react-query'
 import { api, type BacktestRunResponse, type StrategyInfo } from '@/services/api'
 import EquityCurveChart from '@/components/charts/EquityCurveChart'
@@ -286,25 +289,15 @@ function useBenchmarkCurve(equityCurve: BacktestRunResponse['equity_curve']) {
 }
 
 // ── Results panel ─────────────────────────────────────────────────────────────
-function ResultsPanel({ result }: { result: BacktestRunResponse | null }) {
+function ResultsPanel({ result, completedAt }: { result: BacktestRunResponse | null; completedAt: Date | null }) {
   if (!result) {
     return (
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: 400,
-          border: '1px dashed',
-          borderColor: 'divider',
-          borderRadius: 2,
-          color: 'text.disabled',
-        }}
-      >
-        <RunIcon sx={{ fontSize: 40, mb: 1, opacity: 0.4 }} />
-        <Typography>Configure a strategy and click Run Backtest</Typography>
-      </Box>
+      <EmptyState
+        icon={<BacktestIcon sx={{ fontSize: 56 }} />}
+        title="No backtest run yet"
+        description="Pick a strategy on the left, choose your symbols, and click Run Backtest to see how it would have performed historically."
+        hint="make ingest  — run this first if you have no data"
+      />
     )
   }
 
@@ -312,7 +305,7 @@ function ResultsPanel({ result }: { result: BacktestRunResponse | null }) {
     return (
       <Box sx={{ p: 4, textAlign: 'center' }}>
         <CircularProgress sx={{ mb: 2 }} />
-        <Typography color="text.secondary">Running backtest...</Typography>
+        <Typography color="text.secondary">Running backtest — this usually takes 5–15 seconds...</Typography>
         <LinearProgress sx={{ mt: 2, borderRadius: 1 }} />
       </Box>
     )
@@ -320,9 +313,12 @@ function ResultsPanel({ result }: { result: BacktestRunResponse | null }) {
 
   if (result.status === 'failed') {
     return (
-      <Alert severity="error" sx={{ mt: 2 }}>
-        Backtest failed: {result.error ?? 'Unknown error'}
-      </Alert>
+      <EmptyState
+        icon={<BacktestIcon sx={{ fontSize: 56 }} />}
+        title="Backtest failed"
+        description={result.error ?? 'Something went wrong. Make sure market data is loaded and try again.'}
+        hint="make ingest  — reload price data if missing"
+      />
     )
   }
 
@@ -340,9 +336,12 @@ function ResultsPanel({ result }: { result: BacktestRunResponse | null }) {
             {result.strategy_name.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
             {' '}· {result.symbols.join('/')}
           </Typography>
-          <Typography variant="caption" color="text.disabled">
-            {result.num_trades} trades · Created {new Date(result.created_at).toLocaleDateString()}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Typography variant="caption" color="text.disabled">
+              {result.num_trades} trades · {new Date(result.created_at).toLocaleDateString()}
+            </Typography>
+            <LastUpdated timestamp={completedAt} />
+          </Box>
         </Box>
         {/* Phase 24: PDF download button */}
         <Button
@@ -527,6 +526,7 @@ export default function Backtest() {
   const [runId, setRunId]             = useState<number | null>(null)
   const [isRunning, setIsRunning]     = useState(false)
   const [result, setResult]           = useState<BacktestRunResponse | null>(null)
+  const [completedAt, setCompletedAt] = useState<Date | null>(null)
   const [commissionPct, setCommission] = useState(0.001)
   const [slippagePct, setSlippage]    = useState(0.0005)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -577,6 +577,7 @@ export default function Backtest() {
         setResult(res)
         if (res.status === 'done' || res.status === 'failed') {
           setIsRunning(false)
+          setCompletedAt(new Date())
           if (pollRef.current) clearInterval(pollRef.current)
         }
       } catch {
@@ -593,12 +594,15 @@ export default function Backtest() {
 
   return (
     <Box>
-      <Typography variant="h4" fontWeight={700} gutterBottom>
-        Backtesting
-      </Typography>
-      <Typography variant="body2" color="text.secondary" mb={3}>
-        Evaluate strategy performance on historical data with transaction cost modeling.
-      </Typography>
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h4" fontWeight={700}>Backtesting</Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 0.25 }}>
+          <Typography variant="body2" color="text.secondary">
+            Test a strategy against historical data to see how it would have performed
+          </Typography>
+          <LastUpdated timestamp={completedAt} />
+        </Box>
+      </Box>
 
       <Grid container spacing={3}>
         {/* Left: config */}
@@ -620,7 +624,7 @@ export default function Backtest() {
 
         {/* Right: results */}
         <Grid item xs={12} md={8} lg={9}>
-          <ResultsPanel result={result} />
+          <ResultsPanel result={result} completedAt={completedAt} />
         </Grid>
       </Grid>
     </Box>

@@ -49,6 +49,7 @@ import { api } from '@/services/api'
 import CorrelationHeatmap from '@/components/charts/CorrelationHeatmap'
 import EfficientFrontierChart from '@/components/charts/EfficientFrontierChart'
 import InfoTooltip from '@/components/common/InfoTooltip'
+import LastUpdated from '@/components/common/LastUpdated'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -240,6 +241,7 @@ export default function Risk() {
   const [riskData, setRiskData]         = useState<PortfolioRiskResponse | null>(null)
   const [frontierData, setFrontierData] = useState<EfficientFrontierResponse | null>(null)
   const [mcData, setMcData]             = useState<MonteCarloResponse | null>(null)
+  const [lastUpdated, setLastUpdated]   = useState<Date | null>(null)
 
   const toggleSymbol = (sym: string) =>
     setSelectedSymbols((prev) =>
@@ -267,6 +269,7 @@ export default function Risk() {
       setRiskData(risk)
       setFrontierData(frontier)
       setMcData(mc)
+      setLastUpdated(new Date())
     } catch (err: unknown) {
       const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
       setError(detail ?? 'Analysis failed. Check that data has been ingested.')
@@ -278,9 +281,12 @@ export default function Risk() {
   return (
     <Box>
       <Typography variant="h4" fontWeight={700} gutterBottom>Risk Management</Typography>
-      <Typography variant="body2" color="text.secondary" mb={3}>
-        Understand how risky your portfolio is — how much you could lose, how your stocks move together, and which combinations give the best return for the risk.
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+        <Typography variant="body2" color="text.secondary">
+          Understand how risky your portfolio is — how much you could lose, how your stocks move together, and which combinations give the best return for the risk.
+        </Typography>
+        <LastUpdated timestamp={lastUpdated} loading={isLoading} />
+      </Box>
 
       {/* Config bar */}
       <Card sx={{ border: '1px solid', borderColor: 'divider', mb: 3 }}>

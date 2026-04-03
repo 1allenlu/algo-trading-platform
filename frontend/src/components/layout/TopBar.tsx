@@ -32,6 +32,7 @@ import { useAlerts } from '@/hooks/useAlerts'
 import { useAuth } from '@/contexts/AuthContext'
 import { useThemeMode } from '@/contexts/ThemeContext'
 import TickerBar from '@/components/layout/TickerBar'
+import SymbolSearch from '@/components/layout/SymbolSearch'
 
 export default function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
   const { data: health, refetch, isFetching } = useQuery({
@@ -82,6 +83,9 @@ export default function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
 
         {/* Live price ticker (Phase 7) */}
         <TickerBar prices={prices} status={wsStatus} />
+
+        {/* Global symbol search */}
+        <SymbolSearch />
 
         {/* System status indicator */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>

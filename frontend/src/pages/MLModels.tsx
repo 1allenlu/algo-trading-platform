@@ -63,6 +63,8 @@ import FeatureImportanceChart from '@/components/charts/FeatureImportanceChart'
 import SHAPWaterfallChart from '@/components/charts/SHAPWaterfallChart'
 import SentimentGauge from '@/components/charts/SentimentGauge'
 import InfoTooltip from '@/components/common/InfoTooltip'
+import EmptyState from '@/components/common/EmptyState'
+import LastUpdated from '@/components/common/LastUpdated'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const SYMBOLS = ['SPY', 'QQQ', 'AAPL', 'MSFT', 'NVDA'] as const
@@ -170,11 +172,13 @@ function PredictionTable({ symbol }: { symbol: string }) {
   })
 
   if (isLoading) return <Skeleton variant="rectangular" height={300} sx={{ borderRadius: 1 }} />
-  if (isError)   return (
-    <Alert severity="warning">
-      No predictions for <strong>{symbol}</strong>.
-      Train a model first via <code>POST /api/ml/train</code> or the Train panel below.
-    </Alert>
+  if (isError) return (
+    <EmptyState
+      icon={<MLIcon sx={{ fontSize: 48 }} />}
+      title={`No predictions for ${symbol}`}
+      description="Train an AI model first using the Train Model panel below — it only takes 1–3 minutes."
+      hint="make train symbol=SPY"
+    />
   )
 
   const bars = data?.bars ?? []
@@ -385,12 +389,12 @@ function SHAPPanel({ symbol }: { symbol: string }) {
       <CardContent sx={{ pt: 0 }}>
         {isLoading && <Skeleton variant="rectangular" height={380} sx={{ borderRadius: 1 }} />}
         {isError && (
-          <Alert severity="warning" sx={{ mt: 1 }}>
-            {(error as Error)?.message?.includes('404')
-              ? `No trained model for ${symbol}. Train one first.`
-              : `Could not load SHAP values. Make sure 'shap' is installed in the backend.`
-            }
-          </Alert>
+          <EmptyState
+            icon={<MLIcon sx={{ fontSize: 40 }} />}
+            title="No model trained yet"
+            description={`Train a model for ${symbol} using the Train Model panel below to see why the AI makes each prediction.`}
+            hint="make train symbol=SPY"
+          />
         )}
         {data && (
           <>
@@ -425,9 +429,12 @@ function SentimentPanel({ symbol }: { symbol: string }) {
       <CardContent sx={{ pt: 0 }}>
         {isLoading && <Skeleton variant="rectangular" height={340} sx={{ borderRadius: 1 }} />}
         {isError && (
-          <Alert severity="warning">
-            Could not load sentiment for {symbol}. Make sure market data is ingested.
-          </Alert>
+          <EmptyState
+            icon={<MLIcon sx={{ fontSize: 40 }} />}
+            title="No market data found"
+            description={`Load price data for ${symbol} first so the market mood can be calculated.`}
+            hint="make ingest"
+          />
         )}
         {data && (
           <>
@@ -492,12 +499,12 @@ function SignalPanel({ symbol }: { symbol: string }) {
       <CardContent sx={{ pt: 0 }}>
         {isLoading && <Skeleton variant="rectangular" height={340} sx={{ borderRadius: 1 }} />}
         {isError && (
-          <Alert severity="warning">
-            {(error as Error)?.message?.includes('404')
-              ? `No trained model for ${symbol}. Train one first.`
-              : `Could not load signal for ${symbol}.`
-            }
-          </Alert>
+          <EmptyState
+            icon={<SignalIcon sx={{ fontSize: 40 }} />}
+            title="No signal available"
+            description={`Train an AI model for ${symbol} to generate a combined buy/hold/sell signal.`}
+            hint="make train symbol=SPY"
+          />
         )}
         {data && (
           <>
@@ -827,7 +834,7 @@ export default function MLModels() {
   const [selectedSymbol, setSelectedSymbol] = useState<Symbol>('SPY')
 
   // Fetch all models
-  const { data: modelsData, isLoading: modelsLoading } = useQuery({
+  const { data: modelsData, isLoading: modelsLoading, dataUpdatedAt } = useQuery({
     queryKey: ['ml', 'models'],
     queryFn:  () => api.ml.listModels(),
     staleTime: 30_000,
@@ -850,9 +857,12 @@ export default function MLModels() {
           <MLIcon sx={{ color: 'primary.main', fontSize: 28 }} />
           <Typography variant="h4">ML Models</Typography>
         </Box>
-        <Typography variant="body2" color="text.secondary">
-          XGBoost direction classifiers · SHAP explainability · Sentiment signals · Composite signal
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Typography variant="body2" color="text.secondary">
+            AI price prediction models · Explainability · Sentiment · Composite signal
+          </Typography>
+          <LastUpdated timestamp={dataUpdatedAt ? new Date(dataUpdatedAt) : null} loading={modelsLoading} />
+        </Box>
       </Box>
 
       {/* ── Section 1: Trained Models ──────────────────────────────────────── */}

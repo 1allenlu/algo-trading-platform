@@ -58,6 +58,9 @@ import { api } from '@/services/api'
 import type { AnalyticsSummary, FactorAttribution, PnlAttribution, RollingPoint } from '@/services/api'
 import { useQuery } from '@tanstack/react-query'
 import InfoTooltip from '@/components/common/InfoTooltip'
+import EmptyState from '@/components/common/EmptyState'
+import LastUpdated from '@/components/common/LastUpdated'
+import { Insights as AnalyticsIcon } from '@mui/icons-material'
 
 // ── KPI Card ──────────────────────────────────────────────────────────────────
 
@@ -326,11 +329,12 @@ function FactorCard({ data }: { data: FactorAttribution }) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function AnalyticsPage() {
-  const [summary,  setSummary]  = useState<AnalyticsSummary | null>(null)
-  const [pnl,      setPnl]      = useState<PnlAttribution[]>([])
-  const [rolling,  setRolling]  = useState<RollingPoint[]>([])
-  const [loading,  setLoading]  = useState(true)
-  const [error,    setError]    = useState<string | null>(null)
+  const [summary,     setSummary]     = useState<AnalyticsSummary | null>(null)
+  const [pnl,         setPnl]         = useState<PnlAttribution[]>([])
+  const [rolling,     setRolling]     = useState<RollingPoint[]>([])
+  const [loading,     setLoading]     = useState(true)
+  const [error,       setError]       = useState<string | null>(null)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
   // Phase 29: factor attribution (separate query, fails silently if no data)
   const { data: attribution } = useQuery<FactorAttribution>({
@@ -352,8 +356,9 @@ export default function AnalyticsPage() {
       setSummary(s)
       setPnl(p)
       setRolling(r)
+      setLastUpdated(new Date())
     } catch {
-      setError('Failed to load analytics. Make sure the backend is running and paper trading has history.')
+      setError('no_data')
     } finally {
       setLoading(false)
     }
@@ -377,8 +382,14 @@ export default function AnalyticsPage() {
 
   if (error) return (
     <Box>
-      <Alert severity="warning" sx={{ mb: 2 }}>{error}</Alert>
-      <Button onClick={load} startIcon={<RefreshIcon />}>Retry</Button>
+      <EmptyState
+        icon={<AnalyticsIcon sx={{ fontSize: 56 }} />}
+        title="No trading history yet"
+        description="Your analytics will appear here once you've placed some paper trades. Head to the Trading page to get started."
+        actionLabel="Go to Trading"
+        onAction={() => window.location.href = '/trading'}
+        hint="Or run: make ingest to load market data first"
+      />
     </Box>
   )
 
@@ -447,9 +458,12 @@ export default function AnalyticsPage() {
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
         <Box>
           <Typography variant="h5" fontWeight={700}>Portfolio Analytics</Typography>
-          <Typography variant="body2" color="text.secondary">
-            Performance report for your paper trading account
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 0.25 }}>
+            <Typography variant="body2" color="text.secondary">
+              Performance report for your paper trading account
+            </Typography>
+            <LastUpdated timestamp={lastUpdated} loading={loading} />
+          </Box>
         </Box>
         <Box sx={{ display: 'flex', gap: 1 }}>
           <Tooltip title="Download filled trades as CSV">
