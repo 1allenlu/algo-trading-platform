@@ -57,6 +57,9 @@ class Settings(BaseSettings):
     NOTIFY_EMAIL:  str = ""          # Recipient address for alert emails
     SLACK_WEBHOOK_URL: str = ""      # Slack incoming webhook URL
 
+    # ── Anthropic (LLM Commentary) ────────────────────────────────────────────
+    ANTHROPIC_API_KEY: str = ""   # Optional — leave empty to disable commentary
+
     # ── Auth (Phase 17) ───────────────────────────────────────────────────────
     # Set JWT_SECRET_KEY to enable JWT authentication. Leave empty to skip.
     # Generate: python -c "import secrets; print(secrets.token_hex(32))"

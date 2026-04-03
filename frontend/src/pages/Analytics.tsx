@@ -61,6 +61,7 @@ import InfoTooltip from '@/components/common/InfoTooltip'
 import EmptyState from '@/components/common/EmptyState'
 import LastUpdated from '@/components/common/LastUpdated'
 import { Insights as AnalyticsIcon } from '@mui/icons-material'
+import AICommentary from '@/components/dashboard/AICommentary'
 
 // ── KPI Card ──────────────────────────────────────────────────────────────────
 
@@ -476,6 +477,9 @@ export default function AnalyticsPage() {
           </Button>
         </Box>
       </Box>
+
+      {/* AI Commentary — Phase 43 */}
+      <AICommentary />
 
       {/* KPI row */}
       <Grid container spacing={2} mb={3}>

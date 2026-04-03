@@ -24,7 +24,7 @@ from fastapi.responses import RedirectResponse
 from loguru import logger
 
 from app.api.routes import (
-    alerts, analytics, auth, autotrade, backtest, crypto, earnings, fundamentals,
+    alerts, analytics, auth, autotrade, backtest, commentary, crypto, earnings, fundamentals,
     health, intraday, journal, live_orders, market_data, ml, news, notifications,
     options, optimize, paper_trading, patterns, rl, risk, scanner, scheduler, signals,
     strategies,
@@ -183,6 +183,11 @@ app.include_router(
     analytics.router,
     prefix=f"{settings.API_V1_PREFIX}/analytics",
     tags=["analytics"],
+)
+app.include_router(
+    commentary.router,
+    prefix=f"{settings.API_V1_PREFIX}/analytics",
+    tags=["commentary"],
 )
 app.include_router(
     optimize.router,

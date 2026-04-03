@@ -1468,6 +1468,12 @@ export const api = {
         .then((r) => r.data),
   },
 
+  // ── Phase 43: LLM Commentary ────────────────────────────────────────────────
+  commentary: {
+    get: (): Promise<{ commentary: string | null; generated_at: string | null; model: string | null }> =>
+      apiClient.get('/api/analytics/commentary').then((r) => r.data),
+  },
+
   // ── Phase 42: Reinforcement Learning Agent ──────────────────────────────────
   rl: {
     train: (symbol: string, nEpisodes = 50): Promise<RLTrainResponse> =>

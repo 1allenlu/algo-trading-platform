@@ -22,6 +22,7 @@ import {
   BarChart as FundamentalsIcon,
   Grain as PatternIcon,
   AutoFixHigh as RLIcon,
+  CompareArrows as CompareIcon,
 } from '@mui/icons-material'
 import { useLocation, useNavigate } from 'react-router-dom'
 import type { ReactNode } from 'react'
@@ -67,6 +68,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: 'Fundamentals', path: '/fundamentals', icon: <FundamentalsIcon  sx={{ fontSize: 17 }} /> },
       { label: 'Patterns',    path: '/patterns',    icon: <PatternIcon sx={{ fontSize: 17 }} /> },
       { label: 'RL Agent',   path: '/rl',          icon: <RLIcon      sx={{ fontSize: 17 }} /> },
+      { label: 'Compare',    path: '/compare',     icon: <CompareIcon sx={{ fontSize: 17 }} /> },
     ],
   },
   {

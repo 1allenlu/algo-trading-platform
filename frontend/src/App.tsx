@@ -25,6 +25,7 @@ import JournalPage from '@/pages/Journal'
 import FundamentalsPage from '@/pages/Fundamentals'
 import PatternsPage from '@/pages/Patterns'
 import RLAgentPage from '@/pages/RLAgent'
+import ComparePage from '@/pages/Compare'
 import LoginPage from '@/pages/Login'
 import IntroPage from '@/pages/Intro'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
@@ -92,6 +93,7 @@ function AppLayout() {
             <Route path="/fundamentals" element={<FundamentalsPage />} />
             <Route path="/patterns"     element={<PatternsPage />} />
             <Route path="/rl"           element={<RLAgentPage />} />
+            <Route path="/compare"      element={<ComparePage />} />
             <Route path="/settings"   element={<Settings />} />
           </Routes>
         </Box>

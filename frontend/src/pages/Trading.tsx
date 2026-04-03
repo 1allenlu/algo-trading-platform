@@ -391,23 +391,108 @@ function OrderForm({
 // ── Portfolio history chart ────────────────────────────────────────────────────
 
 function HistoryChart({ data }: { data: { timestamp: string; equity: number; pnl_pct: number }[] }) {
+  // Toggle between dollar-value and percent-return views
+  const [mode, setMode] = useState<'dollar' | 'pct'>('pct')
+
   if (data.length === 0) return null
 
   const startEquity = data[0]?.equity ?? 100_000
-  const formatted   = data.map((d) => ({
+
+  // Build chart data for all available history (not just 1 month)
+  const formatted = data.map((d) => ({
     date:   new Date(d.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     equity: d.equity,
     pnl:    ((d.equity - startEquity) / startEquity) * 100,
   }))
+
+  // Compute stats for the summary row
+  const currentEquity = data[data.length - 1]?.equity ?? startEquity
+  const currentReturn = ((currentEquity - startEquity) / startEquity) * 100
+
+  // Best/worst day: compute daily % changes across the dataset
+  const dailyChanges: number[] = []
+  for (let i = 1; i < data.length; i++) {
+    const prev = data[i - 1].equity
+    if (prev > 0) dailyChanges.push(((data[i].equity - prev) / prev) * 100)
+  }
+  const bestDay  = dailyChanges.length > 0 ? Math.max(...dailyChanges) : 0
+  const worstDay = dailyChanges.length > 0 ? Math.min(...dailyChanges) : 0
+
   const lastPnl = formatted[formatted.length - 1]?.pnl ?? 0
   const color   = lastPnl >= 0 ? '#00C896' : '#FF6B6B'
+
+  // Y-axis and tooltip change depending on mode
+  const dataKey   = mode === 'dollar' ? 'equity' : 'pnl'
+  const refLineY  = mode === 'dollar' ? startEquity : 0
 
   return (
     <Card sx={{ border: '1px solid', borderColor: 'divider', mb: 3 }}>
       <CardContent>
-        <Typography variant="subtitle2" fontWeight={700} mb={2}>
-          Portfolio History (1 Month)
-        </Typography>
+        {/* Header row: title + mode toggle */}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+          <Typography variant="subtitle2" fontWeight={700}>
+            Portfolio History (All Time)
+          </Typography>
+          <ToggleButtonGroup
+            value={mode}
+            exclusive
+            onChange={(_, v) => v && setMode(v)}
+            size="small"
+            sx={{ '& .MuiToggleButton-root': { py: 0.25, px: 1.25, fontSize: '0.72rem', textTransform: 'none' } }}
+          >
+            <ToggleButton value="pct">% Return</ToggleButton>
+            <ToggleButton value="dollar">$ Value</ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
+
+        {/* Stats summary row */}
+        <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', mb: 2 }}>
+          {/* Starting Value */}
+          <Box>
+            <Typography variant="caption" color="text.disabled" display="block">STARTING VALUE</Typography>
+            <Typography variant="body2" fontWeight={700} fontFamily="IBM Plex Mono, monospace">
+              {fmt$(startEquity, 0)}
+            </Typography>
+          </Box>
+
+          {/* Current Value */}
+          <Box>
+            <Typography variant="caption" color="text.disabled" display="block">CURRENT VALUE</Typography>
+            <Typography
+              variant="body2" fontWeight={700} fontFamily="IBM Plex Mono, monospace"
+              sx={{ color: pnlColor(currentEquity - startEquity) }}
+            >
+              {fmt$(currentEquity, 0)}
+              <Typography component="span" variant="caption" sx={{ ml: 0.5, color: 'inherit' }}>
+                ({currentReturn >= 0 ? '+' : ''}{currentReturn.toFixed(2)}%)
+              </Typography>
+            </Typography>
+          </Box>
+
+          {/* Best Day */}
+          <Box>
+            <Typography variant="caption" color="text.disabled" display="block">BEST DAY</Typography>
+            <Typography
+              variant="body2" fontWeight={700} fontFamily="IBM Plex Mono, monospace"
+              sx={{ color: '#00C896' }}
+            >
+              +{bestDay.toFixed(2)}%
+            </Typography>
+          </Box>
+
+          {/* Worst Day */}
+          <Box>
+            <Typography variant="caption" color="text.disabled" display="block">WORST DAY</Typography>
+            <Typography
+              variant="body2" fontWeight={700} fontFamily="IBM Plex Mono, monospace"
+              sx={{ color: '#FF6B6B' }}
+            >
+              {worstDay.toFixed(2)}%
+            </Typography>
+          </Box>
+        </Box>
+
+        {/* Chart */}
         <ResponsiveContainer width="100%" height={200}>
           <AreaChart data={formatted}>
             <defs>
@@ -417,21 +502,35 @@ function HistoryChart({ data }: { data: { timestamp: string; equity: number; pnl
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#1E2330" />
-            <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#9CA3AF' }} tickLine={false} />
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 11, fill: '#9CA3AF' }}
+              tickLine={false}
+              // Thin out ticks when there's a lot of data
+              interval={Math.max(0, Math.floor(formatted.length / 8) - 1)}
+            />
             <YAxis
-              tickFormatter={(v) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`}
+              tickFormatter={
+                mode === 'dollar'
+                  ? (v: number) => `$${(v / 1000).toFixed(0)}k`
+                  : (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`
+              }
               tick={{ fontSize: 11, fill: '#9CA3AF' }}
               axisLine={false} tickLine={false}
               domain={['auto', 'auto']}
             />
-            <ReferenceLine y={0} stroke="#2D3548" strokeDasharray="4 4" />
+            <ReferenceLine y={refLineY} stroke="#2D3548" strokeDasharray="4 4" />
             <RechartsTip
               contentStyle={{ background: '#12161F', border: '1px solid #2D3548', borderRadius: 8 }}
               labelStyle={{ color: '#9CA3AF', fontSize: 12 }}
-              formatter={(val: number) => [`${val >= 0 ? '+' : ''}${val.toFixed(2)}%`, 'Return']}
+              formatter={
+                mode === 'dollar'
+                  ? (val: number) => [fmt$(val, 2), 'Equity']
+                  : (val: number) => [`${val >= 0 ? '+' : ''}${val.toFixed(2)}%`, 'Return']
+              }
             />
             <Area
-              type="monotone" dataKey="pnl"
+              type="monotone" dataKey={dataKey}
               stroke={color} strokeWidth={2}
               fill="url(#equityGrad)" dot={false}
             />
