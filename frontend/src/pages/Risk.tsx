@@ -23,6 +23,7 @@ import {
   CircularProgress,
   Divider,
   Grid,
+  LinearProgress,
   Stack,
   Table,
   TableBody,
@@ -39,13 +40,17 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts'
-import type { EfficientFrontierResponse, MonteCarloResponse, PortfolioRiskResponse } from '@/services/api'
+import type { EfficientFrontierResponse, MonteCarloResponse, PortfolioRiskResponse, VarContributionResponse } from '@/services/api'
 import { api } from '@/services/api'
+import { useQuery } from '@tanstack/react-query'
 import CorrelationHeatmap from '@/components/charts/CorrelationHeatmap'
 import EfficientFrontierChart from '@/components/charts/EfficientFrontierChart'
 import InfoTooltip from '@/components/common/InfoTooltip'
@@ -233,6 +238,138 @@ function MonteCarloChart({ data }: { data: MonteCarloResponse }) {
             />
           </AreaChart>
         </ResponsiveContainer>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ── VaR contribution panel ────────────────────────────────────────────────────
+
+const CONTRIB_COLORS = ['#4A9EFF', '#00C896', '#F59E0B', '#FF6B6B', '#A78BFA', '#34D399', '#F472B6', '#60A5FA', '#FBBF24', '#6EE7B7']
+
+function VarContributionPanel({ symbols, weights }: { symbols: string[]; weights: number[] }) {
+  const { data, isLoading } = useQuery<VarContributionResponse>({
+    queryKey:  ['var-contribution', symbols.join(','), weights.join(',')],
+    queryFn:   () => api.risk.getVarContribution(symbols, weights),
+    staleTime: 60_000,
+    retry:     false,
+    enabled:   symbols.length >= 2,
+  })
+
+  if (isLoading) {
+    return (
+      <Card sx={{ mt: 3, border: '1px solid', borderColor: 'divider' }}>
+        <CardContent sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+          <CircularProgress size={28} />
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (!data) return null
+
+  const sorted = [...data.contributions].sort((a, b) => b.component_var_pct - a.component_var_pct)
+  const pieData = sorted.map((c) => ({ name: c.symbol, value: Math.max(0, c.component_var_pct) }))
+
+  return (
+    <Card sx={{ mt: 3, border: '1px solid', borderColor: 'divider' }}>
+      <CardContent>
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="subtitle2" fontWeight={700}>
+            Risk Contribution by Position
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            How much of total portfolio VaR each position contributes.
+            Portfolio 1-day 95% VaR: <strong style={{ color: '#FF6B6B' }}>{(data.portfolio_var_95 * 100).toFixed(2)}%</strong>
+          </Typography>
+        </Box>
+
+        <Grid container spacing={2} alignItems="center">
+          {/* Donut chart */}
+          <Grid item xs={12} sm={4}>
+            <ResponsiveContainer width="100%" height={180}>
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={78}
+                  dataKey="value"
+                  paddingAngle={2}
+                >
+                  {pieData.map((_, i) => (
+                    <Cell key={i} fill={CONTRIB_COLORS[i % CONTRIB_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(v: number) => [`${v.toFixed(1)}%`, 'Risk contribution']}
+                  contentStyle={{ background: '#111827', border: '1px solid #374151', fontSize: '0.75rem' }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </Grid>
+
+          {/* Table */}
+          <Grid item xs={12} sm={8}>
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    {['Symbol', 'Weight', 'Standalone VaR', '% of Total Risk', 'Role'].map((h) => (
+                      <TableCell key={h} sx={{ fontWeight: 700, fontSize: '0.72rem', color: 'text.secondary' }}>{h}</TableCell>
+                    ))}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {sorted.map((item, i) => (
+                    <TableRow key={item.symbol} hover>
+                      <TableCell sx={{ fontWeight: 700, color: 'primary.main', fontSize: '0.82rem', fontFamily: 'IBM Plex Mono, monospace' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                          <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: CONTRIB_COLORS[i % CONTRIB_COLORS.length], flexShrink: 0 }} />
+                          {item.symbol}
+                        </Box>
+                      </TableCell>
+                      <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem' }}>
+                        {(item.weight * 100).toFixed(1)}%
+                      </TableCell>
+                      <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem', color: '#F59E0B' }}>
+                        {(item.individual_var_95 * 100).toFixed(2)}%
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                          <LinearProgress
+                            variant="determinate"
+                            value={Math.min(Math.max(item.component_var_pct, 0), 100)}
+                            sx={{
+                              width: 56, height: 5, borderRadius: 2, flexShrink: 0,
+                              bgcolor: 'rgba(255,255,255,0.08)',
+                              '& .MuiLinearProgress-bar': {
+                                bgcolor: item.component_var_pct > 40 ? '#FF6B6B' : CONTRIB_COLORS[i % CONTRIB_COLORS.length],
+                                borderRadius: 2,
+                              },
+                            }}
+                          />
+                          <Typography sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem',
+                            color: item.component_var_pct > 40 ? '#FF6B6B' : 'text.primary', fontWeight: item.component_var_pct > 40 ? 700 : 400 }}>
+                            {item.component_var_pct.toFixed(1)}%
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        {item.is_diversifier ? (
+                          <Chip size="small" label="Diversifier" sx={{ fontSize: '0.65rem', height: 18, bgcolor: 'rgba(0,200,150,0.12)', color: '#00C896' }} />
+                        ) : (
+                          <Chip size="small" label="Risk driver" sx={{ fontSize: '0.65rem', height: 18, bgcolor: 'rgba(255,107,107,0.1)', color: '#FF6B6B' }} />
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Grid>
+        </Grid>
       </CardContent>
     </Card>
   )
@@ -482,6 +619,12 @@ export default function Risk() {
 
           {/* Monte Carlo fan chart */}
           {mcData && <MonteCarloChart data={mcData} />}
+
+          {/* VaR contribution breakdown */}
+          <VarContributionPanel
+            symbols={selectedSymbols}
+            weights={Array(selectedSymbols.length).fill(1 / selectedSymbols.length)}
+          />
         </>
       )}
     </Box>

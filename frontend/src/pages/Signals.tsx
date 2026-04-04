@@ -35,6 +35,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
   Tooltip,
   Typography,
 } from '@mui/material'
@@ -44,7 +45,8 @@ import {
   Refresh as RefreshIcon,
   ShoppingCart as TradeIcon,
 } from '@mui/icons-material'
-import { api, SignalRow } from '@/services/api'
+import { useQuery } from '@tanstack/react-query'
+import { api, SignalRow, MultiTFRow, KellyRow } from '@/services/api'
 import { CHART_COLORS } from '@/theme'
 
 const REFRESH_INTERVAL_MS = 30_000
@@ -271,6 +273,211 @@ function TradeDialog({ row, onClose, onDone }: TradeDialogProps) {
   )
 }
 
+// ── Multi-timeframe alignment panel ──────────────────────────────────────────
+
+function tfColor(signal: string) {
+  if (signal === 'buy')  return '#00C896'
+  if (signal === 'sell') return '#FF6B6B'
+  return '#9CA3AF'
+}
+
+function TFBadge({ signal }: { signal: string | null }) {
+  if (!signal) return <Typography variant="caption" color="text.disabled">—</Typography>
+  return (
+    <Box sx={{
+      display: 'inline-flex', px: 1, py: 0.2, borderRadius: 1,
+      bgcolor: signal === 'buy' ? 'rgba(0,200,150,0.12)' : signal === 'sell' ? 'rgba(255,107,107,0.12)' : 'rgba(156,163,175,0.08)',
+      color: tfColor(signal), fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase',
+    }}>
+      {signal}
+    </Box>
+  )
+}
+
+function strengthLabel(strength: string): { text: string; color: string } {
+  switch (strength) {
+    case 'strong_buy':     return { text: 'Strong Buy',     color: '#00C896' }
+    case 'strong_sell':    return { text: 'Strong Sell',    color: '#FF6B6B' }
+    case 'mostly_bullish': return { text: 'Mostly Bullish', color: '#34D399' }
+    case 'mostly_bearish': return { text: 'Mostly Bearish', color: '#F87171' }
+    default:               return { text: 'Mixed',          color: '#9CA3AF' }
+  }
+}
+
+function MultiTimeframePanel() {
+  const { data: rows, isLoading, refetch } = useQuery<MultiTFRow[]>({
+    queryKey:  ['multi-timeframe'],
+    queryFn:   api.signals.getMultiTimeframe,
+    staleTime: 60_000,
+    retry:     false,
+  })
+
+  return (
+    <Card sx={{ mt: 3, border: '1px solid', borderColor: 'divider' }}>
+      <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
+        <Box sx={{ px: 2, py: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid', borderColor: 'divider' }}>
+          <Box>
+            <Typography variant="subtitle2" fontWeight={700}>Multi-Timeframe Alignment</Typography>
+            <Typography variant="caption" color="text.secondary">
+              Daily = full AI signal · Weekly &amp; Monthly = technical trend. Strong signals agree across all three timeframes.
+            </Typography>
+          </Box>
+          <Tooltip title="Refresh">
+            <IconButton size="small" onClick={() => refetch()} disabled={isLoading}>
+              {isLoading ? <CircularProgress size={16} /> : <RefreshIcon fontSize="small" />}
+            </IconButton>
+          </Tooltip>
+        </Box>
+
+        <TableContainer sx={{ overflowX: 'auto' }}>
+          <Table size="small" sx={{ minWidth: 520 }}>
+            <TableHead>
+              <TableRow sx={{ bgcolor: 'rgba(255,255,255,0.03)' }}>
+                {['Symbol', 'Daily', 'Weekly', 'Monthly', 'Alignment'].map((h) => (
+                  <TableCell key={h} sx={{ fontWeight: 700, fontSize: '0.72rem', color: 'text.secondary' }}>{h}</TableCell>
+                ))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {isLoading ? (
+                <TableRow><TableCell colSpan={5} align="center" sx={{ py: 3 }}><CircularProgress size={22} /></TableCell></TableRow>
+              ) : (rows ?? []).map((row: MultiTFRow) => {
+                const { text, color } = strengthLabel(row.strength)
+                return (
+                  <TableRow key={row.symbol} hover>
+                    <TableCell sx={{ fontWeight: 700, fontFamily: 'IBM Plex Mono, monospace', color: 'primary.main', fontSize: '0.82rem' }}>
+                      {row.symbol}
+                    </TableCell>
+                    <TableCell><TFBadge signal={row.daily.signal} /></TableCell>
+                    <TableCell><TFBadge signal={row.weekly?.signal ?? null} /></TableCell>
+                    <TableCell><TFBadge signal={row.monthly?.signal ?? null} /></TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                        <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: color, flexShrink: 0 }} />
+                        <Typography variant="caption" sx={{ color, fontWeight: 600 }}>{text}</Typography>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ── Kelly criterion panel ─────────────────────────────────────────────────────
+
+function KellyPanel({ accountEquity }: { accountEquity: number }) {
+  const { data: rows, isLoading } = useQuery<KellyRow[]>({
+    queryKey:  ['kelly'],
+    queryFn:   api.signals.getKelly,
+    staleTime: 120_000,
+    retry:     false,
+  })
+
+  const sourceLabel = (src: string) => {
+    if (src === 'model')   return 'ML accuracy'
+    if (src === 'trades')  return 'Trade history'
+    if (src === 'blended') return 'ML + trades'
+    return 'Default'
+  }
+
+  return (
+    <Card sx={{ mt: 2, border: '1px solid', borderColor: 'divider' }}>
+      <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
+        <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
+          <Typography variant="subtitle2" fontWeight={700}>Kelly Criterion — Position Sizing</Typography>
+          <Typography variant="caption" color="text.secondary">
+            Optimal capital fraction to risk per trade. Use Half Kelly to manage drawdowns.
+            Based on AI model win-rate and paper trade history.
+          </Typography>
+        </Box>
+
+        <TableContainer sx={{ overflowX: 'auto' }}>
+          <Table size="small" sx={{ minWidth: 580 }}>
+            <TableHead>
+              <TableRow sx={{ bgcolor: 'rgba(255,255,255,0.03)' }}>
+                {['Symbol', 'Win Rate', 'Win:Loss', 'Full Kelly', 'Half Kelly (recommended)', 'Max Position', 'Basis'].map((h) => (
+                  <TableCell key={h} sx={{ fontWeight: 700, fontSize: '0.72rem', color: 'text.secondary' }}>{h}</TableCell>
+                ))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {isLoading ? (
+                <TableRow><TableCell colSpan={7} align="center" sx={{ py: 3 }}><CircularProgress size={22} /></TableCell></TableRow>
+              ) : (rows ?? []).map((row: KellyRow) => {
+                const maxPos = accountEquity * row.half_kelly
+                const isHigh = row.full_kelly > 0.3
+                return (
+                  <TableRow key={row.symbol} hover>
+                    <TableCell sx={{ fontWeight: 700, fontFamily: 'IBM Plex Mono, monospace', color: 'primary.main', fontSize: '0.82rem' }}>
+                      {row.symbol}
+                    </TableCell>
+                    <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.82rem' }}>
+                      {(row.win_rate * 100).toFixed(1)}%
+                    </TableCell>
+                    <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.82rem' }}>
+                      {row.win_loss_ratio.toFixed(2)}×
+                    </TableCell>
+                    <TableCell>
+                      <Typography sx={{
+                        fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.82rem',
+                        color: isHigh ? '#F59E0B' : 'text.primary',
+                      }}>
+                        {(row.full_kelly * 100).toFixed(1)}%
+                        {isHigh && <Typography component="span" variant="caption" sx={{ ml: 0.5, color: '#F59E0B' }}>⚠</Typography>}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                        <LinearProgress
+                          variant="determinate"
+                          value={Math.min(row.half_kelly * 100, 100)}
+                          sx={{
+                            width: 48, height: 5, borderRadius: 2, flexShrink: 0,
+                            bgcolor: 'rgba(255,255,255,0.08)',
+                            '& .MuiLinearProgress-bar': { bgcolor: '#4A9EFF', borderRadius: 2 },
+                          }}
+                        />
+                        <Typography sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.82rem', color: '#4A9EFF', fontWeight: 700 }}>
+                          {(row.half_kelly * 100).toFixed(1)}%
+                        </Typography>
+                      </Box>
+                    </TableCell>
+                    <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.82rem' }}>
+                      ${maxPos.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        size="small"
+                        label={sourceLabel(row.source)}
+                        sx={{ fontSize: '0.65rem', height: 18,
+                          bgcolor: row.source === 'blended' ? 'rgba(74,158,255,0.12)' : 'rgba(255,255,255,0.05)',
+                          color:   row.source === 'blended' ? '#4A9EFF' : 'text.disabled',
+                        }}
+                      />
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        <Box sx={{ px: 2, py: 1, borderTop: '1px solid', borderColor: 'divider' }}>
+          <Typography variant="caption" color="text.disabled">
+            Max Position = account × Half Kelly. Values above 25% Full Kelly are highlighted — unusually high confidence may reflect overfitting.
+            {rows?.[0]?.n_trades === 0 && ' No closed paper trades yet — values based on ML model accuracy only.'}
+          </Typography>
+        </Box>
+      </CardContent>
+    </Card>
+  )
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function SignalsPage() {
@@ -281,6 +488,14 @@ export default function SignalsPage() {
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
   const [expanded,   setExpanded]   = useState<Set<string>>(new Set())
   const [tradeRow,   setTradeRow]   = useState<SignalRow | null>(null)
+
+  // Get paper account equity for Kelly position sizing
+  const { data: paperState } = useQuery({
+    queryKey: ['paper-state'],
+    queryFn:  api.paper.getState,
+    staleTime: 30_000,
+  })
+  const accountEquity = paperState?.account?.equity ?? 100_000
   const [toast,      setToast]      = useState('')
   const [toastSev,   setToastSev]   = useState<'success' | 'error'>('success')
 
@@ -534,6 +749,12 @@ export default function SignalsPage() {
       <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
         Click ▾ on any row to see why the signal was generated. Signals require ≥ 210 OHLCV bars and a trained model.
       </Typography>
+
+      {/* Multi-timeframe alignment grid */}
+      <MultiTimeframePanel />
+
+      {/* Kelly position sizing */}
+      <KellyPanel accountEquity={accountEquity} />
 
       {/* Trade dialog */}
       {tradeRow && (

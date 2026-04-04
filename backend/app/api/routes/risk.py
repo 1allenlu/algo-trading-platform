@@ -10,9 +10,11 @@ risk/optimization functions directly (no subprocess — fast enough to run inlin
 
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Query
 from loguru import logger
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -248,4 +250,108 @@ async def get_monte_carlo(
         paths        = [MonteCarloPathPoint(**p) for p in result["paths"]],
         stats        = MonteCarloStats(**result["stats"]),
         initial_value = result["initial_value"],
+    )
+
+
+# ── Component VaR contribution (position-level risk attribution) ──────────────
+
+
+class VarContributionItem(BaseModel):
+    symbol:             str
+    weight:             float
+    individual_var_95:  float   # standalone 1-day 95% VaR (positive, as fraction)
+    component_var_pct:  float   # % of total portfolio VaR this position contributes
+    is_diversifier:     bool    # True if correlation with portfolio < 0 (reduces risk)
+
+
+class VarContributionResponse(BaseModel):
+    symbols:          list[str]
+    weights:          list[float]
+    portfolio_var_95: float          # portfolio 1-day 95% VaR (positive, as fraction)
+    contributions:    list[VarContributionItem]
+
+
+@router.get("/var-contribution", response_model=VarContributionResponse)
+async def get_var_contribution(
+    symbols:  str       = Query(..., description="Comma-separated tickers, e.g. SPY,QQQ,AAPL"),
+    weights:  str | None = Query(None, description="Comma-separated weights summing to 1"),
+    session:  AsyncSession = Depends(get_db),
+) -> VarContributionResponse:
+    """
+    Decompose portfolio VaR into per-position contributions.
+
+    Method — historical component VaR:
+      VaR_portfolio = -percentile(r_p, 5)   (1-day 95% historical)
+      VaR_i         = -percentile(r_i, 5)   (individual asset, positive)
+      corr_i_p      = corr(r_i, r_portfolio)
+      ComponentVaR_i = w_i × corr_i_p × VaR_i
+      %contribution_i = ComponentVaR_i / sum(ComponentVaR)
+
+    Positions with negative correlation to the portfolio are diversifiers —
+    they reduce total risk below the sum of individual risks.
+    """
+    symbol_list = [s.strip().upper() for s in symbols.split(",") if s.strip()]
+    if len(symbol_list) < 2:
+        raise HTTPException(400, "Provide at least 2 symbols")
+
+    weight_list: list[float] | None = None
+    if weights:
+        try:
+            weight_list = [float(w) for w in weights.split(",") if w.strip()]
+        except ValueError:
+            raise HTTPException(400, "Weights must be comma-separated numbers")
+        if len(weight_list) != len(symbol_list):
+            raise HTTPException(400, "Number of weights must match number of symbols")
+
+    closes = await _load_closes(symbol_list, session)
+
+    n = len(symbol_list)
+    w = np.array(weight_list if weight_list else [1.0 / n] * n)
+
+    # Aligned returns matrix
+    price_df   = pd.DataFrame(closes).sort_index().ffill()
+    returns_df = price_df.pct_change().dropna()
+
+    if len(returns_df) < MIN_DAYS:
+        raise HTTPException(400, f"Need at least {MIN_DAYS} trading days of data.")
+
+    # Portfolio daily returns
+    port_returns = (returns_df * w).sum(axis=1)
+
+    # 1-day 95% VaR (positive = loss)
+    port_var_95 = float(-np.percentile(port_returns, 5))
+
+    # Individual VaR and correlation with portfolio
+    items: list[VarContributionItem] = []
+    component_vars: list[float] = []
+
+    for i, sym in enumerate(symbol_list):
+        asset_rets   = returns_df[sym]
+        ind_var_95   = float(-np.percentile(asset_rets, 5))
+        corr_with_p  = float(asset_rets.corr(port_returns))
+
+        component    = float(w[i]) * corr_with_p * ind_var_95
+        component_vars.append(component)
+
+    total_component = sum(component_vars)
+
+    for i, sym in enumerate(symbol_list):
+        asset_rets  = returns_df[sym]
+        ind_var_95  = float(-np.percentile(asset_rets, 5))
+        corr_with_p = float(asset_rets.corr(port_returns))
+        pct = (component_vars[i] / total_component * 100) if total_component != 0 else 0.0
+
+        items.append(VarContributionItem(
+            symbol            = sym,
+            weight            = round(float(w[i]), 4),
+            individual_var_95 = round(ind_var_95, 4),
+            component_var_pct = round(pct, 2),
+            is_diversifier    = corr_with_p < 0,
+        ))
+
+    return VarContributionResponse(
+        symbols          = symbol_list,
+        weights          = w.tolist(),
+        portfolio_var_95 = round(port_var_95, 4),
+        contributions    = items,
     )

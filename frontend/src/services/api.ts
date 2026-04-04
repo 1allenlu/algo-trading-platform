@@ -96,6 +96,52 @@ export interface SignalRow {
   last_updated:    string
 }
 
+// ── Multi-timeframe signals ───────────────────────────────────────────────────
+
+export interface TFSignal {
+  signal: string   // "buy" | "hold" | "sell"
+  score:  number
+  rsi:    number | null
+}
+
+export interface MultiTFRow {
+  symbol:   string
+  daily:    TFSignal
+  weekly:   TFSignal | null
+  monthly:  TFSignal | null
+  aligned:  boolean
+  strength: string  // "strong_buy" | "strong_sell" | "mostly_bullish" | "mostly_bearish" | "mixed"
+}
+
+// ── Kelly criterion ───────────────────────────────────────────────────────────
+
+export interface KellyRow {
+  symbol:         string
+  win_rate:       number
+  win_loss_ratio: number
+  full_kelly:     number
+  half_kelly:     number
+  source:         string  // "model" | "trades" | "blended" | "default"
+  n_trades:       number
+}
+
+// ── VaR contribution ──────────────────────────────────────────────────────────
+
+export interface VarContributionItem {
+  symbol:             string
+  weight:             number
+  individual_var_95:  number
+  component_var_pct:  number
+  is_diversifier:     boolean
+}
+
+export interface VarContributionResponse {
+  symbols:          string[]
+  weights:          number[]
+  portfolio_var_95: number
+  contributions:    VarContributionItem[]
+}
+
 // ── Phase 23: Multi-user ──────────────────────────────────────────────────────
 
 export interface UserInfo {
@@ -1194,6 +1240,16 @@ export const api = {
           },
         })
         .then((r) => r.data),
+
+    getVarContribution: (symbols: string[], weights?: number[]): Promise<VarContributionResponse> =>
+      apiClient
+        .get<VarContributionResponse>('/api/risk/var-contribution', {
+          params: {
+            symbols: symbols.join(','),
+            ...(weights ? { weights: weights.join(',') } : {}),
+          },
+        })
+        .then((r) => r.data),
   },
 
   paper: {
@@ -1330,6 +1386,12 @@ export const api = {
   signals: {
     getAll: (): Promise<SignalRow[]> =>
       apiClient.get<SignalRow[]>('/api/signals').then((r) => r.data),
+
+    getMultiTimeframe: (): Promise<MultiTFRow[]> =>
+      apiClient.get<MultiTFRow[]>('/api/signals/multi-timeframe').then((r) => r.data),
+
+    getKelly: (): Promise<KellyRow[]> =>
+      apiClient.get<KellyRow[]>('/api/signals/kelly').then((r) => r.data),
   },
 
   // ── Phase 23: User management ──────────────────────────────────────────────
