@@ -91,58 +91,64 @@ function AssetTable({ data }: { data: PortfolioRiskResponse }) {
         <Typography variant="subtitle2" fontWeight={700} mb={1.5}>
           Risk Breakdown by Stock
         </Typography>
-        <TableContainer>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                {['Symbol', 'Weight', 'Yearly Return', 'Yearly Swings', 'Risk-Adj. Return', 'Biggest Drop', 'Market Sensitivity', 'Max 1-Day Loss'].map((h) => (
-                  <TableCell key={h} sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.secondary' }}>
-                    {h}
-                  </TableCell>
-                ))}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {data.assets.map((asset, i) => {
-                const w = data.weights[i] ?? 0
-                return (
-                  <TableRow key={asset.symbol} hover>
-                    <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontWeight: 700, color: 'primary.main' }}>
-                      {asset.symbol}
-                    </TableCell>
-                    <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem' }}>
-                      {(w * 100).toFixed(1)}%
-                    </TableCell>
-                    <TableCell sx={{
-                      fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem',
-                      color: asset.annual_return >= 0 ? '#06d6a0' : '#ff6b6b',
-                    }}>
-                      {asset.annual_return >= 0 ? '+' : ''}{(asset.annual_return * 100).toFixed(1)}%
-                    </TableCell>
-                    <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem' }}>
-                      {(asset.annual_vol * 100).toFixed(1)}%
-                    </TableCell>
-                    <TableCell sx={{
-                      fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem',
-                      color: asset.sharpe >= 1 ? '#06d6a0' : asset.sharpe >= 0 ? 'text.primary' : '#ff6b6b',
-                    }}>
-                      {asset.sharpe.toFixed(2)}
-                    </TableCell>
-                    <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem', color: '#ff6b6b' }}>
-                      {(asset.max_drawdown * 100).toFixed(1)}%
-                    </TableCell>
-                    <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem' }}>
-                      {asset.beta.toFixed(2)}
-                    </TableCell>
-                    <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem', color: '#f77f00' }}>
-                      {(asset.var_95 * 100).toFixed(2)}%
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <Box sx={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <TableContainer>
+            <Table size="small" sx={{ minWidth: 650 }}>
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.secondary' }}>Symbol</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.secondary' }}>Weight</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.secondary' }}>Yearly Return</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.secondary', display: { xs: 'none', sm: 'table-cell' } }}>Yearly Swings</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.secondary', display: { xs: 'none', sm: 'table-cell' } }}>Risk-Adj. Return</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.secondary' }}>Biggest Drop</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.secondary', display: { xs: 'none', sm: 'table-cell' } }}>Market Sensitivity</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.secondary' }}>Max 1-Day Loss</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {data.assets.map((asset, i) => {
+                  const w = data.weights[i] ?? 0
+                  return (
+                    <TableRow key={asset.symbol} hover>
+                      <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontWeight: 700, color: 'primary.main' }}>
+                        {asset.symbol}
+                      </TableCell>
+                      <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem' }}>
+                        {(w * 100).toFixed(1)}%
+                      </TableCell>
+                      <TableCell sx={{
+                        fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem',
+                        color: asset.annual_return >= 0 ? '#06d6a0' : '#ff6b6b',
+                      }}>
+                        {asset.annual_return >= 0 ? '+' : ''}{(asset.annual_return * 100).toFixed(1)}%
+                      </TableCell>
+                      <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem', display: { xs: 'none', sm: 'table-cell' } }}>
+                        {(asset.annual_vol * 100).toFixed(1)}%
+                      </TableCell>
+                      <TableCell sx={{
+                        fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem',
+                        color: asset.sharpe >= 1 ? '#06d6a0' : asset.sharpe >= 0 ? 'text.primary' : '#ff6b6b',
+                        display: { xs: 'none', sm: 'table-cell' },
+                      }}>
+                        {asset.sharpe.toFixed(2)}
+                      </TableCell>
+                      <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem', color: '#ff6b6b' }}>
+                        {(asset.max_drawdown * 100).toFixed(1)}%
+                      </TableCell>
+                      <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem', display: { xs: 'none', sm: 'table-cell' } }}>
+                        {asset.beta.toFixed(2)}
+                      </TableCell>
+                      <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem', color: '#f77f00' }}>
+                        {(asset.var_95 * 100).toFixed(2)}%
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
       </CardContent>
     </Card>
   )

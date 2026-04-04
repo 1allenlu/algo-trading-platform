@@ -4,22 +4,30 @@
  * Displays the live composite BUY / HOLD / SELL signal for every tracked
  * symbol in a colour-coded table. Auto-refreshes every 30 seconds.
  *
- * Layout:
- *   Summary bar — # BUY | # HOLD | # SELL
- *   Signal matrix table — Symbol | Price | Composite | ML Direction |
- *                         Confidence | RSI | Sentiment | Updated
- *   Each row is clickable → navigates to /trading
+ * Enhancements:
+ *   - Expandable "Why?" rows explaining the signal reasoning
+ *   - LinearProgress confidence bar
+ *   - "Trade This" button with confirmation dialog
  */
 
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Box,
+  Button,
   Card,
   CardContent,
   Chip,
   CircularProgress,
+  Collapse,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   IconButton,
+  LinearProgress,
+  Snackbar,
+  Alert,
   Stack,
   Table,
   TableBody,
@@ -30,7 +38,12 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
-import { Refresh as RefreshIcon } from '@mui/icons-material'
+import {
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
+  Refresh as RefreshIcon,
+  ShoppingCart as TradeIcon,
+} from '@mui/icons-material'
 import { api, SignalRow } from '@/services/api'
 import { CHART_COLORS } from '@/theme'
 
@@ -54,6 +67,63 @@ function rsiColor(rsiSignal: string): string {
   if (rsiSignal === 'oversold')   return CHART_COLORS.positive
   if (rsiSignal === 'overbought') return CHART_COLORS.negative
   return CHART_COLORS.textMuted
+}
+
+/** Human-readable explanation of what drove the signal. */
+function buildExplanation(row: SignalRow): { factor: string; detail: string; positive: boolean }[] {
+  const items: { factor: string; detail: string; positive: boolean }[] = []
+
+  // ML model direction
+  if (row.ml_direction !== 'none') {
+    const up = row.ml_direction === 'up'
+    items.push({
+      factor:   'ML Model',
+      detail:   `Predicts price going ${up ? 'UP' : 'DOWN'} with ${(row.ml_confidence * 100).toFixed(0)}% confidence`,
+      positive: up,
+    })
+  }
+
+  // RSI
+  if (row.rsi != null && row.rsi_signal !== 'neutral') {
+    const oversold = row.rsi_signal === 'oversold'
+    items.push({
+      factor:   'RSI',
+      detail:   oversold
+        ? `RSI ${row.rsi.toFixed(1)} — stock looks oversold (potentially undervalued)`
+        : `RSI ${row.rsi.toFixed(1)} — stock looks overbought (potentially overvalued)`,
+      positive: oversold,
+    })
+  } else if (row.rsi != null) {
+    items.push({
+      factor:   'RSI',
+      detail:   `RSI ${row.rsi.toFixed(1)} — neutral range, no strong signal`,
+      positive: true,
+    })
+  }
+
+  // Sentiment
+  if (row.sentiment_score != null) {
+    const bull = row.sentiment_label === 'bullish'
+    const bear = row.sentiment_label === 'bearish'
+    items.push({
+      factor:   'News Sentiment',
+      detail:   bull
+        ? `Recent news is ${bull ? 'positive' : 'negative'} (score ${row.sentiment_score.toFixed(2)})`
+        : bear
+        ? `Recent news is negative (score ${row.sentiment_score.toFixed(2)})`
+        : `News sentiment is neutral (score ${row.sentiment_score.toFixed(2)})`,
+      positive: bull,
+    })
+  }
+
+  // Overall confidence
+  items.push({
+    factor:   'Overall Confidence',
+    detail:   `Combined signal strength: ${(row.confidence * 100).toFixed(0)}%`,
+    positive: row.composite === 'buy',
+  })
+
+  return items
 }
 
 // ── Summary chips ─────────────────────────────────────────────────────────────
@@ -84,14 +154,135 @@ function SummaryBar({ rows }: { rows: SignalRow[] }) {
   )
 }
 
+// ── "Why?" expandable detail row ──────────────────────────────────────────────
+
+function WhyRow({ row }: { row: SignalRow }) {
+  const items = buildExplanation(row)
+
+  return (
+    <TableRow>
+      <TableCell colSpan={9} sx={{ py: 0, bgcolor: 'rgba(74,158,255,0.03)', borderBottom: '1px solid', borderColor: 'divider' }}>
+        <Box sx={{ px: 2, py: 1.5 }}>
+          <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ mb: 1, display: 'block', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+            Signal breakdown for {row.symbol}
+          </Typography>
+          <Stack spacing={0.75}>
+            {items.map((item) => (
+              <Box key={item.factor} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                <Box sx={{
+                  width: 6, height: 6, borderRadius: '50%', mt: '5px', flexShrink: 0,
+                  bgcolor: item.positive ? '#00C896' : '#FF6B6B',
+                }} />
+                <Box>
+                  <Typography variant="caption" fontWeight={700} color="text.primary">
+                    {item.factor}:
+                  </Typography>{' '}
+                  <Typography variant="caption" color="text.secondary">
+                    {item.detail}
+                  </Typography>
+                </Box>
+              </Box>
+            ))}
+          </Stack>
+        </Box>
+      </TableCell>
+    </TableRow>
+  )
+}
+
+// ── Trade This dialog ─────────────────────────────────────────────────────────
+
+interface TradeDialogProps {
+  row:     SignalRow | null
+  onClose: () => void
+  onDone:  (msg: string, err?: boolean) => void
+}
+
+function TradeDialog({ row, onClose, onDone }: TradeDialogProps) {
+  const [qty,      setQty]      = useState('10')
+  const [loading,  setLoading]  = useState(false)
+
+  if (!row) return null
+
+  const side       = row.composite === 'sell' ? 'sell' : 'buy'
+  const color      = side === 'buy' ? '#00C896' : '#FF6B6B'
+  const estValue   = parseFloat(qty) * (row.last_price ?? 0)
+
+  const handleSubmit = async () => {
+    const q = parseInt(qty, 10)
+    if (!q || q <= 0) return
+    setLoading(true)
+    try {
+      await api.paper.submitOrder({ symbol: row.symbol, side, qty: q, order_type: 'market' })
+      onDone(`${side.toUpperCase()} ${q} × ${row.symbol} submitted`)
+      onClose()
+    } catch (err: unknown) {
+      onDone(err instanceof Error ? err.message : 'Order failed', true)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Dialog open onClose={onClose} maxWidth="xs" fullWidth>
+      <DialogTitle>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ px: 1, py: 0.25, borderRadius: 1, bgcolor: signalBg(row.composite), color, fontWeight: 700, fontSize: '0.85rem' }}>
+            {side.toUpperCase()}
+          </Box>
+          {row.symbol}
+        </Box>
+      </DialogTitle>
+      <DialogContent>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          AI signal: <strong style={{ color }}>{row.composite.toUpperCase()}</strong> at {(row.confidence * 100).toFixed(0)}% confidence.
+          {row.last_price ? ` Current price: $${row.last_price.toFixed(2)}.` : ''}
+        </Typography>
+        <TextField
+          label="Quantity (shares)"
+          type="number"
+          value={qty}
+          onChange={(e) => setQty(e.target.value)}
+          fullWidth
+          inputProps={{ min: 1, step: 1 }}
+          size="small"
+        />
+        {row.last_price && parseFloat(qty) > 0 && (
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+            Estimated value: ${estValue.toLocaleString('en-US', { maximumFractionDigits: 2 })}
+          </Typography>
+        )}
+        <Typography variant="caption" color="text.disabled" sx={{ mt: 1.5, display: 'block' }}>
+          This is a paper trade — no real money is involved.
+        </Typography>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} disabled={loading}>Cancel</Button>
+        <Button
+          onClick={handleSubmit}
+          variant="contained"
+          disabled={loading || !qty || parseInt(qty) <= 0}
+          sx={{ bgcolor: color, '&:hover': { bgcolor: color, filter: 'brightness(1.1)' } }}
+        >
+          {loading ? <CircularProgress size={16} sx={{ color: '#fff' }} /> : `${side.toUpperCase()} ${qty} shares`}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  )
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function SignalsPage() {
-  const navigate = useNavigate()
-  const [rows, setRows]       = useState<SignalRow[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError]     = useState<string | null>(null)
+  const navigate   = useNavigate()
+  const [rows,       setRows]       = useState<SignalRow[]>([])
+  const [loading,    setLoading]    = useState(true)
+  const [error,      setError]      = useState<string | null>(null)
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
+  const [expanded,   setExpanded]   = useState<Set<string>>(new Set())
+  const [tradeRow,   setTradeRow]   = useState<SignalRow | null>(null)
+  const [toast,      setToast]      = useState('')
+  const [toastSev,   setToastSev]   = useState<'success' | 'error'>('success')
 
   const fetchSignals = useCallback(async () => {
     try {
@@ -112,16 +303,28 @@ export default function SignalsPage() {
     return () => clearInterval(interval)
   }, [fetchSignals])
 
+  const toggleExpand = (sym: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (next.has(sym)) next.delete(sym)
+      else next.add(sym)
+      return next
+    })
+  }
+
+  const handleTradeDone = (msg: string, err?: boolean) => {
+    setToast(msg)
+    setToastSev(err ? 'error' : 'success')
+  }
+
   return (
     <Box>
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
         <Box>
-          <Typography variant="h5" fontWeight={700}>
-            Live Signals
-          </Typography>
+          <Typography variant="h5" fontWeight={700}>Live Signals</Typography>
           <Typography variant="body2" color="text.secondary">
-            Composite BUY / HOLD / SELL for all tracked symbols · auto-refreshes every 30s
+            AI-generated BUY / HOLD / SELL for all tracked symbols · auto-refreshes every 30s
           </Typography>
         </Box>
         <Stack direction="row" spacing={1} alignItems="center">
@@ -139,9 +342,7 @@ export default function SignalsPage() {
       </Stack>
 
       {error && (
-        <Typography color="error" sx={{ mb: 2 }}>
-          {error}
-        </Typography>
+        <Typography color="error" sx={{ mb: 2 }}>{error}</Typography>
       )}
 
       {rows.length > 0 && <SummaryBar rows={rows} />}
@@ -149,16 +350,13 @@ export default function SignalsPage() {
       {/* ── Signal Table ───────────────────────────────────────────────────── */}
       <Card>
         <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
-          <TableContainer>
-            <Table size="small">
+          <TableContainer sx={{ overflowX: 'auto' }}>
+            <Table size="small" sx={{ minWidth: 780 }}>
               <TableHead>
                 <TableRow sx={{ bgcolor: 'rgba(255,255,255,0.03)' }}>
-                  {['Symbol', 'Price', 'Signal', 'ML Direction', 'Confidence', 'RSI', 'Sentiment', 'Updated'].map(
+                  {['', 'Symbol', 'Price', 'Signal', 'ML Direction', 'Confidence', 'RSI', 'Sentiment', 'Trade'].map(
                     (h) => (
-                      <TableCell
-                        key={h}
-                        sx={{ color: 'primary.main', fontWeight: 600, fontSize: '0.78rem' }}
-                      >
+                      <TableCell key={h} sx={{ color: 'primary.main', fontWeight: 600, fontSize: '0.78rem' }}>
                         {h}
                       </TableCell>
                     ),
@@ -168,132 +366,164 @@ export default function SignalsPage() {
               <TableBody>
                 {loading && rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
+                    <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
                       <CircularProgress size={28} />
                     </TableCell>
                   </TableRow>
                 ) : rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                    <TableCell colSpan={9} align="center" sx={{ py: 4, color: 'text.secondary' }}>
                       No signal data — run{' '}
                       <code style={{ color: '#4A9EFF' }}>make ingest</code> and{' '}
                       <code style={{ color: '#4A9EFF' }}>make train-all</code> first
                     </TableCell>
                   </TableRow>
                 ) : (
-                  rows.map((row) => (
-                    <TableRow
-                      key={row.symbol}
-                      hover
-                      onClick={() => navigate('/trading')}
-                      sx={{
-                        cursor: 'pointer',
-                        '&:hover': { bgcolor: 'rgba(74,158,255,0.05)' },
-                      }}
-                    >
-                      <TableCell sx={{ fontWeight: 700, color: 'primary.main' }}>
-                        {row.symbol}
-                      </TableCell>
-                      <TableCell>
-                        {row.last_price != null ? `$${row.last_price.toFixed(2)}` : '—'}
-                      </TableCell>
-                      <TableCell>
-                        <Box
-                          sx={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            px: 1.2,
-                            py: 0.3,
-                            borderRadius: 1,
-                            bgcolor: signalBg(row.composite),
-                            color: signalColor(row.composite),
-                            fontWeight: 700,
-                            fontSize: '0.78rem',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.05em',
-                          }}
+                  rows.map((row) => {
+                    const isExpanded = expanded.has(row.symbol)
+                    return (
+                      <>
+                        <TableRow
+                          key={row.symbol}
+                          hover
+                          sx={{ '&:hover': { bgcolor: 'rgba(74,158,255,0.05)' }, cursor: 'default' }}
                         >
-                          {row.composite}
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Box
-                          sx={{
-                            color: row.ml_direction === 'up'
-                              ? CHART_COLORS.positive
-                              : row.ml_direction === 'down'
-                              ? CHART_COLORS.negative
-                              : CHART_COLORS.textMuted,
-                            fontSize: '0.82rem',
-                          }}
-                        >
-                          {row.ml_direction === 'none' ? '—' : row.ml_direction === 'up' ? '↑ UP' : '↓ DOWN'}
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Stack direction="row" alignItems="center" spacing={0.5}>
-                          <Box
-                            sx={{
-                              width: 40,
-                              height: 4,
-                              borderRadius: 2,
-                              bgcolor: signalColor(row.composite),
-                              opacity: 0.3,
-                            }}
-                          />
-                          <Box
-                            sx={{
-                              width: `${row.confidence * 40}px`,
-                              height: 4,
-                              borderRadius: 2,
-                              bgcolor: signalColor(row.composite),
-                              position: 'absolute',
-                            }}
-                          />
-                          <Typography variant="caption" sx={{ ml: 1 }}>
-                            {(row.confidence * 100).toFixed(0)}%
-                          </Typography>
-                        </Stack>
-                      </TableCell>
-                      <TableCell>
-                        <Box sx={{ color: rsiColor(row.rsi_signal), fontSize: '0.82rem' }}>
-                          {row.rsi != null ? row.rsi.toFixed(1) : '—'}
-                          {row.rsi_signal !== 'neutral' && (
-                            <Typography
-                              component="span"
-                              variant="caption"
-                              sx={{ ml: 0.5, color: rsiColor(row.rsi_signal), opacity: 0.8 }}
-                            >
-                              ({row.rsi_signal})
-                            </Typography>
-                          )}
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Box
-                          sx={{
-                            color:
-                              row.sentiment_label === 'bullish'
+                          {/* Expand toggle */}
+                          <TableCell sx={{ width: 32, p: 0.5 }}>
+                            <Tooltip title={isExpanded ? 'Hide explanation' : 'Why this signal?'}>
+                              <IconButton size="small" onClick={() => toggleExpand(row.symbol)}
+                                sx={{ color: 'text.disabled', '&:hover': { color: 'primary.main' } }}>
+                                {isExpanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+                              </IconButton>
+                            </Tooltip>
+                          </TableCell>
+
+                          <TableCell
+                            sx={{ fontWeight: 700, color: 'primary.main', cursor: 'pointer' }}
+                            onClick={() => navigate('/trading')}
+                          >
+                            {row.symbol}
+                          </TableCell>
+
+                          <TableCell>
+                            {row.last_price != null ? `$${row.last_price.toFixed(2)}` : '—'}
+                          </TableCell>
+
+                          <TableCell>
+                            <Box sx={{
+                              display: 'inline-flex', alignItems: 'center',
+                              px: 1.2, py: 0.3, borderRadius: 1,
+                              bgcolor: signalBg(row.composite),
+                              color: signalColor(row.composite),
+                              fontWeight: 700, fontSize: '0.78rem',
+                              textTransform: 'uppercase', letterSpacing: '0.05em',
+                            }}>
+                              {row.composite}
+                            </Box>
+                          </TableCell>
+
+                          <TableCell>
+                            <Box sx={{
+                              color: row.ml_direction === 'up'
+                                ? CHART_COLORS.positive
+                                : row.ml_direction === 'down'
+                                ? CHART_COLORS.negative
+                                : CHART_COLORS.textMuted,
+                              fontSize: '0.82rem',
+                            }}>
+                              {row.ml_direction === 'none' ? '—' : row.ml_direction === 'up' ? '↑ UP' : '↓ DOWN'}
+                            </Box>
+                          </TableCell>
+
+                          {/* Confidence — LinearProgress bar */}
+                          <TableCell sx={{ minWidth: 110 }}>
+                            <Stack direction="row" alignItems="center" spacing={0.75}>
+                              <LinearProgress
+                                variant="determinate"
+                                value={row.confidence * 100}
+                                sx={{
+                                  width: 56, height: 5, borderRadius: 2, flexShrink: 0,
+                                  bgcolor: 'rgba(255,255,255,0.08)',
+                                  '& .MuiLinearProgress-bar': {
+                                    bgcolor: signalColor(row.composite), borderRadius: 2,
+                                  },
+                                }}
+                              />
+                              <Typography variant="caption" fontFamily="IBM Plex Mono, monospace">
+                                {(row.confidence * 100).toFixed(0)}%
+                              </Typography>
+                            </Stack>
+                          </TableCell>
+
+                          <TableCell>
+                            <Box sx={{ color: rsiColor(row.rsi_signal), fontSize: '0.82rem' }}>
+                              {row.rsi != null ? row.rsi.toFixed(1) : '—'}
+                              {row.rsi_signal !== 'neutral' && (
+                                <Typography component="span" variant="caption"
+                                  sx={{ ml: 0.5, color: rsiColor(row.rsi_signal), opacity: 0.8 }}>
+                                  ({row.rsi_signal})
+                                </Typography>
+                              )}
+                            </Box>
+                          </TableCell>
+
+                          <TableCell>
+                            <Box sx={{
+                              color: row.sentiment_label === 'bullish'
                                 ? CHART_COLORS.positive
                                 : row.sentiment_label === 'bearish'
                                 ? CHART_COLORS.negative
                                 : CHART_COLORS.textMuted,
-                            fontSize: '0.82rem',
-                          }}
-                        >
-                          {row.sentiment_score != null
-                            ? `${row.sentiment_score > 0 ? '+' : ''}${row.sentiment_score.toFixed(2)}`
-                            : '—'}{' '}
-                          <Typography component="span" variant="caption" sx={{ opacity: 0.7 }}>
-                            ({row.sentiment_label})
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                      <TableCell sx={{ color: 'text.secondary', fontSize: '0.75rem' }}>
-                        {new Date(row.last_updated).toLocaleTimeString()}
-                      </TableCell>
-                    </TableRow>
-                  ))
+                              fontSize: '0.82rem',
+                            }}>
+                              {row.sentiment_score != null
+                                ? `${row.sentiment_score > 0 ? '+' : ''}${row.sentiment_score.toFixed(2)}`
+                                : '—'}{' '}
+                              <Typography component="span" variant="caption" sx={{ opacity: 0.7 }}>
+                                ({row.sentiment_label})
+                              </Typography>
+                            </Box>
+                          </TableCell>
+
+                          {/* Trade This button */}
+                          <TableCell>
+                            {row.composite !== 'hold' && (
+                              <Tooltip title={`Paper-trade this ${row.composite} signal`}>
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  startIcon={<TradeIcon sx={{ fontSize: 13 }} />}
+                                  onClick={() => setTradeRow(row)}
+                                  sx={{
+                                    textTransform: 'none',
+                                    fontSize: '0.7rem',
+                                    color:       signalColor(row.composite),
+                                    borderColor: `${signalColor(row.composite)}44`,
+                                    '&:hover': {
+                                      borderColor: signalColor(row.composite),
+                                      bgcolor:     signalBg(row.composite),
+                                    },
+                                    px: 1, py: 0.25,
+                                  }}
+                                >
+                                  Trade
+                                </Button>
+                              </Tooltip>
+                            )}
+                          </TableCell>
+                        </TableRow>
+
+                        {/* Expandable "Why?" row */}
+                        <TableRow key={`${row.symbol}-why`}>
+                          <TableCell colSpan={9} sx={{ p: 0, border: 0 }}>
+                            <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                              <WhyRow row={row} />
+                            </Collapse>
+                          </TableCell>
+                        </TableRow>
+                      </>
+                    )
+                  })
                 )}
               </TableBody>
             </Table>
@@ -302,8 +532,28 @@ export default function SignalsPage() {
       </Card>
 
       <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
-        Click any row to open the Trading page. Signals require ≥ 210 OHLCV bars and a trained model.
+        Click ▾ on any row to see why the signal was generated. Signals require ≥ 210 OHLCV bars and a trained model.
       </Typography>
+
+      {/* Trade dialog */}
+      {tradeRow && (
+        <TradeDialog
+          row={tradeRow}
+          onClose={() => setTradeRow(null)}
+          onDone={handleTradeDone}
+        />
+      )}
+
+      <Snackbar
+        open={!!toast}
+        autoHideDuration={3000}
+        onClose={() => setToast('')}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity={toastSev} onClose={() => setToast('')} sx={{ width: '100%' }}>
+          {toast}
+        </Alert>
+      </Snackbar>
     </Box>
   )
 }

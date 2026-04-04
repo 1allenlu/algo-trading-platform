@@ -3,18 +3,20 @@ import {
   Badge,
   Box,
   Chip,
-  Divider,
   IconButton,
   List,
   ListItem,
   ListItemText,
   Popover,
+  Tab,
+  Tabs,
   Toolbar,
   Tooltip,
   Typography,
   Button,
 } from '@mui/material'
 import {
+  Assessment as BacktestIcon,
   Circle as DotIcon,
   DarkMode as DarkModeIcon,
   LightMode as LightModeIcon,
@@ -22,6 +24,7 @@ import {
   Menu as MenuIcon,
   NotificationsOutlined as BellIcon,
   Refresh as RefreshIcon,
+  TrendingUp as TradeIcon,
 } from '@mui/icons-material'
 import { useQuery } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
@@ -50,6 +53,22 @@ export default function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
   // Bell popover state
   const bellRef = useRef<HTMLButtonElement>(null)
   const [popoverOpen, setPopoverOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState(0)
+
+  // Activity feed — recent backtests + paper orders
+  const { data: paperState } = useQuery({
+    queryKey:  ['paper-state'],
+    queryFn:   api.paper.getState,
+    staleTime: 15_000,
+    enabled:   popoverOpen && activeTab === 1,
+  })
+  const { data: backtestData } = useQuery({
+    queryKey:  ['backtests'],
+    queryFn:   () => api.backtest.list(),
+    staleTime: 30_000,
+    enabled:   popoverOpen && activeTab === 1,
+  })
+  const backtestList = backtestData?.runs
 
   const handleBellClick = () => {
     setPopoverOpen(true)
@@ -198,8 +217,8 @@ export default function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         PaperProps={{
           sx: {
-            width: 360,
-            maxHeight: 440,
+            width: 380,
+            maxHeight: 480,
             bgcolor: 'background.paper',
             border: '1px solid',
             borderColor: 'divider',
@@ -210,58 +229,155 @@ export default function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
         }}
       >
         {/* Header */}
-        <Box sx={{ px: 2, py: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="subtitle2" fontWeight={700}>
-            Alerts {alerts.length > 0 && `(${alerts.length})`}
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button size="small" onClick={handleAcknowledgeAll} sx={{ fontSize: '0.7rem' }}>
-              Mark all read
-            </Button>
+        <Box sx={{ px: 2, pt: 1.5, pb: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="subtitle2" fontWeight={700}>Notifications</Typography>
+          <Box sx={{ display: 'flex', gap: 0.5 }}>
+            {activeTab === 0 && (
+              <Button size="small" onClick={handleAcknowledgeAll} sx={{ fontSize: '0.7rem' }}>
+                Mark all read
+              </Button>
+            )}
             <Button
               size="small"
-              onClick={() => { handleClose(); navigate('/alerts') }}
+              onClick={() => { handleClose(); navigate(activeTab === 0 ? '/alerts' : '/trading') }}
               sx={{ fontSize: '0.7rem' }}
             >
-              View all
+              {activeTab === 0 ? 'View alerts' : 'View trades'}
             </Button>
           </Box>
         </Box>
 
-        <Divider />
+        {/* Tabs */}
+        <Tabs
+          value={activeTab}
+          onChange={(_, v) => setActiveTab(v)}
+          variant="fullWidth"
+          sx={{
+            minHeight: 36,
+            '& .MuiTab-root': { minHeight: 36, fontSize: '0.75rem', textTransform: 'none' },
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+          }}
+        >
+          <Tab label={`Alerts${alerts.length > 0 ? ` (${alerts.length})` : ''}`} />
+          <Tab label="Activity" />
+        </Tabs>
 
-        {/* Alert list */}
+        {/* Tab content */}
         <Box sx={{ overflowY: 'auto', flex: 1 }}>
-          {alerts.length === 0 ? (
-            <Box sx={{ p: 3, textAlign: 'center' }}>
-              <BellIcon sx={{ fontSize: 32, color: 'text.disabled', mb: 1 }} />
-              <Typography variant="body2" color="text.secondary">
-                No alerts yet. Create rules on the Alerts page.
-              </Typography>
-            </Box>
-          ) : (
+          {/* ── Alerts tab ── */}
+          {activeTab === 0 && (
+            alerts.length === 0 ? (
+              <Box sx={{ p: 3, textAlign: 'center' }}>
+                <BellIcon sx={{ fontSize: 32, color: 'text.disabled', mb: 1 }} />
+                <Typography variant="body2" color="text.secondary">
+                  No alerts yet. Create rules on the Alerts page.
+                </Typography>
+              </Box>
+            ) : (
+              <List dense disablePadding>
+                {alerts.slice(0, 20).map((alert) => (
+                  <ListItem
+                    key={`${alert.id}-${alert.triggered_at}`}
+                    divider
+                    sx={{ py: 1, alignItems: 'flex-start' }}
+                  >
+                    <ListItemText
+                      primary={
+                        <Typography variant="caption" fontWeight={600} color="text.primary">
+                          {alert.message}
+                        </Typography>
+                      }
+                      secondary={
+                        <Typography variant="caption" color="text.disabled">
+                          {new Date(alert.triggered_at).toLocaleTimeString()}
+                        </Typography>
+                      }
+                      sx={{ m: 0 }}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            )
+          )}
+
+          {/* ── Activity tab ── */}
+          {activeTab === 1 && (
             <List dense disablePadding>
-              {alerts.slice(0, 20).map((alert) => (
-                <ListItem
-                  key={`${alert.id}-${alert.triggered_at}`}
-                  divider
-                  sx={{ py: 1, alignItems: 'flex-start' }}
-                >
+              {/* Recent paper orders */}
+              {(paperState?.orders ?? []).slice(0, 8).map((order) => (
+                <ListItem key={order.id} divider sx={{ py: 1, alignItems: 'flex-start' }}>
+                  <Box sx={{
+                    width: 28, height: 28, borderRadius: '50%',
+                    bgcolor: order.side === 'buy' ? 'rgba(0,200,150,0.15)' : 'rgba(255,107,107,0.15)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    mr: 1.25, flexShrink: 0, mt: 0.25,
+                  }}>
+                    <TradeIcon sx={{
+                      fontSize: 14,
+                      color: order.side === 'buy' ? '#00C896' : '#FF6B6B',
+                    }} />
+                  </Box>
                   <ListItemText
                     primary={
                       <Typography variant="caption" fontWeight={600} color="text.primary">
-                        {alert.message}
+                        {order.side.toUpperCase()} {order.qty} × {order.symbol}
+                        {' '}
+                        <Typography component="span" variant="caption"
+                          sx={{ color: order.status === 'filled' ? '#00C896' : 'text.disabled' }}>
+                          ({order.status})
+                        </Typography>
                       </Typography>
                     }
                     secondary={
                       <Typography variant="caption" color="text.disabled">
-                        {new Date(alert.triggered_at).toLocaleTimeString()}
+                        {new Date(order.created_at).toLocaleString()}
+                        {order.filled_avg_price ? ` · avg $${order.filled_avg_price.toFixed(2)}` : ''}
                       </Typography>
                     }
                     sx={{ m: 0 }}
                   />
                 </ListItem>
               ))}
+
+              {/* Recent backtests */}
+              {(backtestList ?? []).slice(0, 5).map((bt) => (
+                <ListItem key={bt.id} divider sx={{ py: 1, alignItems: 'flex-start' }}>
+                  <Box sx={{
+                    width: 28, height: 28, borderRadius: '50%',
+                    bgcolor: 'rgba(74,158,255,0.12)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    mr: 1.25, flexShrink: 0, mt: 0.25,
+                  }}>
+                    <BacktestIcon sx={{ fontSize: 14, color: '#4A9EFF' }} />
+                  </Box>
+                  <ListItemText
+                    primary={
+                      <Typography variant="caption" fontWeight={600} color="text.primary">
+                        Backtest: {bt.symbols.join(', ')} · {bt.strategy_name}
+                      </Typography>
+                    }
+                    secondary={
+                      <Typography variant="caption" color="text.disabled">
+                        {bt.status === 'done' && bt.total_return != null
+                          ? `Return: ${bt.total_return >= 0 ? '+' : ''}${(bt.total_return * 100).toFixed(1)}%`
+                          : bt.status}
+                        {' · '}{new Date(bt.created_at).toLocaleDateString()}
+                      </Typography>
+                    }
+                    sx={{ m: 0 }}
+                  />
+                </ListItem>
+              ))}
+
+              {/* Empty state */}
+              {(paperState?.orders ?? []).length === 0 && (backtestList ?? []).length === 0 && (
+                <Box sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography variant="body2" color="text.secondary">
+                    No recent activity. Try a backtest or paper trade.
+                  </Typography>
+                </Box>
+              )}
             </List>
           )}
         </Box>

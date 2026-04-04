@@ -19,14 +19,14 @@ const ThemeCtx = createContext<ThemeContextValue>({
 
 export function ThemeContextProvider({ children }: { children: ReactNode }) {
   const [mode, setMode] = useState<ThemeMode>(() => {
-    const saved = localStorage.getItem('tradingos-theme')
+    const saved = localStorage.getItem('qs_theme')
     return (saved === 'light' || saved === 'dark') ? saved : 'dark'
   })
 
   const toggleTheme = useCallback(() => {
     setMode((prev) => {
       const next: ThemeMode = prev === 'dark' ? 'light' : 'dark'
-      localStorage.setItem('tradingos-theme', next)
+      localStorage.setItem('qs_theme', next)
       return next
     })
   }, [])

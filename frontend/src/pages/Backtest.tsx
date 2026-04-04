@@ -458,18 +458,15 @@ function ResultsPanel({ result, completedAt }: { result: BacktestRunResponse | n
             <Typography variant="subtitle2" fontWeight={700} mb={1.5}>
               Trade Log (last {Math.min(result.trades.length, 30)})
             </Typography>
-            <TableContainer sx={{ maxHeight: 280, overflow: 'auto' }}>
-              <Table size="small" stickyHeader>
+            <TableContainer sx={{ maxHeight: 280, overflow: 'auto', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <Table size="small" stickyHeader sx={{ minWidth: 480 }}>
                 <TableHead>
                   <TableRow>
-                    {['Date', 'Symbol', 'Side', 'Price', 'Size'].map((h) => (
-                      <TableCell
-                        key={h}
-                        sx={{ bgcolor: 'background.paper', fontWeight: 700, fontSize: '0.75rem' }}
-                      >
-                        {h}
-                      </TableCell>
-                    ))}
+                    <TableCell sx={{ bgcolor: 'background.paper', fontWeight: 700, fontSize: '0.75rem' }}>Date</TableCell>
+                    <TableCell sx={{ bgcolor: 'background.paper', fontWeight: 700, fontSize: '0.75rem' }}>Symbol</TableCell>
+                    <TableCell sx={{ bgcolor: 'background.paper', fontWeight: 700, fontSize: '0.75rem' }}>Side</TableCell>
+                    <TableCell sx={{ bgcolor: 'background.paper', fontWeight: 700, fontSize: '0.75rem' }}>Price</TableCell>
+                    <TableCell sx={{ bgcolor: 'background.paper', fontWeight: 700, fontSize: '0.75rem', display: { xs: 'none', sm: 'table-cell' } }}>Size</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -497,7 +494,7 @@ function ResultsPanel({ result, completedAt }: { result: BacktestRunResponse | n
                       <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.78rem' }}>
                         ${t.price.toLocaleString()}
                       </TableCell>
-                      <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.78rem' }}>
+                      <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.78rem', display: { xs: 'none', sm: 'table-cell' } }}>
                         {(t.size * 100).toFixed(0)}%
                       </TableCell>
                     </TableRow>

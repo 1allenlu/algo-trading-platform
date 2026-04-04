@@ -23,6 +23,8 @@ import {
   Grain as PatternIcon,
   AutoFixHigh as RLIcon,
   CompareArrows as CompareIcon,
+  BookmarkBorder as WatchlistIcon,
+  Balance as RebalanceIcon,
 } from '@mui/icons-material'
 import { useLocation, useNavigate } from 'react-router-dom'
 import type { ReactNode } from 'react'
@@ -48,11 +50,12 @@ const NAV_SECTIONS: NavSection[] = [
   {
     heading: 'Markets',
     items: [
-      { label: 'Dashboard',  path: '/dashboard', icon: <DashboardIcon sx={{ fontSize: 17 }} /> },
-      { label: 'Trading',    path: '/trading',   icon: <TradingIcon   sx={{ fontSize: 17 }} /> },
-      { label: 'Crypto',     path: '/crypto',    icon: <CryptoIcon    sx={{ fontSize: 17 }} /> },
-      { label: 'Options',    path: '/options',   icon: <OptionsIcon   sx={{ fontSize: 17 }} /> },
-      { label: 'News',       path: '/news',      icon: <NewsIcon      sx={{ fontSize: 17 }} /> },
+      { label: 'Dashboard',  path: '/dashboard',  icon: <DashboardIcon  sx={{ fontSize: 17 }} /> },
+      { label: 'Trading',    path: '/trading',    icon: <TradingIcon    sx={{ fontSize: 17 }} /> },
+      { label: 'Watchlist',  path: '/watchlist',  icon: <WatchlistIcon  sx={{ fontSize: 17 }} /> },
+      { label: 'Crypto',     path: '/crypto',     icon: <CryptoIcon     sx={{ fontSize: 17 }} /> },
+      { label: 'Options',    path: '/options',    icon: <OptionsIcon    sx={{ fontSize: 17 }} /> },
+      { label: 'News',       path: '/news',       icon: <NewsIcon       sx={{ fontSize: 17 }} /> },
     ],
   },
   {
@@ -74,11 +77,12 @@ const NAV_SECTIONS: NavSection[] = [
   {
     heading: 'Tools',
     items: [
-      { label: 'Optimize',   path: '/optimize',  icon: <OptimizeIcon   sx={{ fontSize: 17 }} /> },
-      { label: 'Scanner',    path: '/scanner',   icon: <ScannerIcon    sx={{ fontSize: 17 }} /> },
-      { label: 'Auto Trade', path: '/autotrade', icon: <AutoTradeIcon  sx={{ fontSize: 17 }} /> },
-      { label: 'Alerts',     path: '/alerts',    icon: <AlertsIcon     sx={{ fontSize: 17 }} /> },
-      { label: 'Journal',    path: '/journal',   icon: <JournalIcon    sx={{ fontSize: 17 }} /> },
+      { label: 'Optimize',   path: '/optimize',   icon: <OptimizeIcon   sx={{ fontSize: 17 }} /> },
+      { label: 'Scanner',    path: '/scanner',    icon: <ScannerIcon    sx={{ fontSize: 17 }} /> },
+      { label: 'Auto Trade', path: '/autotrade',  icon: <AutoTradeIcon  sx={{ fontSize: 17 }} /> },
+      { label: 'Rebalance',  path: '/rebalance',  icon: <RebalanceIcon  sx={{ fontSize: 17 }} /> },
+      { label: 'Alerts',     path: '/alerts',     icon: <AlertsIcon     sx={{ fontSize: 17 }} /> },
+      { label: 'Journal',    path: '/journal',    icon: <JournalIcon    sx={{ fontSize: 17 }} /> },
     ],
   },
   {

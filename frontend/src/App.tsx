@@ -26,9 +26,12 @@ import FundamentalsPage from '@/pages/Fundamentals'
 import PatternsPage from '@/pages/Patterns'
 import RLAgentPage from '@/pages/RLAgent'
 import ComparePage from '@/pages/Compare'
+import WatchlistPage from '@/pages/Watchlist'
+import RebalancePage from '@/pages/Rebalance'
 import LoginPage from '@/pages/Login'
 import IntroPage from '@/pages/Intro'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
+import { useKeyboardShortcuts, ShortcutHelpModal } from '@/hooks/useKeyboardShortcuts'
 
 const SIDEBAR_WIDTH = 240
 
@@ -40,6 +43,9 @@ function AppLayout() {
   const theme        = useTheme()
   const isMobile     = useMediaQuery(theme.breakpoints.down('md'))
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  // Global keyboard shortcuts — G+letter navigation, ? for help modal
+  const { showHelp, setShowHelp } = useKeyboardShortcuts()
 
   return (
     <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
@@ -94,10 +100,15 @@ function AppLayout() {
             <Route path="/patterns"     element={<PatternsPage />} />
             <Route path="/rl"           element={<RLAgentPage />} />
             <Route path="/compare"      element={<ComparePage />} />
+            <Route path="/watchlist"    element={<WatchlistPage />} />
+            <Route path="/rebalance"    element={<RebalancePage />} />
             <Route path="/settings"   element={<Settings />} />
           </Routes>
         </Box>
       </Box>
+
+      {/* Keyboard shortcuts help modal — toggled by pressing ? */}
+      <ShortcutHelpModal open={showHelp} onClose={() => setShowHelp(false)} />
     </Box>
   )
 }

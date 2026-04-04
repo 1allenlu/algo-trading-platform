@@ -289,7 +289,8 @@ function FactorCard({ data }: { data: FactorAttribution }) {
                 <Typography variant="caption" color="text.secondary" display="block" mb={1}>
                   Return contribution by stock — how much each holding helped or hurt
                 </Typography>
-                <Table size="small">
+                <Box sx={{ overflowX: 'auto' }}>
+                <Table size="small" sx={{ minWidth: 340 }}>
                   <TableHead>
                     <TableRow>
                       {['Symbol', 'Sizing Effect', 'Stock Picking', 'Total Impact'].map((h) => (
@@ -314,6 +315,7 @@ function FactorCard({ data }: { data: FactorAttribution }) {
                     ))}
                   </TableBody>
                 </Table>
+                </Box>
               </>
             ) : (
               <Typography variant="body2" color="text.secondary" sx={{ pt: 2 }}>
