@@ -56,6 +56,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # In production, prefer `alembic upgrade head` for controlled migrations.
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Phase 43: add new order columns to existing paper_orders table
+        from sqlalchemy import text
+        for col_sql in [
+            "ALTER TABLE paper_orders ADD COLUMN IF NOT EXISTS stop_price FLOAT",
+            "ALTER TABLE paper_orders ADD COLUMN IF NOT EXISTS trail_pct  FLOAT",
+            "ALTER TABLE paper_orders ADD COLUMN IF NOT EXISTS trail_price FLOAT",
+        ]:
+            try:
+                await conn.execute(text(col_sql))
+            except Exception:
+                pass   # Column already exists or other benign error
     logger.info("Database tables verified/created")
 
     # ── Phase 7 / 19: Price feed ──────────────────────────────────────────────

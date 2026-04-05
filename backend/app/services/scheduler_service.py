@@ -36,8 +36,9 @@ from apscheduler.triggers.cron import CronTrigger
 # ── Job status registry ───────────────────────────────────────────────────────
 # Keyed by job_id — updated after each run
 _job_status: dict[str, dict[str, Any]] = {
-    "ingest_daily":    {"last_run_at": None, "last_status": "pending", "last_error": None},
-    "cleanup_events":  {"last_run_at": None, "last_status": "pending", "last_error": None},
+    "ingest_daily":       {"last_run_at": None, "last_status": "pending", "last_error": None},
+    "cleanup_events":     {"last_run_at": None, "last_status": "pending", "last_error": None},
+    "correlation_alerts": {"last_run_at": None, "last_status": "pending", "last_error": None},
 }
 
 
@@ -106,6 +107,21 @@ async def _ingest_daily() -> None:
         logger.error(f"[scheduler] ingest_daily failed: {exc}")
 
 
+async def _check_correlations() -> None:
+    """
+    Phase 44: Evaluate all active correlation_break alert rules.
+    Runs after ingest_daily so fresh closes are already in the DB.
+    """
+    try:
+        from app.services.alert_service import get_alert_service
+        await get_alert_service().check_correlations()
+        _record("correlation_alerts", "ok")
+        logger.info("[scheduler] correlation_alerts complete")
+    except Exception as exc:
+        _record("correlation_alerts", "error", str(exc))
+        logger.error(f"[scheduler] correlation_alerts failed: {exc}")
+
+
 async def _cleanup_events() -> None:
     """Delete alert_events rows older than 90 days."""
     try:
@@ -143,6 +159,16 @@ def get_scheduler() -> AsyncIOScheduler:
         CronTrigger(hour=23, minute=10, timezone="UTC"),
         id="ingest_daily",
         name="Daily OHLCV Ingest",
+        replace_existing=True,
+        misfire_grace_time=600,
+    )
+
+    # Correlation alert check at 23:30 UTC (20 min after ingest_daily)
+    sched.add_job(
+        _check_correlations,
+        CronTrigger(hour=23, minute=30, timezone="UTC"),
+        id="correlation_alerts",
+        name="Correlation Break Alert Check",
         replace_existing=True,
         misfire_grace_time=600,
     )

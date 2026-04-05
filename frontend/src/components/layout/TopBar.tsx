@@ -1,4 +1,5 @@
 import {
+  Alert,
   AppBar,
   Badge,
   Box,
@@ -8,6 +9,7 @@ import {
   ListItem,
   ListItemText,
   Popover,
+  Snackbar,
   Tab,
   Tabs,
   Toolbar,
@@ -27,7 +29,7 @@ import {
   TrendingUp as TradeIcon,
 } from '@mui/icons-material'
 import { useQuery } from '@tanstack/react-query'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '@/services/api'
 import { useLivePrices } from '@/hooks/useLivePrices'
@@ -54,6 +56,19 @@ export default function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
   const bellRef = useRef<HTMLButtonElement>(null)
   const [popoverOpen, setPopoverOpen] = useState(false)
   const [activeTab, setActiveTab] = useState(0)
+
+  // Phase 46: toast notification when a new alert fires via WebSocket
+  const [toastOpen,    setToastOpen]    = useState(false)
+  const [toastMessage, setToastMessage] = useState('')
+  const prevUnreadRef = useRef(0)
+
+  useEffect(() => {
+    if (unreadCount > prevUnreadRef.current && alerts.length > 0) {
+      setToastMessage(alerts[0].message)
+      setToastOpen(true)
+    }
+    prevUnreadRef.current = unreadCount
+  }, [unreadCount, alerts])
 
   // Activity feed — recent backtests + paper orders
   const { data: paperState } = useQuery({
@@ -382,6 +397,22 @@ export default function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
           )}
         </Box>
       </Popover>
+
+      {/* Phase 46: real-time alert toast */}
+      <Snackbar
+        open={toastOpen}
+        autoHideDuration={6000}
+        onClose={() => setToastOpen(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert
+          severity="warning"
+          onClose={() => setToastOpen(false)}
+          sx={{ maxWidth: 360, fontSize: '0.82rem' }}
+        >
+          {toastMessage}
+        </Alert>
+      </Snackbar>
     </AppBar>
   )
 }

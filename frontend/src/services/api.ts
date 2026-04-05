@@ -476,6 +476,9 @@ export interface PaperOrder {
   status:           string   // "new" | "partially_filled" | "filled" | "canceled" | "expired"
   filled_avg_price: number | null
   limit_price:      number | null
+  stop_price:       number | null   // Phase 43
+  trail_pct:        number | null   // Phase 43
+  trail_price:      number | null   // Phase 43
   created_at:       string
 }
 
@@ -497,8 +500,10 @@ export interface SubmitOrderRequest {
   symbol:      string
   side:        'buy' | 'sell'
   qty:         number
-  order_type?: 'market' | 'limit'
+  order_type?: 'market' | 'limit' | 'stop' | 'stop_limit' | 'trailing_stop'
   limit_price?: number
+  stop_price?:  number   // Phase 43: required for stop / stop_limit
+  trail_pct?:   number   // Phase 43: required for trailing_stop (e.g. 0.05 = 5%)
 }
 
 export interface OrderResponse {
@@ -536,6 +541,7 @@ export type AlertCondition =
   | 'price_below'
   | 'change_pct_above'
   | 'change_pct_below'
+  | 'correlation_break'   // Phase 44: symbol must be "SYM1:SYM2", threshold = min deviation
 
 export interface AlertRule {
   id:               number
@@ -626,6 +632,14 @@ export interface RollingPoint {
   equity:          number
   rolling_sharpe:  number
   rolling_vol:     number   // annualized fraction
+}
+
+// Phase 45: daily P&L for calendar heatmap
+export interface DailyPnlEntry {
+  date:        string   // YYYY-MM-DD
+  equity:      number
+  pnl_dollar:  number
+  pnl_pct:     number   // fraction, e.g. 0.015 = +1.5%
 }
 
 // ── Scanner types — Phase 11 ──────────────────────────────────────────────────
@@ -1303,6 +1317,9 @@ export const api = {
       apiClient
         .get<RollingPoint[]>('/api/analytics/rolling', { params: { window } })
         .then((r) => r.data),
+
+    getDailyPnl: (): Promise<DailyPnlEntry[]> =>
+      apiClient.get<DailyPnlEntry[]>('/api/analytics/daily-pnl').then((r) => r.data),
   },
 
   optimize: {

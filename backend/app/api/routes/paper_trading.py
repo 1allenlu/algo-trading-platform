@@ -68,6 +68,12 @@ async def submit_order(
     """
     if request.order_type == "limit" and request.limit_price is None:
         raise HTTPException(status_code=400, detail="limit_price is required for limit orders")
+    if request.order_type == "stop" and request.stop_price is None:
+        raise HTTPException(status_code=400, detail="stop_price is required for stop orders")
+    if request.order_type == "stop_limit" and (request.stop_price is None or request.limit_price is None):
+        raise HTTPException(status_code=400, detail="stop_price and limit_price are required for stop_limit orders")
+    if request.order_type == "trailing_stop" and request.trail_pct is None:
+        raise HTTPException(status_code=400, detail="trail_pct is required for trailing_stop orders")
 
     logger.info(
         f"Order: {request.side.upper()} {request.qty} {request.symbol} "
@@ -84,6 +90,8 @@ async def submit_order(
             qty         = request.qty,
             order_type  = request.order_type or "market",
             limit_price = request.limit_price,
+            stop_price  = request.stop_price,
+            trail_pct   = request.trail_pct,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))

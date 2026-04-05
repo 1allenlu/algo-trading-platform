@@ -236,6 +236,103 @@ class AlertService:
                 logger.warning(f"AlertService: notification dispatch error: {exc}")
 
 
+    # ── Correlation break check — Phase 44 ───────────────────────────────────
+
+    async def check_correlations(self) -> None:
+        """
+        Evaluate all active correlation_break rules.
+
+        Rule format:
+          symbol    = "SYM1:SYM2"  (e.g. "SPY:QQQ")
+          condition = "correlation_break"
+          threshold = minimum deviation from baseline correlation to fire
+                      (e.g. 0.3 means fire when |rolling_corr - baseline| >= 0.3)
+
+        Called by the scheduler once daily after market close.
+        Uses 252 days for the baseline and 20 days for the rolling window.
+        """
+        import numpy as np
+        from sqlalchemy import select
+        from app.models.database import AsyncSessionLocal, MarketData
+
+        await self._maybe_refresh()
+        now = datetime.now(timezone.utc)
+
+        corr_rules = [r for r in self._rules.values() if r["condition"] == "correlation_break"]
+        if not corr_rules:
+            return
+
+        for rule in corr_rules:
+            # Cooldown check
+            last = rule["last_triggered_at"]
+            if last is not None:
+                if last.tzinfo is None:
+                    last = last.replace(tzinfo=timezone.utc)
+                if (now - last).total_seconds() < rule["cooldown_seconds"]:
+                    continue
+
+            pair = rule["symbol"]
+            if ":" not in pair:
+                continue
+            sym1, sym2 = pair.split(":", 1)
+
+            try:
+                async with AsyncSessionLocal() as session:
+                    rows1 = (await session.scalars(
+                        select(MarketData.close)
+                        .where(MarketData.symbol == sym1.upper())
+                        .order_by(MarketData.timestamp.desc())
+                        .limit(252)
+                    )).all()
+                    rows2 = (await session.scalars(
+                        select(MarketData.close)
+                        .where(MarketData.symbol == sym2.upper())
+                        .order_by(MarketData.timestamp.desc())
+                        .limit(252)
+                    )).all()
+
+                if len(rows1) < 25 or len(rows2) < 25:
+                    continue
+
+                # Align to min length
+                n = min(len(rows1), len(rows2))
+                p1 = np.array(rows1[:n][::-1], dtype=float)   # oldest → newest
+                p2 = np.array(rows2[:n][::-1], dtype=float)
+
+                r1 = np.diff(np.log(p1))
+                r2 = np.diff(np.log(p2))
+
+                # Baseline: full series correlation
+                baseline = float(np.corrcoef(r1, r2)[0, 1])
+
+                # Rolling 20-day correlation
+                w = min(20, len(r1))
+                rolling = float(np.corrcoef(r1[-w:], r2[-w:])[0, 1])
+
+                deviation = abs(rolling - baseline)
+                if deviation < rule["threshold"]:
+                    continue
+
+                # Fire the alert
+                msg = (
+                    f"{sym1}:{sym2} correlation break — "
+                    f"rolling={rolling:.2f}, baseline={baseline:.2f}, "
+                    f"deviation={deviation:.2f} ≥ {rule['threshold']:.2f}"
+                )
+                logger.info(f"Correlation alert fired: {msg}")
+
+                # Reuse _fire with a synthetic "tick" (no actual price tick needed)
+                class _SyntheticTick:
+                    symbol = pair
+                    price = rolling
+                    change_pct = 0.0
+
+                await self._fire(rule, _SyntheticTick(), deviation, now)   # type: ignore[arg-type]
+
+            except Exception as exc:
+                logger.warning(f"AlertService: correlation check {pair} failed: {exc}")
+
+
 # ── Module-level singleton ────────────────────────────────────────────────────
 # Created once in main.py lifespan; imported by the price simulator and routes.
 

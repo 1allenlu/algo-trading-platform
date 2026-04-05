@@ -191,13 +191,14 @@ async def _fill_order(
 
 async def _process_pending_orders(session: AsyncSession, account: PaperAccount) -> None:
     """
-    Check all open limit orders and fill any that have been triggered.
+    Check all open conditional orders and fill any that have been triggered.
+    Handles limit, stop, stop_limit, and trailing_stop order types.
     Called on every get_state() to simulate continuous monitoring.
     """
     open_orders = (await session.scalars(
         select(PaperOrder)
         .where(PaperOrder.status.in_(["new", "partially_filled"]))
-        .where(PaperOrder.order_type == "limit")
+        .where(PaperOrder.order_type.in_(["limit", "stop", "stop_limit", "trailing_stop"]))
     )).all()
 
     for order in open_orders:
@@ -206,23 +207,89 @@ async def _process_pending_orders(session: AsyncSession, account: PaperAccount) 
         except ValueError:
             continue   # No price data — skip for now
 
-        triggered = (
-            (order.side == "buy"  and price <= order.limit_price) or
-            (order.side == "sell" and price >= order.limit_price)
-        )
+        now = datetime.now(timezone.utc)
+        otype = order.order_type
+
+        # ── Limit order ───────────────────────────────────────────────────────
+        if otype == "limit":
+            triggered = (
+                (order.side == "buy"  and price <= order.limit_price) or
+                (order.side == "sell" and price >= order.limit_price)
+            )
+            fill_price = order.limit_price
+
+        # ── Stop order ────────────────────────────────────────────────────────
+        elif otype == "stop":
+            # Buy stop: triggers when price rises to/above stop_price (e.g. breakout)
+            # Sell stop: triggers when price falls to/below stop_price (stop loss)
+            triggered = (
+                (order.side == "buy"  and price >= order.stop_price) or
+                (order.side == "sell" and price <= order.stop_price)
+            )
+            fill_price = price   # market fill at current price once triggered
+
+        # ── Stop-limit order ──────────────────────────────────────────────────
+        elif otype == "stop_limit":
+            # First leg: price crosses stop_price → convert to limit order
+            stop_triggered = (
+                (order.side == "buy"  and price >= order.stop_price) or
+                (order.side == "sell" and price <= order.stop_price)
+            )
+            if not stop_triggered:
+                continue
+            # Second leg: check limit condition (same as regular limit)
+            triggered = (
+                (order.side == "buy"  and price <= order.limit_price) or
+                (order.side == "sell" and price >= order.limit_price)
+            )
+            fill_price = order.limit_price
+
+        # ── Trailing stop ─────────────────────────────────────────────────────
+        elif otype == "trailing_stop":
+            trail_pct = order.trail_pct or 0.02   # default 2%
+
+            if order.side == "sell":
+                # Sell trailing stop: trail_price moves up with price, fills on reversal
+                if order.trail_price is None:
+                    # Initialise trail_price on first tick
+                    order.trail_price = price * (1.0 - trail_pct)
+                    order.updated_at  = now
+                else:
+                    # Ratchet up if price made a new high
+                    new_trail = price * (1.0 - trail_pct)
+                    if new_trail > order.trail_price:
+                        order.trail_price = new_trail
+                        order.updated_at  = now
+                triggered  = price <= order.trail_price
+                fill_price = price
+            else:
+                # Buy trailing stop: trail_price moves down with price, fills on reversal
+                if order.trail_price is None:
+                    order.trail_price = price * (1.0 + trail_pct)
+                    order.updated_at  = now
+                else:
+                    new_trail = price * (1.0 + trail_pct)
+                    if new_trail < order.trail_price:
+                        order.trail_price = new_trail
+                        order.updated_at  = now
+                triggered  = price >= order.trail_price
+                fill_price = price
+        else:
+            continue
+
         if not triggered:
             continue
 
         try:
-            await _fill_order(session, order, price, account)
+            await _fill_order(session, order, fill_price, account)
             logger.info(
-                f"Limit order filled: {order.side.upper()} {order.qty} "
-                f"{order.symbol} @ ${price:.2f}"
+                f"{otype} order filled: {order.side.upper()} {order.qty} "
+                f"{order.symbol} @ ${fill_price:.2f}"
             )
         except ValueError as exc:
-            logger.warning(f"Limit order {order.id} auto-canceled: {exc}")
+            logger.warning(f"{otype} order {order.id} auto-canceled: {exc}")
             order.status     = "canceled"
-            order.updated_at = datetime.now(timezone.utc)
+            order.updated_at = now
 
 
 # ── Daily snapshot ────────────────────────────────────────────────────────────
@@ -324,6 +391,9 @@ async def get_state(session: AsyncSession) -> dict[str, Any]:
                 "status":           o.status,
                 "filled_avg_price": o.filled_avg_price,
                 "limit_price":      o.limit_price,
+                "stop_price":       o.stop_price,
+                "trail_pct":        o.trail_pct,
+                "trail_price":      o.trail_price,
                 "created_at":       o.created_at.isoformat() if o.created_at else "",
             }
             for o in orders
@@ -350,21 +420,31 @@ async def submit_order(
     qty:         float,
     order_type:  str = "market",
     limit_price: float | None = None,
+    stop_price:  float | None = None,
+    trail_pct:   float | None = None,
 ) -> dict[str, Any]:
     """
     Submit a new paper trading order.
 
     Market orders fill immediately at the latest DB close price.
-    Limit orders are stored as 'new' and processed on subsequent get_state() calls.
+    Limit, stop, stop_limit, and trailing_stop orders are stored as 'new'
+    and processed on subsequent get_state() calls.
+
+    Phase 43 order types:
+      stop          — requires stop_price
+      stop_limit    — requires stop_price + limit_price
+      trailing_stop — requires trail_pct (e.g. 0.05 = 5%)
     """
-    symbol  = symbol.upper()
-    account = await _get_account(session)
-    now     = datetime.now(timezone.utc)
+    symbol     = symbol.upper()
+    order_type = order_type.lower()
+    account    = await _get_account(session)
+    now        = datetime.now(timezone.utc)
 
     order = PaperOrder(
-        symbol=symbol, side=side.lower(), order_type=order_type.lower(),
+        symbol=symbol, side=side.lower(), order_type=order_type,
         qty=qty, filled_qty=0.0, status="new",
-        limit_price=limit_price, created_at=now, updated_at=now,
+        limit_price=limit_price, stop_price=stop_price, trail_pct=trail_pct,
+        created_at=now, updated_at=now,
     )
     session.add(order)
     await session.flush()   # Assigns order.id
@@ -381,11 +461,17 @@ async def submit_order(
         }
     else:
         await session.commit()
-        logger.info(f"Limit queued: {side.upper()} {qty} {symbol} @ ${limit_price:.2f}")
+        desc = {
+            "limit":         f"limit @ ${limit_price:.2f}",
+            "stop":          f"stop @ ${stop_price:.2f}",
+            "stop_limit":    f"stop @ ${stop_price:.2f} / limit @ ${limit_price:.2f}",
+            "trailing_stop": f"trailing stop {trail_pct*100:.1f}%",
+        }.get(order_type, order_type)
+        logger.info(f"Order queued: {side.upper()} {qty} {symbol} {desc}")
         return {
             "order_id": str(order.id),
             "status":   "new",
-            "message":  f"{side.upper()} {qty} {symbol} limit @ ${limit_price:.2f} queued",
+            "message":  f"{side.upper()} {qty} {symbol} {desc} queued",
         }
 
 

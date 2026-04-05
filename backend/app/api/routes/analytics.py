@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.database import AsyncSessionLocal
 from app.services.analytics_service import (
+    get_daily_pnl,
     get_pnl_attribution,
     get_rolling_metrics,
     get_summary,
@@ -61,6 +62,17 @@ async def analytics_rolling(
     Default window = 20 trading days (~1 month).
     """
     return await get_rolling_metrics(db, window=window)
+
+
+@router.get("/daily-pnl")
+async def analytics_daily_pnl(db: AsyncSession = Depends(get_db)) -> list[dict]:
+    """
+    Phase 45: Daily P&L series for the calendar heatmap.
+
+    Returns one entry per day with date, equity, pnl_dollar, and pnl_pct.
+    Used by the CalendarHeatmap in Analytics.tsx.
+    """
+    return await get_daily_pnl(db)
 
 
 @router.get("/attribution")

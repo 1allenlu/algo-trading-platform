@@ -49,22 +49,25 @@ import type { AlertCondition, AlertEvent, AlertRule } from '@/services/api'
 const SYMBOLS = ['SPY', 'QQQ', 'NVDA', 'AAPL', 'MSFT', 'AMZN', 'TSLA']
 
 const CONDITION_LABELS: Record<AlertCondition, string> = {
-  price_above:      'Price ≥',
-  price_below:      'Price ≤',
-  change_pct_above: 'Daily % ≥',
-  change_pct_below: 'Daily % ≤',
+  price_above:       'Price ≥',
+  price_below:       'Price ≤',
+  change_pct_above:  'Daily % ≥',
+  change_pct_below:  'Daily % ≤',
+  correlation_break: 'Corr Break',
 }
 
 const CONDITION_UNITS: Record<AlertCondition, string> = {
-  price_above:      '$',
-  price_below:      '$',
-  change_pct_above: '%',
-  change_pct_below: '%',
+  price_above:       '$',
+  price_below:       '$',
+  change_pct_above:  '%',
+  change_pct_below:  '%',
+  correlation_break: '',
 }
 
-function conditionChipColor(condition: AlertCondition): 'success' | 'error' | 'default' {
+function conditionChipColor(condition: AlertCondition): 'success' | 'error' | 'warning' | 'default' {
   if (condition === 'price_above' || condition === 'change_pct_above') return 'success'
   if (condition === 'price_below' || condition === 'change_pct_below') return 'error'
+  if (condition === 'correlation_break') return 'warning'
   return 'default'
 }
 
@@ -135,8 +138,12 @@ function AlertRulesPanel() {
     }
   }
 
-  const unitLabel = CONDITION_UNITS[condition]
-  const isChangeCondition = condition.startsWith('change_pct')
+  const isChangeCondition  = condition.startsWith('change_pct')
+  const isCorrCondition    = condition === 'correlation_break'
+
+  const thresholdLabel = isCorrCondition
+    ? 'Min deviation (0–1)'
+    : isChangeCondition ? 'Threshold (%)' : 'Threshold ($)'
 
   return (
     <Card>
@@ -147,20 +154,36 @@ function AlertRulesPanel() {
 
         {/* ── Create form ────────────────────────────────────────────────── */}
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 3 }}>
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <FormControl size="small" sx={{ minWidth: 90 }}>
-              <InputLabel>Symbol</InputLabel>
-              <Select value={symbol} label="Symbol" onChange={(e) => setSymbol(e.target.value)}>
-                {SYMBOLS.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
-              </Select>
-            </FormControl>
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+            {isCorrCondition ? (
+              <TextField
+                size="small"
+                label="Symbol Pair (e.g. SPY:QQQ)"
+                value={symbol}
+                onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+                sx={{ width: 170 }}
+                placeholder="SPY:QQQ"
+              />
+            ) : (
+              <FormControl size="small" sx={{ minWidth: 90 }}>
+                <InputLabel>Symbol</InputLabel>
+                <Select value={symbol} label="Symbol" onChange={(e) => setSymbol(e.target.value)}>
+                  {SYMBOLS.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+                </Select>
+              </FormControl>
+            )}
 
             <FormControl size="small" sx={{ minWidth: 155 }}>
               <InputLabel>Condition</InputLabel>
               <Select
                 value={condition}
                 label="Condition"
-                onChange={(e) => setCondition(e.target.value as AlertCondition)}
+                onChange={(e) => {
+                  const next = e.target.value as AlertCondition
+                  setCondition(next)
+                  if (next === 'correlation_break') setSymbol('SPY:QQQ')
+                  else if (symbol.includes(':')) setSymbol('SPY')
+                }}
               >
                 {(Object.keys(CONDITION_LABELS) as AlertCondition[]).map((c) => (
                   <MenuItem key={c} value={c}>{CONDITION_LABELS[c]}</MenuItem>
@@ -170,12 +193,13 @@ function AlertRulesPanel() {
 
             <TextField
               size="small"
-              label={isChangeCondition ? 'Threshold (%)' : 'Threshold ($)'}
+              label={thresholdLabel}
               value={threshold}
               onChange={(e) => setThreshold(e.target.value)}
               type="number"
-              sx={{ width: 130 }}
-              inputProps={{ step: isChangeCondition ? 0.5 : 1 }}
+              sx={{ width: 160 }}
+              inputProps={{ step: isCorrCondition ? 0.05 : isChangeCondition ? 0.5 : 1,
+                            min: isCorrCondition ? 0.05 : undefined }}
             />
 
             <TextField
@@ -199,6 +223,13 @@ function AlertRulesPanel() {
               Add
             </Button>
           </Box>
+
+          {isCorrCondition && (
+            <Typography variant="caption" color="text.secondary">
+              Fires when the 20-day rolling correlation deviates from the 252-day baseline by ≥ threshold.
+              Evaluated daily after market close. Symbol format: SYM1:SYM2 (e.g. SPY:QQQ).
+            </Typography>
+          )}
 
           {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}
         </Box>
@@ -234,7 +265,7 @@ function AlertRulesPanel() {
                     </TableCell>
                     <TableCell>
                       <Chip
-                        label={CONDITION_LABELS[rule.condition]}
+                        label={CONDITION_LABELS[rule.condition] ?? rule.condition}
                         size="small"
                         color={conditionChipColor(rule.condition)}
                         variant="outlined"
@@ -242,7 +273,9 @@ function AlertRulesPanel() {
                       />
                     </TableCell>
                     <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem' }}>
-                      {CONDITION_UNITS[rule.condition]}{rule.threshold.toFixed(2)}
+                      {rule.condition === 'correlation_break'
+                        ? `Δ≥${rule.threshold.toFixed(2)}`
+                        : `${CONDITION_UNITS[rule.condition]}${rule.threshold.toFixed(2)}`}
                     </TableCell>
                     <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem', color: 'text.secondary' }}>
                       {rule.cooldown_seconds}s
@@ -365,7 +398,7 @@ function AlertHistoryPanel() {
                     </TableCell>
                     <TableCell>
                       <Chip
-                        label={CONDITION_LABELS[ev.condition]}
+                        label={CONDITION_LABELS[ev.condition] ?? ev.condition}
                         size="small"
                         color={conditionChipColor(ev.condition)}
                         variant="outlined"
@@ -373,7 +406,9 @@ function AlertHistoryPanel() {
                       />
                     </TableCell>
                     <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem' }}>
-                      {CONDITION_UNITS[ev.condition]}{ev.current_value.toFixed(2)}
+                      {ev.condition === 'correlation_break'
+                        ? `Δ${ev.current_value.toFixed(2)}`
+                        : `${CONDITION_UNITS[ev.condition]}${ev.current_value.toFixed(2)}`}
                     </TableCell>
                     <TableCell sx={{ fontSize: '0.78rem', maxWidth: 240 }}>
                       {ev.message}

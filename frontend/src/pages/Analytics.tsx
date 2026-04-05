@@ -55,7 +55,7 @@ import {
 } from 'recharts'
 import { useEffect, useState } from 'react'
 import { api } from '@/services/api'
-import type { AnalyticsSummary, FactorAttribution, PnlAttribution, RollingPoint } from '@/services/api'
+import type { AnalyticsSummary, DailyPnlEntry, FactorAttribution, PnlAttribution, RollingPoint } from '@/services/api'
 import { useQuery } from '@tanstack/react-query'
 import InfoTooltip from '@/components/common/InfoTooltip'
 import EmptyState from '@/components/common/EmptyState'
@@ -329,6 +329,148 @@ function FactorCard({ data }: { data: FactorAttribution }) {
   )
 }
 
+// ── Calendar Heatmap — Phase 45 ──────────────────────────────────────────────
+
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+function CalendarHeatmap({ data }: { data: DailyPnlEntry[] }) {
+  if (data.length === 0) return null
+
+  // Build a lookup: date-string → entry
+  const byDate = new Map(data.map((d) => [d.date, d]))
+
+  // Range for the colour scale
+  const pnlVals = data.map((d) => d.pnl_pct)
+  const maxAbs   = Math.max(0.001, ...pnlVals.map(Math.abs))
+
+  const cellColor = (pnl: number | undefined): string => {
+    if (pnl === undefined || pnl === 0) return 'rgba(156,163,175,0.12)'
+    const intensity = Math.min(1, Math.abs(pnl) / maxAbs)
+    return pnl > 0
+      ? `rgba(0,200,150,${0.2 + 0.65 * intensity})`
+      : `rgba(255,107,107,${0.2 + 0.65 * intensity})`
+  }
+
+  // Group entries by ISO week (Monday-based), covering last 26 weeks
+  const today   = new Date()
+  const weeks: { start: Date; days: (DailyPnlEntry | null)[] }[] = []
+
+  // Find the most recent Sunday
+  const endSunday = new Date(today)
+  endSunday.setDate(today.getDate() - today.getDay())
+
+  for (let w = 25; w >= 0; w--) {
+    const weekStart = new Date(endSunday)
+    weekStart.setDate(endSunday.getDate() - w * 7)
+    const days: (DailyPnlEntry | null)[] = []
+    for (let d = 0; d < 7; d++) {
+      const day   = new Date(weekStart)
+      day.setDate(weekStart.getDate() + d)
+      const iso   = day.toISOString().slice(0, 10)
+      days.push(byDate.get(iso) ?? null)
+    }
+    weeks.push({ start: weekStart, days })
+  }
+
+  // Month labels: collect first week index per month
+  const monthLabels: { label: string; idx: number }[] = []
+  let lastMonth = -1
+  weeks.forEach((wk, idx) => {
+    const m = wk.start.getMonth()
+    if (m !== lastMonth) {
+      monthLabels.push({
+        label: wk.start.toLocaleString('en-US', { month: 'short' }),
+        idx,
+      })
+      lastMonth = m
+    }
+  })
+
+  return (
+    <Card sx={{ border: '1px solid', borderColor: 'divider' }}>
+      <CardContent>
+        <Typography variant="subtitle2" fontWeight={700} mb={2}>
+          Daily P&L Heatmap (Last 6 Months)
+        </Typography>
+
+        {/* Month labels */}
+        <Box sx={{ display: 'flex', gap: '1px', mb: 0.5, pl: '32px' }}>
+          {weeks.map((_, i) => {
+            const lbl = monthLabels.find((m) => m.idx === i)
+            return (
+              <Box key={i} sx={{ width: 13, flexShrink: 0 }}>
+                {lbl && (
+                  <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.disabled' }}>
+                    {lbl.label}
+                  </Typography>
+                )}
+              </Box>
+            )
+          })}
+        </Box>
+
+        {/* Grid: rows = days of week, cols = calendar weeks */}
+        <Box sx={{ display: 'flex', gap: '4px' }}>
+          {/* Day-of-week labels */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: '1px', pt: '1px' }}>
+            {DAYS.map((d, i) => (
+              <Box key={d} sx={{ height: 13, display: 'flex', alignItems: 'center' }}>
+                {i % 2 === 1 && (
+                  <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.disabled', width: 28 }}>
+                    {d}
+                  </Typography>
+                )}
+                {i % 2 === 0 && <Box sx={{ width: 28 }} />}
+              </Box>
+            ))}
+          </Box>
+
+          {/* Week columns */}
+          <Box sx={{ display: 'flex', gap: '2px' }}>
+            {weeks.map((wk, wi) => (
+              <Box key={wi} sx={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                {wk.days.map((entry, di) => (
+                  <Tooltip
+                    key={di}
+                    title={entry
+                      ? `${entry.date}: ${entry.pnl_pct >= 0 ? '+' : ''}${(entry.pnl_pct * 100).toFixed(2)}%`
+                      : ''}
+                    placement="top"
+                  >
+                    <Box
+                      sx={{
+                        width: 13, height: 13,
+                        borderRadius: '2px',
+                        bgcolor: cellColor(entry?.pnl_pct),
+                        cursor: entry ? 'default' : 'default',
+                      }}
+                    />
+                  </Tooltip>
+                ))}
+              </Box>
+            ))}
+          </Box>
+        </Box>
+
+        {/* Legend */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1.5 }}>
+          <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.65rem' }}>Less</Typography>
+          {[0.1, 0.3, 0.6, 1.0].map((i) => (
+            <Box key={i} sx={{ width: 13, height: 13, borderRadius: '2px',
+              bgcolor: `rgba(0,200,150,${0.2 + 0.65 * i})` }} />
+          ))}
+          <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.65rem', mx: 1 }}>vs</Typography>
+          {[0.1, 0.3, 0.6, 1.0].map((i) => (
+            <Box key={i} sx={{ width: 13, height: 13, borderRadius: '2px',
+              bgcolor: `rgba(255,107,107,${0.2 + 0.65 * i})` }} />
+          ))}
+          <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.65rem' }}>More</Typography>
+        </Box>
+      </CardContent>
+    </Card>
+  )
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function AnalyticsPage() {
@@ -343,6 +485,14 @@ export default function AnalyticsPage() {
   const { data: attribution } = useQuery<FactorAttribution>({
     queryKey:  ['analytics', 'attribution'],
     queryFn:   () => api.attribution.get(),
+    staleTime: 5 * 60_000,
+    retry:     false,
+  })
+
+  // Phase 45: daily P&L for calendar heatmap
+  const { data: dailyPnl = [] } = useQuery<DailyPnlEntry[]>({
+    queryKey:  ['analytics', 'daily-pnl'],
+    queryFn:   () => api.analytics.getDailyPnl(),
     staleTime: 5 * 60_000,
     retry:     false,
   })
@@ -496,6 +646,13 @@ export default function AnalyticsPage() {
       <Box mb={3}>
         <RollingChart data={rolling} />
       </Box>
+
+      {/* Calendar heatmap — Phase 45 */}
+      {dailyPnl.length > 0 && (
+        <Box mb={3}>
+          <CalendarHeatmap data={dailyPnl} />
+        </Box>
+      )}
 
       {/* P&L attribution + trade stats */}
       <Grid container spacing={3} mb={3}>

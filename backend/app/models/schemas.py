@@ -304,12 +304,15 @@ class PaperOrder(BaseModel):
     id:               str
     symbol:           str
     side:             str    # "buy" | "sell"
-    order_type:       str    # "market" | "limit" | "stop"
+    order_type:       str    # "market" | "limit" | "stop" | "stop_limit" | "trailing_stop"
     qty:              float
     filled_qty:       float
     status:           str    # "new" | "partially_filled" | "filled" | "canceled" | "expired"
     filled_avg_price: float | None = None
     limit_price:      float | None = None
+    stop_price:       float | None = None   # Phase 43
+    trail_pct:        float | None = None   # Phase 43
+    trail_price:      float | None = None   # Phase 43
     created_at:       str    # ISO 8601
 
 
@@ -333,12 +336,25 @@ class PaperTradingState(BaseModel):
 
 
 class SubmitOrderRequest(BaseModel):
-    """POST /api/paper/orders — place a new order."""
+    """POST /api/paper/orders — place a new order.
+
+    Phase 43 order types:
+      stop          — fills when price crosses stop_price
+      stop_limit    — when price crosses stop_price, places a limit at limit_price
+      trailing_stop — sell: fills when price falls trail_pct% from high;
+                      buy:  fills when price rises trail_pct% from low
+    """
     symbol:      str   = Field(description="Ticker symbol, e.g. SPY")
     side:        str   = Field(pattern="^(buy|sell)$", description="'buy' or 'sell'")
     qty:         float = Field(gt=0, description="Number of shares")
-    order_type:  str   = Field(default="market", pattern="^(market|limit)$")
-    limit_price: float | None = Field(default=None, description="Required for limit orders")
+    order_type:  str   = Field(
+        default="market",
+        pattern="^(market|limit|stop|stop_limit|trailing_stop)$",
+    )
+    limit_price: float | None = Field(default=None, description="Required for limit/stop_limit orders")
+    stop_price:  float | None = Field(default=None, description="Required for stop/stop_limit orders")
+    trail_pct:   float | None = Field(default=None, ge=0.001, le=0.5,
+                                      description="Required for trailing_stop (e.g. 0.05 = 5%)")
 
     model_config = ConfigDict(json_schema_extra={
         "example": {"symbol": "SPY", "side": "buy", "qty": 10, "order_type": "market"}
@@ -420,6 +436,8 @@ ALERT_CONDITIONS = {
     "price_below",
     "change_pct_above",   # threshold is a percent, e.g. 2.0 means +2%
     "change_pct_below",   # threshold is a percent, e.g. -2.0 means -2%
+    "correlation_break",  # Phase 44: fires when rolling corr deviates from baseline by ≥ threshold
+                          # symbol field must be "SYM1:SYM2" e.g. "SPY:QQQ"
 }
 
 

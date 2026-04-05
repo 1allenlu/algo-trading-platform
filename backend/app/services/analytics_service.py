@@ -311,6 +311,34 @@ async def get_rolling_metrics(session: AsyncSession, window: int = 20) -> list[d
     return result
 
 
+async def get_daily_pnl(session: AsyncSession) -> list[dict]:
+    """
+    Phase 45: Return daily P&L for the calendar heatmap.
+
+    Each entry has:
+      date        — ISO 8601 calendar date (YYYY-MM-DD)
+      equity      — equity snapshot for that day
+      pnl_pct     — daily return as fraction (e.g. 0.015 = +1.5%)
+      pnl_dollar  — dollar P&L vs prior day
+    """
+    rows = (await session.scalars(
+        select(PaperEquityHistory).order_by(PaperEquityHistory.recorded_at.asc())
+    )).all()
+
+    result = []
+    for i, row in enumerate(rows):
+        prev_equity = rows[i - 1].equity if i > 0 else row.equity
+        pnl_dollar  = row.equity - prev_equity
+        pnl_pct     = pnl_dollar / prev_equity if prev_equity > 0 and i > 0 else 0.0
+        result.append({
+            "date":       row.recorded_at.isoformat(),
+            "equity":     row.equity,
+            "pnl_dollar": pnl_dollar,
+            "pnl_pct":    pnl_pct,
+        })
+    return result
+
+
 async def get_trades_csv(session: AsyncSession) -> str:
     """Return all filled orders as a CSV string for download."""
     orders = await _fetch_filled_orders(session)

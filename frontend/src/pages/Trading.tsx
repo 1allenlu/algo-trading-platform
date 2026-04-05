@@ -257,21 +257,31 @@ function OrderForm({
   isSubmitting: boolean
   error: string | null
 }) {
+  type OType = 'market' | 'limit' | 'stop' | 'stop_limit' | 'trailing_stop'
+
   const [symbol,     setSymbol]     = useState('SPY')
   const [side,       setSide]       = useState<'buy' | 'sell'>('buy')
   const [qty,        setQty]        = useState('10')
-  const [orderType,  setOrderType]  = useState<'market' | 'limit'>('market')
+  const [orderType,  setOrderType]  = useState<OType>('market')
   const [limitPrice, setLimitPrice] = useState('')
+  const [stopPrice,  setStopPrice]  = useState('')
+  const [trailPct,   setTrailPct]   = useState('2')  // percent, e.g. "2" = 2%
+
+  const needsLimit  = orderType === 'limit' || orderType === 'stop_limit'
+  const needsStop   = orderType === 'stop'  || orderType === 'stop_limit'
+  const needsTrail  = orderType === 'trailing_stop'
 
   const handleSubmit = async () => {
     const qtyNum = parseFloat(qty)
     if (isNaN(qtyNum) || qtyNum <= 0) return
     const req: SubmitOrderRequest = {
-      symbol:      symbol.toUpperCase(),
+      symbol:     symbol.toUpperCase(),
       side,
-      qty:         qtyNum,
-      order_type:  orderType,
-      ...(orderType === 'limit' && limitPrice ? { limit_price: parseFloat(limitPrice) } : {}),
+      qty:        qtyNum,
+      order_type: orderType,
+      ...(needsLimit && limitPrice ? { limit_price: parseFloat(limitPrice) } : {}),
+      ...(needsStop  && stopPrice  ? { stop_price:  parseFloat(stopPrice)  } : {}),
+      ...(needsTrail && trailPct   ? { trail_pct:   parseFloat(trailPct) / 100 } : {}),
     }
     await onSubmit(req)
   }
@@ -341,15 +351,18 @@ function OrderForm({
           {/* Order type */}
           <Box>
             <Typography variant="caption" color="text.disabled" display="block" mb={0.75}>ORDER TYPE</Typography>
-            <Select value={orderType} onChange={(e) => setOrderType(e.target.value as 'market' | 'limit')}
+            <Select value={orderType} onChange={(e) => setOrderType(e.target.value as OType)}
               size="small" fullWidth>
               <MenuItem value="market">Market</MenuItem>
               <MenuItem value="limit">Limit</MenuItem>
+              <MenuItem value="stop">Stop</MenuItem>
+              <MenuItem value="stop_limit">Stop Limit</MenuItem>
+              <MenuItem value="trailing_stop">Trailing Stop</MenuItem>
             </Select>
           </Box>
 
-          {/* Limit price (conditional) */}
-          {orderType === 'limit' && (
+          {/* Limit price (limit or stop_limit) */}
+          {needsLimit && (
             <Box>
               <Typography variant="caption" color="text.disabled" display="block" mb={0.75}>LIMIT PRICE</Typography>
               <TextField
@@ -357,6 +370,33 @@ function OrderForm({
                 type="number" size="small" fullWidth
                 InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
                 inputProps={{ style: { fontFamily: 'IBM Plex Mono, monospace' } }}
+              />
+            </Box>
+          )}
+
+          {/* Stop price (stop or stop_limit) */}
+          {needsStop && (
+            <Box>
+              <Typography variant="caption" color="text.disabled" display="block" mb={0.75}>STOP PRICE</Typography>
+              <TextField
+                value={stopPrice} onChange={(e) => setStopPrice(e.target.value)}
+                type="number" size="small" fullWidth
+                InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
+                inputProps={{ style: { fontFamily: 'IBM Plex Mono, monospace' } }}
+              />
+            </Box>
+          )}
+
+          {/* Trail % (trailing_stop) */}
+          {needsTrail && (
+            <Box>
+              <Typography variant="caption" color="text.disabled" display="block" mb={0.75}>TRAIL %</Typography>
+              <TextField
+                value={trailPct} onChange={(e) => setTrailPct(e.target.value)}
+                type="number" size="small" fullWidth
+                InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
+                inputProps={{ min: 0.1, max: 50, step: 0.5, style: { fontFamily: 'IBM Plex Mono, monospace' } }}
+                helperText="Order fills when price reverses by this % from its peak/trough"
               />
             </Box>
           )}
@@ -380,7 +420,7 @@ function OrderForm({
               color: '#0A0E17',
             }}
           >
-            {isSubmitting ? 'Submitting…' : `${side === 'buy' ? 'Buy' : 'Sell'} ${qty || '?'} ${symbol}`}
+            {isSubmitting ? 'Submitting…' : `${side === 'buy' ? 'Buy' : 'Sell'} ${qty || '?'} ${symbol} ${orderType !== 'market' ? `(${orderType.replace('_', ' ')})` : ''}`}
           </Button>
         </Stack>
       </CardContent>

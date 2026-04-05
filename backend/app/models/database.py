@@ -280,11 +280,14 @@ class PaperOrder(Base):
     id               = Column(Integer,    primary_key=True, autoincrement=True)
     symbol           = Column(String(20), nullable=False)
     side             = Column(String(4),  nullable=False)    # "buy" | "sell"
-    order_type       = Column(String(10), nullable=False, default="market")
+    order_type       = Column(String(20), nullable=False, default="market")  # market|limit|stop|stop_limit|trailing_stop
     qty              = Column(Float,      nullable=False)
     filled_qty       = Column(Float,      nullable=False, default=0.0)
     status           = Column(String(20), nullable=False, default="new")
     limit_price      = Column(Float,      nullable=True)
+    stop_price       = Column(Float,      nullable=True)   # Phase 43: stop trigger price
+    trail_pct        = Column(Float,      nullable=True)   # Phase 43: trailing stop % (0.05 = 5%)
+    trail_price      = Column(Float,      nullable=True)   # Phase 43: current trailing stop level
     filled_avg_price = Column(Float,      nullable=True)
     created_at       = Column(DateTime(timezone=True), nullable=True)
     updated_at       = Column(DateTime(timezone=True), nullable=True)
