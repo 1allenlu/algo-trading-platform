@@ -27,7 +27,7 @@ from app.api.routes import (
     alerts, analytics, auth, autotrade, backtest, commentary, crypto, earnings, fundamentals,
     health, intraday, journal, live_orders, market_data, ml, news, notifications,
     options, optimize, paper_trading, patterns, rl, risk, scanner, scheduler, signals,
-    strategies,
+    strategies, strategy_builder, tax,
 )
 from app.api.routes import websocket as ws_routes
 from app.core.config import settings
@@ -284,6 +284,16 @@ app.include_router(
     rl.router,
     prefix=f"{settings.API_V1_PREFIX}/rl",
     tags=["rl"],
+)
+app.include_router(
+    tax.router,
+    prefix=f"{settings.API_V1_PREFIX}/tax",
+    tags=["tax"],
+)
+app.include_router(
+    strategy_builder.router,
+    prefix=f"{settings.API_V1_PREFIX}/strategy-builder",
+    tags=["strategy-builder"],
 )
 
 # ── WebSocket routes (Phase 7 + 8) ───────────────────────────────────────────

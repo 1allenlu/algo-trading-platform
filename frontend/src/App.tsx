@@ -28,6 +28,8 @@ import RLAgentPage from '@/pages/RLAgent'
 import ComparePage from '@/pages/Compare'
 import WatchlistPage from '@/pages/Watchlist'
 import RebalancePage from '@/pages/Rebalance'
+import TaxReportPage from '@/pages/TaxReport'
+import StrategyBuilderPage from '@/pages/StrategyBuilder'
 import LoginPage from '@/pages/Login'
 import IntroPage from '@/pages/Intro'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
@@ -101,8 +103,10 @@ function AppLayout() {
             <Route path="/rl"           element={<RLAgentPage />} />
             <Route path="/compare"      element={<ComparePage />} />
             <Route path="/watchlist"    element={<WatchlistPage />} />
-            <Route path="/rebalance"    element={<RebalancePage />} />
-            <Route path="/settings"   element={<Settings />} />
+            <Route path="/rebalance"         element={<RebalancePage />} />
+            <Route path="/tax"              element={<TaxReportPage />} />
+            <Route path="/strategy-builder" element={<StrategyBuilderPage />} />
+            <Route path="/settings"         element={<Settings />} />
           </Routes>
         </Box>
       </Box>

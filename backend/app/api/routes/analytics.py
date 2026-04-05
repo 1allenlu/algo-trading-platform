@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.database import AsyncSessionLocal
 from app.services.analytics_service import (
     get_daily_pnl,
+    get_drawdown_analysis,
     get_pnl_attribution,
     get_rolling_metrics,
     get_summary,
@@ -84,6 +85,18 @@ async def analytics_attribution(db: AsyncSession = Depends(get_db)) -> dict:
     Brinson-Hood-Beebower allocation + selection effects per symbol.
     """
     return await get_factor_attribution(db)
+
+
+@router.get("/drawdown")
+async def analytics_drawdown(db: AsyncSession = Depends(get_db)) -> dict:
+    """
+    Phase 51: Drawdown recovery tracker.
+
+    Returns the underwater equity curve (dd_pct ≤ 0 for each day),
+    current drawdown magnitude and duration, peak date, and a projected
+    recovery timeline based on the portfolio's historical average positive return.
+    """
+    return await get_drawdown_analysis(db)
 
 
 @router.get("/export")

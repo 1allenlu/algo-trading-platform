@@ -559,3 +559,23 @@ async def get_regimes(
         bear_pct     = result["bear_pct"],
         sideways_pct = result["sideways_pct"],
     )
+
+
+# ── GET /api/ml/ensemble/{symbol} (Phase 49) ──────────────────────────────────
+
+@router.get(
+    "/ensemble/{symbol}",
+    summary="Ensemble XGBoost + LSTM stacked prediction (Phase 49)",
+)
+async def get_ensemble_prediction(
+    symbol: str,
+    db:     AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Accuracy-weighted meta-learner that blends XGBoost and LSTM signals.
+
+    Each model's vote is scaled by its test accuracy. The blended score maps to
+    buy (> +0.1) / sell (< -0.1) / hold. Returns individual model details so
+    the UI can render a model-comparison breakdown.
+    """
+    return await ml_service.get_ensemble_prediction(db, symbol.upper().strip())

@@ -339,6 +339,83 @@ async def get_daily_pnl(session: AsyncSession) -> list[dict]:
     return result
 
 
+async def get_drawdown_analysis(session: AsyncSession) -> dict:
+    """
+    Phase 51: Drawdown recovery tracker.
+
+    Computes the underwater equity curve (equity / peak - 1 for each day),
+    current drawdown magnitude and duration, and a recovery projection.
+
+    Recovery projection: based on the average positive daily return over
+    the full history. If average return ≤ 0, projection is None.
+    """
+    rows = (await session.scalars(
+        select(PaperEquityHistory).order_by(PaperEquityHistory.recorded_at.asc())
+    )).all()
+
+    if not rows:
+        return {
+            "underwater":         [],
+            "current_drawdown":   0.0,
+            "current_dd_pct":     0.0,
+            "drawdown_duration":  0,
+            "peak_equity":        STARTING_CASH,
+            "peak_date":          None,
+            "recovery_days_est":  None,
+        }
+
+    equities = [float(r.equity)          for r in rows]
+    dates    = [r.recorded_at.isoformat() for r in rows]
+
+    # Build underwater curve
+    peak    = equities[0]
+    peak_idx = 0
+    underwater = []
+    for i, (eq, d) in enumerate(zip(equities, dates)):
+        if eq > peak:
+            peak     = eq
+            peak_idx = i
+        dd_pct = (peak - eq) / peak if peak > 0 else 0.0
+        underwater.append({"date": d, "equity": eq, "dd_pct": round(-dd_pct, 6)})
+
+    current_eq   = equities[-1]
+    current_peak = max(equities)
+    peak_date    = dates[equities.index(current_peak)]
+    current_dd   = current_peak - current_eq
+    current_dd_pct = current_dd / current_peak if current_peak > 0 else 0.0
+
+    # Duration: how many days since the peak
+    peak_pos      = equities.index(current_peak)
+    dd_duration   = len(equities) - 1 - peak_pos
+
+    # Average positive daily return for recovery projection
+    daily_returns = []
+    for i in range(1, len(equities)):
+        prev = equities[i - 1]
+        if prev > 0:
+            daily_returns.append((equities[i] - prev) / prev)
+
+    pos_returns   = [r for r in daily_returns if r > 0]
+    avg_pos_return = _mean(pos_returns) if pos_returns else 0.0
+
+    # Days to recover: solve current_eq * (1 + r)^n = current_peak
+    recovery_days: int | None = None
+    if avg_pos_return > 0 and current_dd > 0:
+        import math as _math
+        n = _math.log(current_peak / current_eq) / _math.log(1 + avg_pos_return)
+        recovery_days = max(1, int(_math.ceil(n)))
+
+    return {
+        "underwater":        underwater,
+        "current_drawdown":  round(current_dd, 2),
+        "current_dd_pct":    round(current_dd_pct, 6),
+        "drawdown_duration": dd_duration,
+        "peak_equity":       round(current_peak, 2),
+        "peak_date":         peak_date,
+        "recovery_days_est": recovery_days,
+    }
+
+
 async def get_trades_csv(session: AsyncSession) -> str:
     """Return all filled orders as a CSV string for download."""
     orders = await _fetch_filled_orders(session)

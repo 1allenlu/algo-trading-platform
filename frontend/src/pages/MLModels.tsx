@@ -44,6 +44,7 @@ import {
   Refresh as TrainIcon,
   AutoAwesome as SignalIcon,
   Waves as RegimeIcon,
+  Layers as EnsembleIcon,
 } from '@mui/icons-material'
 import {
   Bar,
@@ -58,7 +59,7 @@ import {
   YAxis,
 } from 'recharts'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, type MLModelInfo } from '@/services/api'
+import { api, type EnsemblePrediction, type MLModelInfo } from '@/services/api'
 import FeatureImportanceChart from '@/components/charts/FeatureImportanceChart'
 import SHAPWaterfallChart from '@/components/charts/SHAPWaterfallChart'
 import SentimentGauge from '@/components/charts/SentimentGauge'
@@ -829,6 +830,90 @@ function RegimePanel({ symbol }: { symbol: string }) {
   )
 }
 
+// ── Phase 49: Ensemble prediction panel ──────────────────────────────────────
+function EnsemblePanel({ symbol }: { symbol: string }) {
+  const { data, isLoading, isError } = useQuery<EnsemblePrediction>({
+    queryKey:  ['ml', 'ensemble', symbol],
+    queryFn:   () => api.ensemble.predict(symbol),
+    staleTime: 60_000,
+  })
+
+  const signalColor = (s: string) =>
+    s === 'buy' ? '#00C896' : s === 'sell' ? '#FF6B6B' : 'text.secondary'
+
+  return (
+    <Card sx={{ border: '1px solid', borderColor: 'divider' }}>
+      <CardContent>
+        {isLoading && <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}><CircularProgress size={28} /></Box>}
+        {isError   && <Typography variant="body2" color="text.secondary" py={2} textAlign="center">Train XGBoost or LSTM models first to enable ensemble predictions.</Typography>}
+        {data && (
+          <Box>
+            {/* Top row: signal + blended score */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 3, flexWrap: 'wrap' }}>
+              <Box>
+                <Typography variant="caption" color="text.disabled" display="block">ENSEMBLE SIGNAL</Typography>
+                <Typography variant="h4" fontWeight={800} sx={{ color: signalColor(data.signal), fontFamily: 'IBM Plex Mono, monospace' }}>
+                  {data.signal.toUpperCase()}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.disabled" display="block">CONFIDENCE</Typography>
+                <Typography variant="h6" fontWeight={700} fontFamily="IBM Plex Mono, monospace">
+                  {(data.confidence * 100).toFixed(1)}%
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.disabled" display="block">BLENDED SCORE</Typography>
+                <Typography variant="h6" fontWeight={700} fontFamily="IBM Plex Mono, monospace"
+                  sx={{ color: data.blended_score > 0 ? '#00C896' : data.blended_score < 0 ? '#FF6B6B' : 'text.secondary' }}>
+                  {data.blended_score >= 0 ? '+' : ''}{data.blended_score.toFixed(3)}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.disabled" display="block">MODELS USED</Typography>
+                <Chip label={`${data.models_available} / 2`} size="small" color={data.models_available === 2 ? 'success' : 'warning'} sx={{ fontSize: '0.7rem' }} />
+              </Box>
+            </Box>
+
+            {/* Model breakdown */}
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              {[
+                { name: 'XGBoost', dir: data.xgb_direction, conf: data.xgb_confidence, acc: data.xgb_accuracy, weight: data.xgb_weight, color: 'primary.main' },
+                { name: 'LSTM',    dir: data.lstm_direction, conf: data.lstm_confidence, acc: data.lstm_accuracy, weight: data.lstm_weight, color: '#a855f7' },
+              ].map(({ name, dir, conf, acc, weight, color }) => (
+                <Card key={name} variant="outlined" sx={{ flex: 1, minWidth: 180 }}>
+                  <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+                    <Typography variant="caption" fontWeight={700} sx={{ color }}>{name}</Typography>
+                    {dir ? (
+                      <>
+                        <Typography variant="body2" fontFamily="IBM Plex Mono, monospace" sx={{ mt: 0.5, color: dir === 'up' ? '#00C896' : '#FF6B6B' }}>
+                          {dir === 'up' ? '▲ UP' : '▼ DOWN'} · {((conf ?? 0) * 100).toFixed(1)}% conf
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Acc: {((acc ?? 0) * 100).toFixed(1)}% · Weight: {(weight * 100).toFixed(0)}%
+                        </Typography>
+                        <LinearProgress
+                          variant="determinate"
+                          value={weight * 100}
+                          sx={{ mt: 0.75, height: 4, borderRadius: 1,
+                            '& .MuiLinearProgress-bar': { bgcolor: color } }}
+                        />
+                      </>
+                    ) : (
+                      <Typography variant="body2" color="text.disabled" sx={{ mt: 0.5 }}>Not trained</Typography>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </Box>
+          </Box>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function MLModels() {
   const [selectedSymbol, setSelectedSymbol] = useState<Symbol>('SPY')
@@ -993,7 +1078,20 @@ export default function MLModels() {
         </Box>
       )}
 
-      {/* ── Section 6: Regime Detection (Phase 35) ──────────────────────── */}
+      {/* ── Section 6: Ensemble Stacking (Phase 49) ─────────────────────── */}
+      <Box sx={{ mt: 4 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
+          <EnsembleIcon sx={{ color: '#a855f7', fontSize: 22 }} />
+          <Typography variant="h6" fontWeight={700}>Ensemble Prediction</Typography>
+          <Chip label="Phase 49" size="small" color="secondary" sx={{ fontSize: '0.65rem' }} />
+        </Box>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Accuracy-weighted meta-learner that stacks XGBoost + LSTM signals into a single vote.
+        </Typography>
+        <EnsemblePanel symbol={selectedSymbol} />
+      </Box>
+
+      {/* ── Section 7: Regime Detection (Phase 35) ──────────────────────── */}
       <Box sx={{ mt: 4 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
           <RegimeIcon sx={{ color: 'primary.main', fontSize: 22 }} />

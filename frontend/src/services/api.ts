@@ -1117,6 +1117,164 @@ export interface FundamentalsData {
   recommendation:    string | null
 }
 
+// ── Phase 47: Tax Lot Accounting ─────────────────────────────────────────────
+
+export interface TaxLotRealized {
+  symbol:             string
+  qty:                number
+  cost_basis:         number
+  proceeds_per_share: number
+  acquired:           string
+  disposed:           string
+  days_held:          number
+  pnl:                number
+  term:               'short' | 'long'
+}
+
+export interface TaxLotOpen {
+  symbol:     string
+  qty:        number
+  cost_basis: number
+  acquired:   string
+  total_cost: number
+  days_held:  number
+}
+
+export interface WashSaleWarning {
+  symbol:          string
+  loss_amount:     number
+  disposed:        string
+  repurchase_date: string
+  days_difference: number
+}
+
+export interface TaxReportSummary {
+  short_term_gain: number
+  short_term_loss: number
+  short_term_net:  number
+  long_term_gain:  number
+  long_term_loss:  number
+  long_term_net:   number
+  total_realized:  number
+  n_realized_lots: number
+  n_open_lots:     number
+  n_wash_sales:    number
+}
+
+export interface TaxReport {
+  method:        'FIFO' | 'LIFO'
+  realized_lots: TaxLotRealized[]
+  open_lots:     TaxLotOpen[]
+  wash_sales:    WashSaleWarning[]
+  summary:       TaxReportSummary
+}
+
+// ── Phase 48: Custom Strategy Builder ────────────────────────────────────────
+
+export interface StrategyRule {
+  indicator: 'rsi' | 'sma' | 'ema' | 'sma_cross' | 'volume_ratio' | 'change_pct'
+  op:        'gt' | 'lt' | 'gte' | 'lte' | 'cross_above' | 'cross_below'
+  value?:    number
+  period?:   number
+  fast?:     number
+  slow?:     number
+}
+
+export interface StrategyConditions {
+  buy_rules:  StrategyRule[]
+  sell_rules: StrategyRule[]
+  logic:      'AND' | 'OR'
+}
+
+export interface CustomStrategy {
+  id:          number
+  name:        string
+  description: string | null
+  conditions:  StrategyConditions
+  owner:       string | null
+  created_at:  string
+}
+
+export interface StrategySignal {
+  date:   string
+  signal: 'buy' | 'sell'
+  close:  number
+}
+
+export interface StrategyEvalResult {
+  strategy_id:   number
+  strategy_name: string
+  symbol:        string
+  signals:       StrategySignal[]
+  n_bars:        number
+  n_signals:     number
+}
+
+// ── Phase 49: Ensemble ML ─────────────────────────────────────────────────────
+
+export interface EnsemblePrediction {
+  symbol:            string
+  signal:            'buy' | 'hold' | 'sell'
+  confidence:        number
+  blended_score:     number
+  xgb_direction:     'up' | 'down' | null
+  xgb_confidence:    number | null
+  xgb_accuracy:      number | null
+  xgb_weight:        number
+  lstm_direction:    'up' | 'down' | null
+  lstm_confidence:   number | null
+  lstm_accuracy:     number | null
+  lstm_weight:       number
+  models_available:  number
+  method:            string
+}
+
+// ── Phase 50: Options Screener ────────────────────────────────────────────────
+
+export interface ScreenedOpportunity {
+  strike?:             number
+  iv?:                 number
+  premium?:            number
+  otm_pct?:            number
+  annualized_yield?:   number | null
+  volume?:             number
+  open_interest?:      number
+  // Iron condor specific
+  short_put_strike?:   number
+  long_put_strike?:    number
+  short_call_strike?:  number
+  long_call_strike?:   number
+  net_credit?:         number
+  max_loss?:           number
+  credit_to_risk?:     number | null
+}
+
+export interface ScreenedSymbol {
+  symbol:        string
+  current_price: number | null
+  expiration:    string | null
+  strategy:      string
+  opportunities: ScreenedOpportunity[]
+}
+
+// ── Phase 51: Drawdown Recovery ───────────────────────────────────────────────
+
+export interface UnderwaterPoint {
+  date:   string
+  equity: number
+  dd_pct: number   // ≤ 0, e.g. -0.08 = -8% drawdown
+}
+
+export interface DrawdownAnalysis {
+  underwater:        UnderwaterPoint[]
+  current_drawdown:  number           // dollar amount
+  current_dd_pct:    number           // fraction ≤ 0
+  drawdown_duration: number           // trading days since peak
+  peak_equity:       number
+  peak_date:         string | null
+  recovery_days_est: number | null    // null if no positive avg return
+}
+
 // ── API functions ─────────────────────────────────────────────────────────────
 
 export const api = {
@@ -1565,5 +1723,52 @@ export const api = {
 
     status: (symbol: string): Promise<RLStatus> =>
       apiClient.get<RLStatus>(`/api/rl/status/${symbol}`).then((r) => r.data),
+  },
+
+  // ── Phase 47: Tax Lot Accounting ────────────────────────────────────────────
+  tax: {
+    getReport: (method: 'FIFO' | 'LIFO' = 'FIFO'): Promise<TaxReport> =>
+      apiClient.get<TaxReport>('/api/tax/report', { params: { method } }).then((r) => r.data),
+  },
+
+  // ── Phase 48: Custom Strategy Builder ───────────────────────────────────────
+  strategyBuilder: {
+    list: (): Promise<CustomStrategy[]> =>
+      apiClient.get<CustomStrategy[]>('/api/strategy-builder/strategies').then((r) => r.data),
+
+    create: (name: string, description: string | null, conditions: StrategyConditions, owner?: string): Promise<CustomStrategy> =>
+      apiClient
+        .post<CustomStrategy>('/api/strategy-builder/strategies', { name, description, conditions, owner })
+        .then((r) => r.data),
+
+    delete: (id: number): Promise<void> =>
+      apiClient.delete(`/api/strategy-builder/strategies/${id}`).then(() => undefined),
+
+    evaluate: (strategyId: number, symbol: string, limit = 252): Promise<StrategyEvalResult> =>
+      apiClient
+        .get<StrategyEvalResult>(`/api/strategy-builder/evaluate/${strategyId}/${symbol}`, { params: { limit } })
+        .then((r) => r.data),
+  },
+
+  // ── Phase 49: Ensemble ML ────────────────────────────────────────────────────
+  ensemble: {
+    predict: (symbol: string): Promise<EnsemblePrediction> =>
+      apiClient.get<EnsemblePrediction>(`/api/ml/ensemble/${symbol}`).then((r) => r.data),
+  },
+
+  // ── Phase 50: Options Screener ───────────────────────────────────────────────
+  optionsScreener: {
+    scan: (symbols: string[], strategy: 'covered_call' | 'cash_secured_put' | 'iron_condor'): Promise<ScreenedSymbol[]> =>
+      apiClient
+        .get<ScreenedSymbol[]>('/api/options/screen/scan', {
+          params: { symbols: symbols.join(','), strategy },
+        })
+        .then((r) => r.data),
+  },
+
+  // ── Phase 51: Drawdown Recovery ──────────────────────────────────────────────
+  drawdown: {
+    getAnalysis: (): Promise<DrawdownAnalysis> =>
+      apiClient.get<DrawdownAnalysis>('/api/analytics/drawdown').then((r) => r.data),
   },
 }

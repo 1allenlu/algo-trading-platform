@@ -611,3 +611,37 @@ class TradeJournal(Base):
 
     def __repr__(self) -> str:
         return f"<TradeJournal {self.side.upper()} {self.qty} {self.symbol} pnl={self.pnl}>"
+
+
+# ── Custom Strategy Builder (Phase 48) ────────────────────────────────────────
+
+class CustomStrategy(Base):
+    """
+    User-defined no-code strategy stored as a JSON rule set.
+
+    conditions_json schema:
+      {
+        "buy_rules":  [{"indicator": "rsi", "period": 14, "op": "lt", "value": 30}, ...],
+        "sell_rules": [{"indicator": "rsi", "period": 14, "op": "gt", "value": 70}, ...],
+        "logic": "AND" | "OR"
+      }
+
+    Supported indicators: rsi, sma, ema, volume_ratio, change_pct
+    Supported operators:  gt, lt, gte, lte, cross_above, cross_below
+    """
+
+    __tablename__ = "custom_strategies"
+
+    id              = Column(Integer,     primary_key=True, autoincrement=True)
+    name            = Column(String(100), nullable=False)
+    description     = Column(Text,        nullable=True)
+    conditions_json = Column(Text,        nullable=False)   # JSON rule set
+    owner           = Column(String(100), nullable=True)    # username
+    created_at      = Column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        Index("ix_custom_strategies_owner", "owner"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<CustomStrategy {self.name} owner={self.owner}>"

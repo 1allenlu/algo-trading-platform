@@ -25,6 +25,8 @@ import {
   CompareArrows as CompareIcon,
   BookmarkBorder as WatchlistIcon,
   Balance as RebalanceIcon,
+  Receipt as TaxIcon,
+  Build as StrategyBuilderIcon,
 } from '@mui/icons-material'
 import { useLocation, useNavigate } from 'react-router-dom'
 import type { ReactNode } from 'react'
@@ -80,9 +82,11 @@ const NAV_SECTIONS: NavSection[] = [
       { label: 'Optimize',   path: '/optimize',   icon: <OptimizeIcon   sx={{ fontSize: 17 }} /> },
       { label: 'Scanner',    path: '/scanner',    icon: <ScannerIcon    sx={{ fontSize: 17 }} /> },
       { label: 'Auto Trade', path: '/autotrade',  icon: <AutoTradeIcon  sx={{ fontSize: 17 }} /> },
-      { label: 'Rebalance',  path: '/rebalance',  icon: <RebalanceIcon  sx={{ fontSize: 17 }} /> },
-      { label: 'Alerts',     path: '/alerts',     icon: <AlertsIcon     sx={{ fontSize: 17 }} /> },
-      { label: 'Journal',    path: '/journal',    icon: <JournalIcon    sx={{ fontSize: 17 }} /> },
+      { label: 'Rebalance',        path: '/rebalance',        icon: <RebalanceIcon      sx={{ fontSize: 17 }} /> },
+      { label: 'Strategy Builder', path: '/strategy-builder', icon: <StrategyBuilderIcon sx={{ fontSize: 17 }} /> },
+      { label: 'Alerts',           path: '/alerts',           icon: <AlertsIcon          sx={{ fontSize: 17 }} /> },
+      { label: 'Journal',          path: '/journal',          icon: <JournalIcon         sx={{ fontSize: 17 }} /> },
+      { label: 'Tax Report',       path: '/tax',              icon: <TaxIcon             sx={{ fontSize: 17 }} /> },
     ],
   },
   {
@@ -160,7 +164,7 @@ function SidebarContent({ width, onNavigate }: { width: number; onNavigate?: () 
               mt: '2px',
             }}
           >
-            v0.42.0
+            v0.51.0
           </Typography>
         </Box>
       </Box>

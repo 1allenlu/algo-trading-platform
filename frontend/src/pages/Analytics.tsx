@@ -55,7 +55,7 @@ import {
 } from 'recharts'
 import { useEffect, useState } from 'react'
 import { api } from '@/services/api'
-import type { AnalyticsSummary, DailyPnlEntry, FactorAttribution, PnlAttribution, RollingPoint } from '@/services/api'
+import type { AnalyticsSummary, DailyPnlEntry, DrawdownAnalysis, FactorAttribution, PnlAttribution, RollingPoint } from '@/services/api'
 import { useQuery } from '@tanstack/react-query'
 import InfoTooltip from '@/components/common/InfoTooltip'
 import EmptyState from '@/components/common/EmptyState'
@@ -497,6 +497,14 @@ export default function AnalyticsPage() {
     retry:     false,
   })
 
+  // Phase 51: drawdown recovery tracker
+  const { data: drawdownData } = useQuery<DrawdownAnalysis>({
+    queryKey:  ['analytics', 'drawdown'],
+    queryFn:   () => api.drawdown.getAnalysis(),
+    staleTime: 5 * 60_000,
+    retry:     false,
+  })
+
   const load = async () => {
     setLoading(true)
     setError(null)
@@ -668,6 +676,55 @@ export default function AnalyticsPage() {
       {attribution && attribution.beta !== null && (
         <Box mb={3}>
           <FactorCard data={attribution} />
+        </Box>
+      )}
+
+      {/* Drawdown Recovery Tracker — Phase 51 */}
+      {drawdownData && drawdownData.underwater.length > 1 && (
+        <Box mb={3}>
+          <Card sx={{ border: '1px solid', borderColor: 'divider' }}>
+            <CardContent>
+              <Typography variant="subtitle2" fontWeight={700} mb={1.5}>
+                Drawdown Recovery Tracker
+              </Typography>
+              {/* KPIs */}
+              <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', mb: 2 }}>
+                {[
+                  { label: 'Current Drawdown', value: `${(drawdownData.current_dd_pct * 100).toFixed(2)}%`, color: drawdownData.current_dd_pct < 0 ? '#FF6B6B' : '#00C896' },
+                  { label: 'Dollar Drawdown',  value: `$${drawdownData.current_drawdown.toLocaleString('en-US', { maximumFractionDigits: 0 })}`, color: '#FF6B6B' },
+                  { label: 'Duration',          value: `${drawdownData.drawdown_duration} days`, color: 'text.primary' },
+                  { label: 'Peak Equity',       value: `$${drawdownData.peak_equity.toLocaleString('en-US', { maximumFractionDigits: 0 })}`, color: 'text.primary' },
+                  { label: 'Est. Recovery',     value: drawdownData.recovery_days_est ? `~${drawdownData.recovery_days_est} days` : 'N/A', color: '#F59E0B' },
+                ].map(({ label, value, color }) => (
+                  <Box key={label}>
+                    <Typography variant="caption" color="text.disabled" display="block">{label.toUpperCase()}</Typography>
+                    <Typography variant="body1" fontWeight={700} fontFamily="IBM Plex Mono, monospace" sx={{ color }}>{value}</Typography>
+                  </Box>
+                ))}
+              </Box>
+              {/* Underwater equity area chart */}
+              <ResponsiveContainer width="100%" height={160}>
+                <AreaChart data={drawdownData.underwater}>
+                  <defs>
+                    <linearGradient id="ddGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor="#FF6B6B" stopOpacity={0.35} />
+                      <stop offset="95%" stopColor="#FF6B6B" stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1E2330" />
+                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#9CA3AF' }} tickLine={false}
+                    interval={Math.max(0, Math.floor(drawdownData.underwater.length / 6) - 1)} />
+                  <YAxis tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`}
+                    tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} domain={['auto', 0]} />
+                  <ReferenceLine y={0} stroke="#2D3548" strokeDasharray="4 4" />
+                  <RTooltip contentStyle={{ background: '#12161F', border: '1px solid #2D3548', borderRadius: 8 }}
+                    formatter={(v: number) => [`${(v * 100).toFixed(2)}%`, 'Drawdown']} />
+                  <Area type="monotone" dataKey="dd_pct" stroke="#FF6B6B" strokeWidth={1.5}
+                    fill="url(#ddGrad)" dot={false} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
         </Box>
       )}
     </Box>

@@ -25,7 +25,7 @@ import threading
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any   # noqa: F401 (used in get_ensemble_prediction)
 
 from loguru import logger
 from sqlalchemy import desc, select
@@ -210,3 +210,92 @@ async def get_predictions(
     )
     # Return in chronological order (ascending)
     return list(reversed(result.scalars().all()))
+
+
+async def get_ensemble_prediction(db: AsyncSession, symbol: str) -> dict:
+    """
+    Phase 49: Ensemble ML stacking.
+
+    Fetches the latest XGBoost and LSTM predictions for a symbol and blends
+    them using accuracy-weighted averaging (meta-learner).
+
+    Weight calculation:
+      Each model's weight is proportional to its test accuracy.
+      If only one model is available, returns that model's signal directly.
+
+    Returns:
+      {symbol, signal, confidence, xgb_confidence, lstm_confidence,
+       xgb_weight, lstm_weight, method}
+    """
+    sym = symbol.upper()
+
+    # Fetch both models
+    xgb_model  = await get_latest_model(db, sym, "xgboost")
+    lstm_model = await get_latest_model(db, sym, "lstm")
+
+    results: dict[str, Any] = {"symbol": sym, "method": "ensemble"}
+
+    xgb_conf  = 0.5
+    lstm_conf = 0.5
+    xgb_dir   = "hold"
+    lstm_dir  = "hold"
+    xgb_acc   = 0.5
+    lstm_acc  = 0.5
+
+    # XGBoost
+    if xgb_model:
+        preds = await get_predictions(db, sym, xgb_model.id, limit=1)
+        if preds:
+            p = preds[-1]
+            xgb_dir  = p.predicted_dir
+            xgb_conf = p.confidence
+        xgb_acc = float(xgb_model.accuracy or 0.5)
+
+    # LSTM
+    if lstm_model:
+        preds = await get_predictions(db, sym, lstm_model.id, limit=1)
+        if preds:
+            p = preds[-1]
+            lstm_dir  = p.predicted_dir
+            lstm_conf = p.confidence
+        lstm_acc = float(lstm_model.accuracy or 0.5)
+
+    # Accuracy-weighted blend
+    total_acc = xgb_acc + lstm_acc
+    xgb_weight  = xgb_acc  / total_acc if total_acc > 0 else 0.5
+    lstm_weight = lstm_acc / total_acc if total_acc > 0 else 0.5
+
+    # Convert directions to signed score for blending
+    def dir_to_score(direction: str, confidence: float) -> float:
+        if direction == "up":    return  confidence
+        if direction == "down":  return -confidence
+        return 0.0
+
+    blended = (xgb_weight  * dir_to_score(xgb_dir,  xgb_conf) +
+               lstm_weight * dir_to_score(lstm_dir, lstm_conf))
+
+    if blended > 0.1:
+        ensemble_signal     = "buy"
+        ensemble_confidence = blended
+    elif blended < -0.1:
+        ensemble_signal     = "sell"
+        ensemble_confidence = abs(blended)
+    else:
+        ensemble_signal     = "hold"
+        ensemble_confidence = 1 - abs(blended)
+
+    results.update({
+        "signal":          ensemble_signal,
+        "confidence":      round(ensemble_confidence, 4),
+        "blended_score":   round(blended, 4),
+        "xgb_direction":   xgb_dir  if xgb_model  else None,
+        "xgb_confidence":  round(xgb_conf, 4)  if xgb_model  else None,
+        "xgb_accuracy":    round(xgb_acc,  4)  if xgb_model  else None,
+        "xgb_weight":      round(xgb_weight, 4),
+        "lstm_direction":  lstm_dir  if lstm_model else None,
+        "lstm_confidence": round(lstm_conf, 4) if lstm_model else None,
+        "lstm_accuracy":   round(lstm_acc,  4) if lstm_model else None,
+        "lstm_weight":     round(lstm_weight, 4),
+        "models_available": sum([bool(xgb_model), bool(lstm_model)]),
+    })
+    return results
