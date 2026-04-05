@@ -36,6 +36,7 @@ import {
 import {
   FileDownload as DownloadIcon,
   Refresh as RefreshIcon,
+  Share as ShareIcon,
   TrendingDown,
   TrendingUp,
 } from '@mui/icons-material'
@@ -56,7 +57,7 @@ import {
 import { useEffect, useState } from 'react'
 import { api } from '@/services/api'
 import type { AnalyticsSummary, DailyPnlEntry, DrawdownAnalysis, FactorAttribution, PnlAttribution, RollingPoint } from '@/services/api'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import InfoTooltip from '@/components/common/InfoTooltip'
 import EmptyState from '@/components/common/EmptyState'
 import LastUpdated from '@/components/common/LastUpdated'
@@ -535,6 +536,13 @@ export default function AnalyticsPage() {
     )
   }
 
+  // Phase 54: share portfolio snapshot
+  const [shareUrl, setShareUrl] = useState<string | null>(null)
+  const shareMutation = useMutation({
+    mutationFn: () => api.share.create('Portfolio Snapshot'),
+    onSuccess: (data) => setShareUrl(`${window.location.origin}/share/${data.token}`),
+  })
+
   if (loading) return (
     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 300 }}>
       <CircularProgress />
@@ -632,6 +640,15 @@ export default function AnalyticsPage() {
               Export CSV
             </Button>
           </Tooltip>
+          <Tooltip title="Generate public share link (expires in 7 days)">
+            <Button
+              size="small" variant="outlined" startIcon={shareMutation.isPending ? <CircularProgress size={14} color="inherit" /> : <ShareIcon />}
+              onClick={() => { setShareUrl(null); shareMutation.mutate() }}
+              disabled={shareMutation.isPending}
+            >
+              Share
+            </Button>
+          </Tooltip>
           <Button size="small" startIcon={<RefreshIcon />} onClick={load}>
             Refresh
           </Button>
@@ -640,6 +657,25 @@ export default function AnalyticsPage() {
 
       {/* AI Commentary — Phase 43 */}
       <AICommentary />
+
+      {/* Phase 54: share link toast */}
+      {shareUrl && (
+        <Alert
+          severity="success"
+          onClose={() => setShareUrl(null)}
+          sx={{ mb: 2 }}
+          action={
+            <Button
+              size="small" color="inherit"
+              onClick={() => { navigator.clipboard.writeText(shareUrl) }}
+            >
+              Copy
+            </Button>
+          }
+        >
+          Share link created (expires in 7 days): <strong>{shareUrl}</strong>
+        </Alert>
+      )}
 
       {/* KPI row */}
       <Grid container spacing={2} mb={3}>

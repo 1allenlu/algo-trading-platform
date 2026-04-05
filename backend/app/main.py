@@ -26,8 +26,8 @@ from loguru import logger
 from app.api.routes import (
     alerts, analytics, auth, autotrade, backtest, commentary, crypto, earnings, fundamentals,
     health, intraday, journal, live_orders, market_data, ml, news, notifications,
-    options, optimize, paper_trading, patterns, rl, risk, scanner, scheduler, signals,
-    strategies, strategy_builder, tax,
+    options, optimize, paper_trading, patterns, rl, risk, scanner, scheduler, share, signals,
+    strategies, strategy_builder, tax, tournament,
 )
 from app.api.routes import websocket as ws_routes
 from app.core.config import settings
@@ -48,7 +48,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     # ── Startup ───────────────────────────────────────────────────────────────
     setup_logging()
-    logger.info(f"Starting {settings.APP_NAME} v0.42.0")
+    logger.info(f"Starting {settings.APP_NAME} v0.54.0")
     logger.info(f"Database: {settings.DATABASE_URL.split('@')[-1]}")
     logger.info(f"Debug mode: {settings.DEBUG}")
 
@@ -132,7 +132,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 app = FastAPI(
     title=settings.APP_NAME,
     description="QuantStream — Quant + ML + Real-time Algorithmic Trading",
-    version="0.24.0",
+    version="0.54.0",
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan,
@@ -294,6 +294,16 @@ app.include_router(
     strategy_builder.router,
     prefix=f"{settings.API_V1_PREFIX}/strategy-builder",
     tags=["strategy-builder"],
+)
+app.include_router(
+    tournament.router,
+    prefix=f"{settings.API_V1_PREFIX}/tournament",
+    tags=["tournament"],
+)
+app.include_router(
+    share.router,
+    prefix=f"{settings.API_V1_PREFIX}/share",
+    tags=["share"],
 )
 
 # ── WebSocket routes (Phase 7 + 8) ───────────────────────────────────────────

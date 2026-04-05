@@ -25,6 +25,8 @@ import yfinance as yf
 from loguru import logger
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
+from app.core.config import settings
+
 # Module-level VADER analyzer (initialises once, thread-safe reads)
 _analyzer = SentimentIntensityAnalyzer()
 
@@ -54,6 +56,7 @@ class NewsAggregateSentiment:
     neutral_count:   int
     label:           str   # overall label based on avg compound
     articles:        list[NewsArticle] = field(default_factory=list)
+    llm_summary:     str | None = None    # Phase 53: 2-sentence Anthropic summary
 
 
 def _label(score: float) -> str:
@@ -146,6 +149,44 @@ def get_news(symbol: str, max_articles: int = 20) -> list[NewsArticle]:
     return articles
 
 
+def _get_llm_summary(symbol: str, articles: list[NewsArticle]) -> str | None:
+    """
+    Phase 53 — Use the Anthropic API to produce a 2-sentence summary of the
+    day's top headlines for a symbol.  Returns None when the API key is not
+    configured or the call fails, so the rest of the page works unchanged.
+    """
+    if not settings.ANTHROPIC_API_KEY:
+        return None
+    if not articles:
+        return None
+
+    try:
+        import anthropic   # lazy import — not required if key is absent
+
+        headlines = "\n".join(
+            f"- {a.title} ({a.label}, score {a.compound:+.3f})"
+            for a in articles[:10]
+        )
+        prompt = (
+            f"You are a concise financial analyst. Below are recent news headlines for {symbol}.\n\n"
+            f"{headlines}\n\n"
+            "Summarise the key sentiment driver in exactly 2 sentences. "
+            "Be specific about why the market might be bullish or bearish on this ticker today."
+        )
+
+        client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+        message = client.messages.create(
+            model     = "claude-haiku-4-5-20251001",
+            max_tokens = 200,
+            messages  = [{"role": "user", "content": prompt}],
+        )
+        return message.content[0].text.strip()
+
+    except Exception as exc:
+        logger.warning(f"[news] LLM summary failed for {symbol}: {exc}")
+        return None
+
+
 def get_aggregate_sentiment(symbol: str, max_articles: int = 20) -> NewsAggregateSentiment:
     """
     Compute aggregate news sentiment for a symbol.
@@ -170,6 +211,8 @@ def get_aggregate_sentiment(symbol: str, max_articles: int = 20) -> NewsAggregat
     bearish_count = sum(1 for a in articles if a.label == "bearish")
     neutral_count = sum(1 for a in articles if a.label == "neutral")
 
+    llm_summary = _get_llm_summary(symbol, articles)
+
     return NewsAggregateSentiment(
         symbol        = symbol.upper(),
         article_count = len(articles),
@@ -179,4 +222,5 @@ def get_aggregate_sentiment(symbol: str, max_articles: int = 20) -> NewsAggregat
         neutral_count = neutral_count,
         label         = _label(avg_compound),
         articles      = articles,
+        llm_summary   = llm_summary,
     )

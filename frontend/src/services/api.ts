@@ -734,6 +734,7 @@ export interface NewsAggregateSentiment {
   neutral_count: number
   label:         'bullish' | 'bearish' | 'neutral'
   articles:      NewsArticle[]
+  llm_summary:   string | null   // Phase 53: Anthropic summary (null if key not set)
 }
 
 // ── Optimization types — Phase 10 ─────────────────────────────────────────────
@@ -1275,6 +1276,77 @@ export interface DrawdownAnalysis {
   recovery_days_est: number | null    // null if no positive avg return
 }
 
+// ── Phase 52: Strategy Tournaments ───────────────────────────────────────────
+
+export interface TournamentParticipantResult {
+  id:           number
+  name:         string
+  config:       Record<string, unknown>
+  status:       string
+  total_return: number | null
+  sharpe:       number | null
+  max_drawdown: number | null
+  num_trades:   number | null
+  final_equity: number | null
+  equity_curve: { date: string; equity: number }[]
+}
+
+export interface TournamentDetail {
+  id:            number
+  name:          string
+  symbols:       string[]
+  start_date:    string
+  end_date:      string
+  status:        'pending' | 'running' | 'done' | 'failed'
+  error:         string | null
+  created_at:    string | null
+  completed_at:  string | null
+  participants:  TournamentParticipantResult[]
+}
+
+export interface TournamentSummary {
+  id:                number
+  name:              string
+  symbols:           string[]
+  start_date:        string
+  end_date:          string
+  status:            string
+  created_at:        string | null
+  participant_count: number
+}
+
+export interface CreateTournamentRequest {
+  name:         string
+  symbols:      string[]
+  start_date:   string
+  end_date:     string
+  participants: { name: string; config: Record<string, unknown> }[]
+}
+
+// ── Phase 54: Portfolio Sharing ───────────────────────────────────────────────
+
+export interface PortfolioSnapshotPosition {
+  symbol:    string
+  qty:       number
+  avg_price: number
+}
+
+export interface PortfolioSnapshot {
+  token:        string
+  title:        string | null
+  equity_curve: { date: string; equity: number }[]
+  positions:    PortfolioSnapshotPosition[]
+  stats:        Record<string, number | string | null>
+  created_at:   string | null
+  expires_at:   string | null
+}
+
+export interface CreateSnapshotResponse {
+  token:      string
+  share_url:  string
+  expires_at: string
+}
+
 // ── API functions ─────────────────────────────────────────────────────────────
 
 export const api = {
@@ -1770,5 +1842,32 @@ export const api = {
   drawdown: {
     getAnalysis: (): Promise<DrawdownAnalysis> =>
       apiClient.get<DrawdownAnalysis>('/api/analytics/drawdown').then((r) => r.data),
+  },
+
+  // ── Phase 52: Strategy Tournaments ──────────────────────────────────────────
+  tournament: {
+    list: (): Promise<TournamentSummary[]> =>
+      apiClient.get<TournamentSummary[]>('/api/tournament/').then((r) => r.data),
+
+    create: (req: CreateTournamentRequest): Promise<{ tournament_id: number; name: string; participants: number }> =>
+      apiClient.post('/api/tournament/', req).then((r) => r.data),
+
+    get: (id: number): Promise<TournamentDetail> =>
+      apiClient.get<TournamentDetail>(`/api/tournament/${id}`).then((r) => r.data),
+
+    rerun: (id: number): Promise<{ tournament_id: number; status: string }> =>
+      apiClient.post(`/api/tournament/${id}/run`).then((r) => r.data),
+
+    delete: (id: number): Promise<void> =>
+      apiClient.delete(`/api/tournament/${id}`).then(() => undefined),
+  },
+
+  // ── Phase 54: Portfolio Sharing ──────────────────────────────────────────────
+  share: {
+    create: (title?: string): Promise<CreateSnapshotResponse> =>
+      apiClient.post<CreateSnapshotResponse>('/api/share/create', { title }).then((r) => r.data),
+
+    get: (token: string): Promise<PortfolioSnapshot> =>
+      apiClient.get<PortfolioSnapshot>(`/api/share/${token}`).then((r) => r.data),
   },
 }

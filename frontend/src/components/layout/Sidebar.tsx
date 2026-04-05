@@ -27,6 +27,7 @@ import {
   Balance as RebalanceIcon,
   Receipt as TaxIcon,
   Build as StrategyBuilderIcon,
+  EmojiEvents as TournamentIcon,
 } from '@mui/icons-material'
 import { useLocation, useNavigate } from 'react-router-dom'
 import type { ReactNode } from 'react'
@@ -87,6 +88,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: 'Alerts',           path: '/alerts',           icon: <AlertsIcon          sx={{ fontSize: 17 }} /> },
       { label: 'Journal',          path: '/journal',          icon: <JournalIcon         sx={{ fontSize: 17 }} /> },
       { label: 'Tax Report',       path: '/tax',              icon: <TaxIcon             sx={{ fontSize: 17 }} /> },
+      { label: 'Tournaments',      path: '/tournament',       icon: <TournamentIcon      sx={{ fontSize: 17 }} /> },
     ],
   },
   {
@@ -164,7 +166,7 @@ function SidebarContent({ width, onNavigate }: { width: number; onNavigate?: () 
               mt: '2px',
             }}
           >
-            v0.51.0
+            v0.54.0
           </Typography>
         </Box>
       </Box>

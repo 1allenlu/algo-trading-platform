@@ -30,6 +30,8 @@ import WatchlistPage from '@/pages/Watchlist'
 import RebalancePage from '@/pages/Rebalance'
 import TaxReportPage from '@/pages/TaxReport'
 import StrategyBuilderPage from '@/pages/StrategyBuilder'
+import TournamentPage from '@/pages/Tournament'
+import SharedPortfolioPage from '@/pages/SharedPortfolio'
 import LoginPage from '@/pages/Login'
 import IntroPage from '@/pages/Intro'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
@@ -106,6 +108,7 @@ function AppLayout() {
             <Route path="/rebalance"         element={<RebalancePage />} />
             <Route path="/tax"              element={<TaxReportPage />} />
             <Route path="/strategy-builder" element={<StrategyBuilderPage />} />
+            <Route path="/tournament"       element={<TournamentPage />} />
             <Route path="/settings"         element={<Settings />} />
           </Routes>
         </Box>
@@ -136,9 +139,11 @@ function ProtectedAppLayout() {
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/"      element={<IntroPage />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/*"     element={<ProtectedAppLayout />} />
+      <Route path="/"            element={<IntroPage />} />
+      <Route path="/login"       element={<LoginPage />} />
+      {/* Phase 54: public share page — no auth, no sidebar */}
+      <Route path="/share/:token" element={<SharedPortfolioPage />} />
+      <Route path="/*"           element={<ProtectedAppLayout />} />
     </Routes>
   )
 }

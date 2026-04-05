@@ -645,3 +645,97 @@ class CustomStrategy(Base):
 
     def __repr__(self) -> str:
         return f"<CustomStrategy {self.name} owner={self.owner}>"
+
+
+# ── Strategy Tournaments (Phase 52) ──────────────────────────────────────────
+
+class TournamentRun(Base):
+    """
+    A paper-trading tournament: N named participants each run a different
+    strategy configuration over the same historical window and are ranked
+    by Sharpe ratio on a leaderboard.
+
+    status lifecycle: 'pending' → 'running' → 'done' | 'failed'
+    """
+
+    __tablename__ = "tournament_runs"
+
+    id          = Column(Integer,     primary_key=True, autoincrement=True)
+    name        = Column(String(100), nullable=False)
+    symbols     = Column(Text,        nullable=False)   # comma-separated
+    start_date  = Column(String(20),  nullable=False)   # YYYY-MM-DD
+    end_date    = Column(String(20),  nullable=False)   # YYYY-MM-DD
+    status      = Column(String(20),  nullable=False, default="pending")
+    error       = Column(Text,        nullable=True)
+    created_at  = Column(DateTime(timezone=True), nullable=False)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("ix_tournament_runs_created", "created_at"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<TournamentRun {self.name} status={self.status}>"
+
+
+class TournamentParticipant(Base):
+    """
+    One strategy configuration competing in a TournamentRun.
+
+    strategy_config_json: {"strategy": "sma_cross", "fast": 10, "slow": 30}
+    equity_curve_json:    list of {"date": "YYYY-MM-DD", "equity": float}
+    """
+
+    __tablename__ = "tournament_participants"
+
+    id                   = Column(Integer,     primary_key=True, autoincrement=True)
+    tournament_id        = Column(Integer,     nullable=False)
+    name                 = Column(String(100), nullable=False)
+    strategy_config_json = Column(Text,        nullable=False)
+    status               = Column(String(20),  nullable=False, default="pending")
+
+    # Populated after run completes
+    total_return   = Column(Float, nullable=True)
+    sharpe         = Column(Float, nullable=True)
+    max_drawdown   = Column(Float, nullable=True)
+    num_trades     = Column(Integer, nullable=True)
+    final_equity   = Column(Float,  nullable=True)
+    equity_curve_json = Column(Text, nullable=True)
+
+    __table_args__ = (
+        Index("ix_tournament_participants_tid", "tournament_id"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<TournamentParticipant {self.name} sharpe={self.sharpe}>"
+
+
+# ── Public Portfolio Snapshot (Phase 54) ──────────────────────────────────────
+
+class PortfolioSnapshot(Base):
+    """
+    Read-only shareable snapshot of a paper portfolio created on demand.
+    Accessed via public GET /api/share/{token} — no authentication required.
+
+    equity_curve_json: list of {"date": str, "equity": float}
+    positions_json:    list of {symbol, qty, avg_price, current_price, pnl}
+    stats_json:        {total_return, sharpe, max_drawdown, ...}
+    """
+
+    __tablename__ = "portfolio_snapshots"
+
+    id                = Column(Integer,     primary_key=True, autoincrement=True)
+    token             = Column(String(64),  nullable=False, unique=True)
+    title             = Column(String(200), nullable=True)
+    equity_curve_json = Column(Text,        nullable=False)
+    positions_json    = Column(Text,        nullable=False)
+    stats_json        = Column(Text,        nullable=False)
+    created_at        = Column(DateTime(timezone=True), nullable=False)
+    expires_at        = Column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        Index("ix_portfolio_snapshots_token", "token"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<PortfolioSnapshot token={self.token[:8]}… expires={self.expires_at}>"

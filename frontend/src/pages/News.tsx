@@ -31,6 +31,7 @@ import {
 } from '@mui/material'
 import {
   Article as ArticleIcon,
+  AutoAwesome as LLMIcon,
   OpenInNew as OpenIcon,
   Refresh as RefreshIcon,
   Search as SearchIcon,
@@ -334,6 +335,22 @@ export default function NewsPage() {
 
       {/* Aggregate card */}
       {data && data.article_count > 0 && <AggregateCard data={data} />}
+
+      {/* Phase 53: LLM summary card */}
+      {data?.llm_summary && (
+        <Card sx={{ border: '1px solid', borderColor: 'divider', mb: 3 }}>
+          <CardContent sx={{ p: 2.5, '&:last-child': { pb: 2.5 } }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+              <LLMIcon sx={{ fontSize: 18, color: '#A78BFA' }} />
+              <Typography variant="subtitle2" fontWeight={700}>AI Summary</Typography>
+              <Typography variant="caption" color="text.disabled">· powered by Claude</Typography>
+            </Box>
+            <Typography variant="body2" sx={{ lineHeight: 1.8, color: 'text.secondary' }}>
+              {data.llm_summary}
+            </Typography>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Article list */}
       {data && data.articles.length > 0 && (
