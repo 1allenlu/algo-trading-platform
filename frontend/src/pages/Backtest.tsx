@@ -33,6 +33,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
   Typography,
 } from '@mui/material'
 import {
@@ -290,6 +291,8 @@ function useBenchmarkCurve(equityCurve: BacktestRunResponse['equity_curve']) {
 
 // ── Results panel ─────────────────────────────────────────────────────────────
 function ResultsPanel({ result, completedAt }: { result: BacktestRunResponse | null; completedAt: Date | null }) {
+  // Phase 65: replay date filter — allows drilling into trades around a date
+  const [replayDate, setReplayDate] = useState<string>('')
   if (!result) {
     return (
       <EmptyState
@@ -451,13 +454,26 @@ function ResultsPanel({ result, completedAt }: { result: BacktestRunResponse | n
         </Card>
       )}
 
-      {/* Trade log */}
+      {/* Phase 65: Trade Log with Replay Filter */}
       {result.trades && result.trades.length > 0 && (
         <Card sx={{ border: '1px solid', borderColor: 'divider' }}>
           <CardContent>
-            <Typography variant="subtitle2" fontWeight={700} mb={1.5}>
-              Trade Log (last {Math.min(result.trades.length, 30)})
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1.5 }}>
+              <Typography variant="subtitle2" fontWeight={700} sx={{ flex: 1 }}>
+                Trade Log ({result.trades.length} trades)
+              </Typography>
+              <TextField
+                size="small" type="date" value={replayDate}
+                onChange={(e) => setReplayDate(e.target.value)}
+                label="Jump to date"
+                InputLabelProps={{ shrink: true }}
+                sx={{ width: 160 }}
+                title="Filter trades by date — click a date row to select it"
+              />
+              {replayDate && (
+                <Chip label="Clear" size="small" onDelete={() => setReplayDate('')} sx={{ fontSize: '0.65rem' }} />
+              )}
+            </Box>
             <TableContainer sx={{ maxHeight: 280, overflow: 'auto', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
               <Table size="small" stickyHeader sx={{ minWidth: 480 }}>
                 <TableHead>
@@ -470,9 +486,18 @@ function ResultsPanel({ result, completedAt }: { result: BacktestRunResponse | n
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {result.trades.slice(-30).map((t, i) => (
-                    <TableRow key={i} hover>
-                      <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.78rem' }}>
+                  {(replayDate
+                    ? result.trades.filter((t) => t.date.startsWith(replayDate)).slice(0, 50)
+                    : result.trades.slice(-30)
+                  ).map((t, i) => (
+                    <TableRow
+                      key={i} hover
+                      sx={replayDate && t.date.startsWith(replayDate) ? { bgcolor: 'rgba(74,158,255,0.08)' } : {}}
+                    >
+                      <TableCell
+                        sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.78rem', cursor: 'pointer' }}
+                        onClick={() => setReplayDate(t.date.slice(0, 10))}
+                      >
                         {t.date}
                       </TableCell>
                       <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontWeight: 700, fontSize: '0.78rem' }}>

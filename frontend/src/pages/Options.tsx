@@ -189,9 +189,10 @@ interface ContractTableProps {
   contracts:    OptionContract[]
   type:         'call' | 'put'
   currentPrice: number | null
+  showGreeks?:  boolean
 }
 
-function ContractTable({ contracts, type, currentPrice }: ContractTableProps) {
+function ContractTable({ contracts, type, currentPrice, showGreeks = false }: ContractTableProps) {
   // Highlight strikes near the money (within 5%)
   const isNTM = (strike: number) =>
     currentPrice ? Math.abs(strike - currentPrice) / currentPrice < 0.05 : false
@@ -201,7 +202,9 @@ function ContractTable({ contracts, type, currentPrice }: ContractTableProps) {
       <Table size="small" sx={{ minWidth: 480 }}>
         <TableHead>
           <TableRow>
-            {['Strike', 'Last', 'Bid', 'Ask', 'IV', 'Vol', 'OI', 'ITM'].map((h) => (
+            {['Strike', 'Last', 'Bid', 'Ask', 'IV', 'Vol', 'OI', 'ITM',
+              ...(showGreeks ? ['Δ Delta', 'Γ Gamma', 'Θ Theta', 'V Vega'] : []),
+            ].map((h) => (
               <TableCell
                 key={h}
                 align={h === 'ITM' ? 'center' : 'right'}
@@ -278,6 +281,23 @@ function ContractTable({ contracts, type, currentPrice }: ContractTableProps) {
                     />
                   )}
                 </TableCell>
+                {showGreeks && (
+                  <>
+                    <TableCell align="right" sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.74rem',
+                      color: c.delta != null ? (Math.abs(c.delta) > 0.5 ? '#F59E0B' : 'text.primary') : 'text.disabled' }}>
+                      {c.delta != null ? c.delta.toFixed(3) : '—'}
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.74rem', color: 'text.secondary' }}>
+                      {c.gamma != null ? c.gamma.toFixed(5) : '—'}
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.74rem', color: '#FF6B6B' }}>
+                      {c.theta != null ? c.theta.toFixed(3) : '—'}
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.74rem', color: '#4A9EFF' }}>
+                      {c.vega != null ? c.vega.toFixed(3) : '—'}
+                    </TableCell>
+                  </>
+                )}
               </TableRow>
             )
           })}
@@ -290,10 +310,11 @@ function ContractTable({ contracts, type, currentPrice }: ContractTableProps) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function OptionsPage() {
-  const [tab,    setTab]    = useState(0)
-  const [symbol, setSymbol] = useState('SPY')
-  const [input,  setInput]  = useState('SPY')
-  const [expiry, setExpiry] = useState<string>('')
+  const [tab,        setTab]        = useState(0)
+  const [symbol,     setSymbol]     = useState('SPY')
+  const [input,      setInput]      = useState('SPY')
+  const [expiry,     setExpiry]     = useState<string>('')
+  const [showGreeks, setShowGreeks] = useState(false)   // Phase 75
 
   // Fetch options chain
   const { data, isLoading, isError, isFetching } = useQuery<OptionsChain>({
@@ -373,6 +394,19 @@ export default function OptionsPage() {
             </FormControl>
 
             {isFetching && <CircularProgress size={18} />}
+            <Chip
+              label={showGreeks ? 'Hide Greeks' : 'Show Greeks (Δ Γ Θ V)'}
+              size="small"
+              clickable
+              onClick={() => setShowGreeks((v) => !v)}
+              sx={{
+                ml: 'auto',
+                bgcolor: showGreeks ? 'rgba(74,158,255,0.12)' : 'transparent',
+                color:   showGreeks ? 'primary.main' : 'text.secondary',
+                border: '1px solid', borderColor: showGreeks ? 'primary.main' : 'divider',
+                fontWeight: showGreeks ? 700 : 400,
+              }}
+            />
           </Box>
         </CardContent>
       </Card>
@@ -418,6 +452,7 @@ export default function OptionsPage() {
                   contracts={data.calls}
                   type="call"
                   currentPrice={data.current_price}
+                  showGreeks={showGreeks}
                 />
               </CardContent>
             </Card>
@@ -440,6 +475,7 @@ export default function OptionsPage() {
                   contracts={data.puts}
                   type="put"
                   currentPrice={data.current_price}
+                  showGreeks={showGreeks}
                 />
               </CardContent>
             </Card>

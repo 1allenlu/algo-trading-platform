@@ -12,10 +12,78 @@ Public functions:
 from __future__ import annotations
 
 import math
+from datetime import date
 from typing import Any
 
 import yfinance as yf
 from loguru import logger
+
+
+# ── Black-Scholes Greeks — Phase 75 ──────────────────────────────────────────
+
+def _norm_cdf(x: float) -> float:
+    """Standard normal CDF via math.erf (no external dependencies)."""
+    return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
+
+
+_RISK_FREE_RATE = 0.05   # approximate; can be improved with live treasury data
+
+
+def _bs_greeks(
+    S: float, K: float, T: float, sigma: float, is_call: bool
+) -> dict[str, float | None]:
+    """
+    Compute Black-Scholes delta, gamma, theta, vega for one contract.
+
+    S       — underlying spot price
+    K       — strike price
+    T       — time to expiry in years
+    sigma   — implied volatility (annualised fraction, e.g. 0.30 = 30%)
+    is_call — True for calls, False for puts
+    """
+    if T <= 0 or sigma <= 0 or S <= 0 or K <= 0:
+        return {"delta": None, "gamma": None, "theta": None, "vega": None}
+    try:
+        r = _RISK_FREE_RATE
+        sq_T  = math.sqrt(T)
+        d1 = (math.log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * sq_T)
+        d2 = d1 - sigma * sq_T
+
+        pdf_d1 = math.exp(-0.5 * d1 ** 2) / math.sqrt(2 * math.pi)
+        gamma  = pdf_d1 / (S * sigma * sq_T)
+        vega   = S * pdf_d1 * sq_T / 100   # per 1 % IV move
+
+        if is_call:
+            delta = _norm_cdf(d1)
+            theta = (
+                -S * pdf_d1 * sigma / (2 * sq_T)
+                - r * K * math.exp(-r * T) * _norm_cdf(d2)
+            ) / 365
+        else:
+            delta = _norm_cdf(d1) - 1.0
+            theta = (
+                -S * pdf_d1 * sigma / (2 * sq_T)
+                + r * K * math.exp(-r * T) * _norm_cdf(-d2)
+            ) / 365
+
+        return {
+            "delta": round(delta, 4),
+            "gamma": round(gamma, 6),
+            "theta": round(theta, 4),
+            "vega":  round(vega,  4),
+        }
+    except Exception:
+        return {"delta": None, "gamma": None, "theta": None, "vega": None}
+
+
+def _time_to_expiry(expiry_str: str) -> float:
+    """Return time to expiry in years from an ISO date string."""
+    try:
+        exp = date.fromisoformat(expiry_str)
+        days = (exp - date.today()).days
+        return max(days / 365.0, 0.0)
+    except Exception:
+        return 0.0
 
 
 def get_expirations(symbol: str) -> list[str]:
@@ -73,24 +141,38 @@ def get_options_chain(symbol: str, expiry: str | None = None) -> dict[str, Any]:
     except Exception:
         current_price = None
 
+    T = _time_to_expiry(chosen)
     return {
         "symbol":        sym,
         "current_price": current_price,
         "expiration":    chosen,
         "expirations":   expirations,
-        "calls":         _format_contracts(chain.calls, "call"),
-        "puts":          _format_contracts(chain.puts, "put"),
+        "calls":         _format_contracts(chain.calls, "call", current_price, T),
+        "puts":          _format_contracts(chain.puts,  "put",  current_price, T),
     }
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _format_contracts(df: Any, contract_type: str) -> list[dict]:
+def _format_contracts(
+    df: Any,
+    contract_type: str,
+    current_price: float | None = None,
+    T: float = 0.0,
+) -> list[dict]:
     rows = []
+    is_call = contract_type == "call"
     for _, row in df.iterrows():
-        iv = float(row.get("impliedVolatility", 0) or 0)
+        iv     = float(row.get("impliedVolatility", 0) or 0)
+        strike = _safe_float(row.get("strike"))
+
+        # Phase 75: Black-Scholes Greeks
+        greeks = {"delta": None, "gamma": None, "theta": None, "vega": None}
+        if current_price and strike and T > 0 and iv > 0:
+            greeks = _bs_greeks(current_price, strike, T, iv, is_call)
+
         rows.append({
-            "strike":             _safe_float(row.get("strike")),
+            "strike":             strike,
             "last_price":         _safe_float(row.get("lastPrice")),
             "bid":                _safe_float(row.get("bid")),
             "ask":                _safe_float(row.get("ask")),
@@ -101,6 +183,7 @@ def _format_contracts(df: Any, contract_type: str) -> list[dict]:
             "implied_volatility": round(iv, 4),   # annualised fraction (e.g. 0.35 = 35%)
             "in_the_money":       bool(row.get("inTheMoney", False)),
             "contract_type":      contract_type,
+            **greeks,
         })
     return rows
 

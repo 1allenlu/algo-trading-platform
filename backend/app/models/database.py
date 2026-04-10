@@ -381,6 +381,7 @@ class AlertRule(Base):
     is_active       = Column(Boolean,    nullable=False, default=True)
     cooldown_seconds = Column(Integer,   nullable=False, default=60)
     last_triggered_at = Column(DateTime(timezone=True), nullable=True)
+    webhook_url     = Column(Text,        nullable=True)    # Phase 66: custom webhook URL
     created_at      = Column(DateTime(timezone=True), nullable=False)
 
     __table_args__ = (
@@ -739,3 +740,29 @@ class PortfolioSnapshot(Base):
 
     def __repr__(self) -> str:
         return f"<PortfolioSnapshot token={self.token[:8]}… expires={self.expires_at}>"
+
+
+# ── Multi-Portfolio (Phase 67) ────────────────────────────────────────────────
+
+class Portfolio(Base):
+    """
+    Named paper trading account.  The default account (id=1) is the original
+    $100k paper account.  Additional portfolios start with their own cash balance
+    and maintain separate orders/positions/equity history via portfolio_id FK.
+    """
+
+    __tablename__ = "portfolios"
+
+    id            = Column(Integer,     primary_key=True, autoincrement=True)
+    name          = Column(String(100), nullable=False)
+    description   = Column(Text,        nullable=True)
+    starting_cash = Column(Float,       nullable=False, default=100_000.0)
+    is_default    = Column(Boolean,     nullable=False, default=False)
+    created_at    = Column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        Index("ix_portfolios_name", "name"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<Portfolio {self.name} cash={self.starting_cash}>"

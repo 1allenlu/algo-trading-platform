@@ -187,6 +187,37 @@ def _get_llm_summary(symbol: str, articles: list[NewsArticle]) -> str | None:
         return None
 
 
+def get_sentiment_trend(symbol: str, max_articles: int = 50) -> list[dict]:
+    """
+    Phase 72 — Group articles by date and return daily average VADER compound
+    score.  Used to plot a rolling sentiment trend chart.
+
+    Returns list of {date, avg_compound, article_count, label} sorted ascending.
+    """
+    articles = get_news(symbol, max_articles)
+    if not articles:
+        return []
+
+    by_date: dict[str, list[float]] = {}
+    for a in articles:
+        date = a.published[:10] if a.published else None
+        if not date:
+            continue
+        by_date.setdefault(date, []).append(a.compound)
+
+    trend = []
+    for date, scores in sorted(by_date.items()):
+        avg = round(sum(scores) / len(scores), 4)
+        trend.append({
+            "date":          date,
+            "avg_compound":  avg,
+            "article_count": len(scores),
+            "label":         _label(avg),
+        })
+
+    return trend
+
+
 def get_aggregate_sentiment(symbol: str, max_articles: int = 20) -> NewsAggregateSentiment:
     """
     Compute aggregate news sentiment for a symbol.

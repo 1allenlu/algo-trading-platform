@@ -66,6 +66,22 @@ async def send_slack(text: str) -> None:
         logger.warning(f"[notify] Slack send failed: {exc}")
 
 
+async def send_webhook(url: str, payload: dict) -> None:
+    """Phase 66 — POST alert payload to a custom webhook URL."""
+    if not url:
+        return
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=5) as client:
+            resp = await client.post(url, json=payload)
+            if resp.status_code not in (200, 201, 202, 204):
+                logger.warning(f"[notify] Webhook {url} returned {resp.status_code}")
+            else:
+                logger.info(f"[notify] Webhook delivered to {url}")
+    except Exception as exc:
+        logger.warning(f"[notify] Webhook failed: {exc}")
+
+
 async def notify_alert(rule: dict, event: dict) -> None:
     """
     Dispatch notifications for a fired alert.
@@ -98,10 +114,19 @@ async def notify_alert(rule: dict, event: dict) -> None:
             f"> Value: `{value:.4f}` | Threshold: `{threshold}` | {message}"
         )
 
+        # Phase 66: custom webhook
+        webhook_url = rule.get("webhook_url")
+        webhook_payload = {
+            "symbol": symbol, "condition": condition,
+            "threshold": threshold, "value": value,
+            "message": message, "triggered_at": timestamp,
+        }
+
         import asyncio
         await asyncio.gather(
             send_email(subject, body),
             send_slack(slack_text),
+            send_webhook(webhook_url, webhook_payload) if webhook_url else asyncio.sleep(0),
             return_exceptions=True,
         )
     except Exception as exc:

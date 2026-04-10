@@ -24,10 +24,11 @@ from fastapi.responses import RedirectResponse
 from loguru import logger
 
 from app.api.routes import (
-    alerts, analytics, auth, autotrade, backtest, commentary, crypto, earnings, fundamentals,
-    health, intraday, journal, live_orders, market_data, ml, news, notifications,
-    options, optimize, paper_trading, patterns, rl, risk, scanner, scheduler, share, signals,
-    strategies, strategy_builder, tax, tournament,
+    alerts, analytics, anomaly, auth, autotrade, backtest, benchmarks, breadth, commentary, crypto,
+    dividends, earnings, earnings_vol, economics, fundamentals, health, insider, intraday, journal,
+    live_orders, market_data, ml, news, notifications, options, options_flow, optimize,
+    paper_trading, patterns, portfolios, rl, risk, scanner, scheduler, sectors, share,
+    signals, strategies, strategy_builder, tax, tournament, vix,
 )
 from app.api.routes import websocket as ws_routes
 from app.core.config import settings
@@ -48,7 +49,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     # ── Startup ───────────────────────────────────────────────────────────────
     setup_logging()
-    logger.info(f"Starting {settings.APP_NAME} v0.54.0")
+    logger.info(f"Starting {settings.APP_NAME} v0.77.0")
     logger.info(f"Database: {settings.DATABASE_URL.split('@')[-1]}")
     logger.info(f"Debug mode: {settings.DEBUG}")
 
@@ -57,11 +58,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         # Phase 43: add new order columns to existing paper_orders table
+        # Phase 66: add webhook_url to alert_rules
         from sqlalchemy import text
         for col_sql in [
             "ALTER TABLE paper_orders ADD COLUMN IF NOT EXISTS stop_price FLOAT",
             "ALTER TABLE paper_orders ADD COLUMN IF NOT EXISTS trail_pct  FLOAT",
             "ALTER TABLE paper_orders ADD COLUMN IF NOT EXISTS trail_price FLOAT",
+            "ALTER TABLE alert_rules ADD COLUMN IF NOT EXISTS webhook_url TEXT",
         ]:
             try:
                 await conn.execute(text(col_sql))
@@ -132,7 +135,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 app = FastAPI(
     title=settings.APP_NAME,
     description="QuantStream — Quant + ML + Real-time Algorithmic Trading",
-    version="0.54.0",
+    version="0.77.0",
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan,
@@ -304,6 +307,61 @@ app.include_router(
     share.router,
     prefix=f"{settings.API_V1_PREFIX}/share",
     tags=["share"],
+)
+app.include_router(
+    economics.router,
+    prefix=f"{settings.API_V1_PREFIX}/economics",
+    tags=["economics"],
+)
+app.include_router(
+    sectors.router,
+    prefix=f"{settings.API_V1_PREFIX}/sectors",
+    tags=["sectors"],
+)
+app.include_router(
+    vix.router,
+    prefix=f"{settings.API_V1_PREFIX}/vix",
+    tags=["vix"],
+)
+app.include_router(
+    benchmarks.router,
+    prefix=f"{settings.API_V1_PREFIX}/benchmarks",
+    tags=["benchmarks"],
+)
+app.include_router(
+    earnings_vol.router,
+    prefix=f"{settings.API_V1_PREFIX}/earnings-vol",
+    tags=["earnings-vol"],
+)
+app.include_router(
+    portfolios.router,
+    prefix=f"{settings.API_V1_PREFIX}/portfolios",
+    tags=["portfolios"],
+)
+app.include_router(
+    options_flow.router,
+    prefix=f"{settings.API_V1_PREFIX}/options-flow",
+    tags=["options-flow"],
+)
+app.include_router(
+    dividends.router,
+    prefix=f"{settings.API_V1_PREFIX}/dividends",
+    tags=["dividends"],
+)
+app.include_router(
+    anomaly.router,
+    prefix=f"{settings.API_V1_PREFIX}/anomaly",
+    tags=["anomaly"],
+)
+app.include_router(
+    breadth.router,
+    prefix=f"{settings.API_V1_PREFIX}/breadth",
+    tags=["breadth"],
+)
+app.include_router(
+    insider.router,
+    prefix=f"{settings.API_V1_PREFIX}/insider",
+    tags=["insider"],
 )
 
 # ── WebSocket routes (Phase 7 + 8) ───────────────────────────────────────────

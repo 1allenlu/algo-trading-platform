@@ -32,6 +32,20 @@ import TaxReportPage from '@/pages/TaxReport'
 import StrategyBuilderPage from '@/pages/StrategyBuilder'
 import TournamentPage from '@/pages/Tournament'
 import SharedPortfolioPage from '@/pages/SharedPortfolio'
+import EconomicsPage from '@/pages/Economics'
+import SectorsPage from '@/pages/Sectors'
+import SizingPage from '@/pages/Sizing'
+import OptionPayoffPage from '@/pages/OptionPayoff'
+import VixPage from '@/pages/Vix'
+import BenchmarksPage from '@/pages/Benchmarks'
+import EarningsVolPage from '@/pages/EarningsVol'
+import PortfoliosPage from '@/pages/Portfolios'
+import LeaderboardPage from '@/pages/Leaderboard'
+import OptionsFlowPage from '@/pages/OptionsFlow'
+import DividendsPage from '@/pages/Dividends'
+import AnomalyPage from '@/pages/Anomaly'
+import BreadthPage from '@/pages/Breadth'
+import InsiderPage from '@/pages/Insider'
 import LoginPage from '@/pages/Login'
 import IntroPage from '@/pages/Intro'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
@@ -109,6 +123,20 @@ function AppLayout() {
             <Route path="/tax"              element={<TaxReportPage />} />
             <Route path="/strategy-builder" element={<StrategyBuilderPage />} />
             <Route path="/tournament"       element={<TournamentPage />} />
+            <Route path="/economics"        element={<EconomicsPage />} />
+            <Route path="/sectors"          element={<SectorsPage />} />
+            <Route path="/sizing"           element={<SizingPage />} />
+            <Route path="/option-payoff"    element={<OptionPayoffPage />} />
+            <Route path="/vix"              element={<VixPage />} />
+            <Route path="/benchmarks"       element={<BenchmarksPage />} />
+            <Route path="/earnings-vol"     element={<EarningsVolPage />} />
+            <Route path="/portfolios"       element={<PortfoliosPage />} />
+            <Route path="/leaderboard"      element={<LeaderboardPage />} />
+            <Route path="/options-flow"     element={<OptionsFlowPage />} />
+            <Route path="/dividends"        element={<DividendsPage />} />
+            <Route path="/anomaly"          element={<AnomalyPage />} />
+            <Route path="/breadth"          element={<BreadthPage />} />
+            <Route path="/insider"          element={<InsiderPage />} />
             <Route path="/settings"         element={<Settings />} />
           </Routes>
         </Box>

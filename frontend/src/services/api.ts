@@ -581,6 +581,7 @@ export interface CreateAlertRuleRequest {
   condition:        AlertCondition
   threshold:        number
   cooldown_seconds?: number
+  webhook_url?:     string   // Phase 66: custom webhook URL
 }
 
 /** Real-time alert payload pushed over /ws/alerts WebSocket. */
@@ -783,7 +784,7 @@ export interface StartOptimizationResponse {
   status:       string
 }
 
-// ── Options types — Phase 27 ──────────────────────────────────────────────────
+// ── Options types — Phase 27 + 75 ────────────────────────────────────────────
 
 export interface OptionContract {
   strike:             number
@@ -797,6 +798,11 @@ export interface OptionContract {
   implied_volatility: number
   in_the_money:       boolean
   contract_type:      'call' | 'put'
+  // Phase 75: Black-Scholes Greeks
+  delta:              number | null
+  gamma:              number | null
+  theta:              number | null
+  vega:               number | null
 }
 
 export interface OptionsChain {
@@ -1276,6 +1282,130 @@ export interface DrawdownAnalysis {
   recovery_days_est: number | null    // null if no positive avg return
 }
 
+// ── Phase 64: Sector Exposure ─────────────────────────────────────────────────
+
+export interface SectorExposureRow {
+  symbol:     string
+  qty:        number
+  sector:     string
+  value:      number
+  weight_pct: number
+}
+
+// ── Phase 55: Economic Calendar ───────────────────────────────────────────────
+
+export interface MacroEvent {
+  date:         string
+  name:         string
+  category:     'fed' | 'inflation' | 'employment' | 'growth' | 'treasury'
+  importance:   'high' | 'medium'
+  days_until:   number
+  is_today:     boolean
+  is_this_week: boolean
+}
+
+// ── Phase 56: Sector Rotation ─────────────────────────────────────────────────
+
+export interface SectorRow {
+  symbol:  string
+  name:    string
+  gics:    string
+  price:   number | null
+  ret_1d:  number | null
+  ret_5d:  number | null
+  ret_1mo: number | null
+  ret_3mo: number | null
+  ret_ytd: number | null
+  volume:  number | null
+}
+
+// ── Phase 58: Performance Scorecard ──────────────────────────────────────────
+
+export interface ScorecardPeriod {
+  period:        string
+  portfolio_ret: number | null
+  spy_ret:       number | null
+  alpha:         number | null
+  outperforms:   boolean
+}
+
+export interface PerformanceScorecard {
+  periods:          ScorecardPeriod[]
+  current_equity:   number
+  total_return_pct: number | null
+}
+
+// ── Phase 60: VIX & Market Sentiment ─────────────────────────────────────────
+
+export interface VixSnapshot {
+  vix:         number | null
+  vvix:        number | null
+  vxn:         number | null
+  vix3m:       number | null
+  low_52w:     number | null
+  high_52w:    number | null
+  fear_greed:  number          // 0–100
+  label:       string          // "Extreme Fear" | "Fear" | "Neutral" | "Greed" | "Extreme Greed"
+  label_color: string          // hex color
+  regime:      'low_vol' | 'normal_vol' | 'elevated' | 'panic'
+  sparkline:   number[]        // 30 VIX closes
+}
+
+// ── Phase 61: Multi-Benchmark Comparison ─────────────────────────────────────
+
+export interface BenchmarkMeta {
+  symbol: string
+  name:   string
+  color:  string
+}
+
+export interface BenchmarkCurvePoint {
+  date:  string
+  value: number
+}
+
+export interface BenchmarkCurves {
+  benchmarks: Record<string, BenchmarkCurvePoint[]>
+  meta:        BenchmarkMeta[]
+}
+
+// ── Phase 62: Earnings Volatility Screener ────────────────────────────────────
+
+export interface EarningsPlay {
+  symbol:            string
+  price:             number | null
+  next_earnings:     string | null
+  expected_move_pct: number | null
+  atm_iv_pct:        number | null
+  straddle_cost:     number | null
+  beat_rate_pct:     number | null
+  beats:             number | null
+  misses:            number | null
+  setup:             'straddle' | 'directional' | 'pass'
+}
+
+// ── Phase 67: Multi-Portfolio ─────────────────────────────────────────────────
+
+export interface PortfolioMeta {
+  id:             number
+  name:           string
+  description:    string | null
+  starting_cash:  number
+  is_default:     boolean
+  created_at:     string
+}
+
+// ── Phase 68: Leaderboard ─────────────────────────────────────────────────────
+
+export interface LeaderboardEntry {
+  token:        string
+  title:        string | null
+  total_return: number | null
+  sharpe:       number | null
+  max_drawdown: number | null
+  created_at:   string | null
+}
+
 // ── Phase 52: Strategy Tournaments ───────────────────────────────────────────
 
 export interface TournamentParticipantResult {
@@ -1321,6 +1451,116 @@ export interface CreateTournamentRequest {
   start_date:   string
   end_date:     string
   participants: { name: string; config: Record<string, unknown> }[]
+}
+
+// ── Phase 74: Market Breadth ──────────────────────────────────────────────────
+
+export interface SectorBar {
+  name:     string
+  symbol:   string
+  ret_1d:   number | null
+  ret_5d:   number | null
+  ret_1mo:  number | null
+  rsi:      number | null
+  vs_sma50: number | null
+}
+
+export interface BreadthSnapshot {
+  advance:          number
+  decline:          number
+  unchanged:        number
+  adv_dec_ratio:    number
+  pct_above_sma50:  number
+  pct_above_sma200: number
+  new_highs:        number
+  new_lows:         number
+  rsi_overbought:   number
+  rsi_oversold:     number
+  rsi_neutral:      number
+  avg_rsi:          number
+  sectors:          SectorBar[]
+}
+
+// ── Phase 76: Insider Transactions ────────────────────────────────────────────
+
+export interface InsiderTransaction {
+  date:        string
+  insider:     string
+  relation:    string
+  transaction: string
+  shares:      number
+  value:       number | null
+  is_buy:      boolean
+}
+
+// ── Phase 77: Earnings Reaction ───────────────────────────────────────────────
+
+export interface EarningsReactionEntry {
+  date:         string
+  eps_estimate: number | null
+  eps_actual:   number | null
+  surprise_pct: number | null
+  ret_1d:       number | null
+  ret_3d:       number | null
+  ret_5d:       number | null
+}
+
+// ── Phase 70: Options Flow ────────────────────────────────────────────────────
+
+export interface OptionsFlowRow {
+  symbol:        string
+  contract_type: 'call' | 'put'
+  strike:        number
+  expiry:        string
+  volume:        number
+  open_interest: number | null
+  vol_oi_ratio:  number | null
+  iv:            number | null
+  last_price:    number | null
+  otm_pct:       number | null
+  flag:          'sweep' | 'unusual_vol' | 'high_oi' | 'normal'
+}
+
+// ── Phase 71: Dividend Tracker ────────────────────────────────────────────────
+
+export interface DividendPayment {
+  date:   string
+  amount: number
+}
+
+export interface DividendSummary {
+  symbol:              string
+  company_name:        string | null
+  sector:              string | null
+  dividend_yield:      number | null
+  trailing_annual_div: number | null
+  ex_dividend_date:    string | null
+  payout_ratio:        number | null
+  frequency:           string | null
+  history:             DividendPayment[]
+}
+
+// ── Phase 72: Sentiment Trend ─────────────────────────────────────────────────
+
+export interface SentimentTrendPoint {
+  date:          string
+  avg_compound:  number
+  article_count: number
+  label:         'bullish' | 'bearish' | 'neutral'
+}
+
+// ── Phase 73: Anomaly Detection ───────────────────────────────────────────────
+
+export interface AnomalyRow {
+  symbol:       string
+  price:        number | null
+  change_pct:   number | null
+  volume:       number | null
+  volume_ratio: number | null
+  rsi_14:       number | null
+  gap_pct:      number | null
+  anomalies:    string[]
+  severity:     'critical' | 'warning' | 'info'
 }
 
 // ── Phase 54: Portfolio Sharing ───────────────────────────────────────────────
@@ -1550,6 +1790,10 @@ export const api = {
 
     getDailyPnl: (): Promise<DailyPnlEntry[]> =>
       apiClient.get<DailyPnlEntry[]>('/api/analytics/daily-pnl').then((r) => r.data),
+
+    // Phase 64: sector exposure of open positions
+    getSectorExposure: (): Promise<SectorExposureRow[]> =>
+      apiClient.get<SectorExposureRow[]>('/api/analytics/sector-exposure').then((r) => r.data),
   },
 
   optimize: {
@@ -1585,6 +1829,12 @@ export const api = {
     getArticles: (symbol: string, maxArticles = 10): Promise<NewsArticle[]> =>
       apiClient
         .get<NewsArticle[]>(`/api/news/${symbol}/articles`, { params: { max_articles: maxArticles } })
+        .then((r) => r.data),
+
+    // Phase 72: daily sentiment trend
+    getTrend: (symbol: string, maxArticles = 50): Promise<SentimentTrendPoint[]> =>
+      apiClient
+        .get<SentimentTrendPoint[]>(`/api/news/${symbol}/trend`, { params: { max_articles: maxArticles } })
         .then((r) => r.data),
   },
 
@@ -1844,6 +2094,27 @@ export const api = {
       apiClient.get<DrawdownAnalysis>('/api/analytics/drawdown').then((r) => r.data),
   },
 
+  // ── Phase 55: Economic Calendar ─────────────────────────────────────────────
+  economics: {
+    getCalendar: (days = 90): Promise<MacroEvent[]> =>
+      apiClient.get<MacroEvent[]>('/api/economics/calendar', { params: { days } }).then((r) => r.data),
+
+    getSummary: (): Promise<{ '7d': number; '30d': number }> =>
+      apiClient.get('/api/economics/summary').then((r) => r.data),
+  },
+
+  // ── Phase 56: Sector Rotation ────────────────────────────────────────────────
+  sectors: {
+    getHeatmap: (): Promise<SectorRow[]> =>
+      apiClient.get<SectorRow[]>('/api/sectors/heatmap').then((r) => r.data),
+  },
+
+  // ── Phase 58: Performance Scorecard ─────────────────────────────────────────
+  scorecard: {
+    get: (): Promise<PerformanceScorecard> =>
+      apiClient.get<PerformanceScorecard>('/api/analytics/scorecard').then((r) => r.data),
+  },
+
   // ── Phase 52: Strategy Tournaments ──────────────────────────────────────────
   tournament: {
     list: (): Promise<TournamentSummary[]> =>
@@ -1862,12 +2133,129 @@ export const api = {
       apiClient.delete(`/api/tournament/${id}`).then(() => undefined),
   },
 
-  // ── Phase 54: Portfolio Sharing ──────────────────────────────────────────────
+  // ── Phase 54 + 68: Portfolio Sharing & Leaderboard ───────────────────────────
   share: {
-    create: (title?: string): Promise<CreateSnapshotResponse> =>
-      apiClient.post<CreateSnapshotResponse>('/api/share/create', { title }).then((r) => r.data),
+    create: (title?: string, isPublic = false): Promise<CreateSnapshotResponse> =>
+      apiClient.post<CreateSnapshotResponse>('/api/share/create', { title, public: isPublic }).then((r) => r.data),
 
     get: (token: string): Promise<PortfolioSnapshot> =>
       apiClient.get<PortfolioSnapshot>(`/api/share/${token}`).then((r) => r.data),
+
+    getLeaderboard: (): Promise<LeaderboardEntry[]> =>
+      apiClient.get<LeaderboardEntry[]>('/api/share/leaderboard').then((r) => r.data),
+  },
+
+  // ── Phase 60: VIX & Market Sentiment ─────────────────────────────────────────
+  vix: {
+    getSnapshot: (): Promise<VixSnapshot> =>
+      apiClient.get<VixSnapshot>('/api/vix/snapshot').then((r) => r.data),
+  },
+
+  // ── Phase 61: Multi-Benchmark Comparison ──────────────────────────────────────
+  benchmarks: {
+    list: (): Promise<BenchmarkMeta[]> =>
+      apiClient.get<BenchmarkMeta[]>('/api/benchmarks/list').then((r) => r.data),
+
+    getCurves: (symbols: string[], days = 252): Promise<BenchmarkCurves> =>
+      apiClient
+        .get<BenchmarkCurves>('/api/benchmarks/curves', { params: { symbols: symbols.join(','), days } })
+        .then((r) => r.data),
+  },
+
+  // ── Phase 62: Earnings Volatility Screener ────────────────────────────────────
+  earningsVol: {
+    screen: (symbols: string): Promise<EarningsPlay[]> =>
+      apiClient
+        .get<EarningsPlay[]>('/api/earnings-vol/screen', { params: { symbols } })
+        .then((r) => r.data),
+  },
+
+  // ── Phase 67: Multi-Portfolio ─────────────────────────────────────────────────
+  portfolios: {
+    list: (): Promise<PortfolioMeta[]> =>
+      apiClient.get<PortfolioMeta[]>('/api/portfolios/').then((r) => r.data),
+
+    create: (name: string, description?: string, startingCash = 100000): Promise<PortfolioMeta> =>
+      apiClient
+        .post<PortfolioMeta>('/api/portfolios/', { name, description, starting_cash: startingCash })
+        .then((r) => r.data),
+
+    delete: (id: number): Promise<{ message: string }> =>
+      apiClient.delete<{ message: string }>(`/api/portfolios/${id}`).then((r) => r.data),
+  },
+
+  // ── Phase 69: NLP Strategy Builder ───────────────────────────────────────────
+  nlp: {
+    parseStrategy: (description: string): Promise<{
+      conditions:      { buy_rules: unknown[]; sell_rules: unknown[]; logic: string }
+      explanation:     string
+      raw_description: string
+    }> =>
+      apiClient
+        .post('/api/strategy-builder/parse-nlp', { description })
+        .then((r) => r.data),
+  },
+
+  // ── Phase 70: Options Flow Scanner ───────────────────────────────────────────
+  optionsFlow: {
+    scan: (symbols: string): Promise<OptionsFlowRow[]> =>
+      apiClient
+        .get<OptionsFlowRow[]>('/api/options-flow/scan', { params: { symbols } })
+        .then((r) => r.data),
+  },
+
+  // ── Phase 71: Dividend Tracker ────────────────────────────────────────────────
+  dividends: {
+    getCalendar: (symbols: string): Promise<DividendSummary[]> =>
+      apiClient
+        .get<DividendSummary[]>('/api/dividends/calendar', { params: { symbols } })
+        .then((r) => r.data),
+
+    get: (symbol: string): Promise<DividendSummary> =>
+      apiClient.get<DividendSummary>(`/api/dividends/${symbol}`).then((r) => r.data),
+  },
+
+  // ── Phase 74: Market Breadth ─────────────────────────────────────────────────
+  breadth: {
+    getSnapshot: (): Promise<BreadthSnapshot> =>
+      apiClient.get<BreadthSnapshot>('/api/breadth/snapshot').then((r) => r.data),
+  },
+
+  // ── Phase 76: Insider Transactions ───────────────────────────────────────────
+  insider: {
+    get: (symbol: string, limit = 30): Promise<InsiderTransaction[]> =>
+      apiClient
+        .get<InsiderTransaction[]>(`/api/insider/${symbol}`, { params: { limit } })
+        .then((r) => r.data),
+  },
+
+  // ── Phase 77: Earnings Reaction ───────────────────────────────────────────────
+  earningsReaction: {
+    get: (symbol: string): Promise<EarningsReactionEntry[]> =>
+      apiClient.get<EarningsReactionEntry[]>(`/api/earnings/${symbol}/reaction`).then((r) => r.data),
+  },
+
+  // ── Phase 73: Anomaly Detection ───────────────────────────────────────────────
+  anomaly: {
+    scan: (
+      symbols:  string,
+      volMult:  number,
+      gapPct:   number,
+      rsiHi:    number,
+      rsiLo:    number,
+      movePct:  number,
+    ): Promise<AnomalyRow[]> =>
+      apiClient
+        .get<AnomalyRow[]>('/api/anomaly/scan', {
+          params: {
+            symbols,
+            vol_mult:  volMult,
+            gap_pct:   gapPct,
+            rsi_hi:    rsiHi,
+            rsi_lo:    rsiLo,
+            move_pct:  movePct,
+          },
+        })
+        .then((r) => r.data),
   },
 }

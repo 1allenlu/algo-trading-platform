@@ -433,3 +433,142 @@ async def get_trades_csv(session: AsyncSession) -> str:
         ])
 
     return buf.getvalue()
+
+
+async def get_performance_scorecard(session: AsyncSession) -> dict:
+    """
+    Phase 58 — Multi-period performance scorecard.
+
+    Computes portfolio return vs SPY benchmark at:
+      1W, 1M, 3M, 6M, YTD, 1Y, ALL
+
+    Each period returns: portfolio_ret, spy_ret, alpha, and a
+    trend direction compared to the previous period.
+    """
+    rows = (await session.scalars(
+        select(PaperEquityHistory).order_by(PaperEquityHistory.recorded_at)
+    )).all()
+
+    if not rows:
+        return {"periods": [], "current_equity": STARTING_CASH, "total_return_pct": 0.0}
+
+    equities = [(r.recorded_at, float(r.equity)) for r in rows]
+    latest_ts, latest_eq = equities[-1]
+
+    # SPY reference data from MarketData table
+    spy_rows = (await session.scalars(
+        select(MarketData)
+        .where(MarketData.symbol == "SPY")
+        .order_by(MarketData.timestamp)
+    )).all()
+
+    spy_prices: dict[str, float] = {}
+    for s in spy_rows:
+        spy_prices[s.timestamp.strftime("%Y-%m-%d")] = s.close
+
+    def _ret(start_ts, start_eq):
+        if start_eq and start_eq > 0:
+            return round((latest_eq - start_eq) / start_eq * 100, 2)
+        return None
+
+    def _spy_ret(start_ts):
+        start_date = start_ts.strftime("%Y-%m-%d")
+        end_date   = latest_ts.strftime("%Y-%m-%d")
+        # Find closest available SPY price at or after start_date
+        start_price = end_price = None
+        for d in sorted(spy_prices):
+            if d >= start_date and start_price is None:
+                start_price = spy_prices[d]
+            if d >= end_date and end_price is None:
+                end_price = spy_prices[d]
+        if not end_price:
+            end_price = spy_prices[max(spy_prices)] if spy_prices else None
+        if start_price and end_price and start_price > 0:
+            return round((end_price - start_price) / start_price * 100, 2)
+        return None
+
+    from datetime import timedelta
+
+    def _find_eq_at(cutoff_ts):
+        """Return (timestamp, equity) of the equity snapshot closest to cutoff."""
+        best = None
+        for ts, eq in equities:
+            if ts <= cutoff_ts:
+                best = (ts, eq)
+            else:
+                break
+        return best
+
+    now = latest_ts
+
+    import math as _math
+    ytd_start = latest_ts.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    periods_def = [
+        ("1W",  now - timedelta(days=7)),
+        ("1M",  now - timedelta(days=30)),
+        ("3M",  now - timedelta(days=91)),
+        ("6M",  now - timedelta(days=182)),
+        ("YTD", ytd_start),
+        ("1Y",  now - timedelta(days=365)),
+        ("ALL", equities[0][0] if equities else now),
+    ]
+
+    periods = []
+    for label, start_ts in periods_def:
+        found = _find_eq_at(start_ts)
+        if not found:
+            continue
+        ts_start, eq_start = found
+        port_ret = _ret(ts_start, eq_start)
+        spy_ret  = _spy_ret(ts_start)
+        alpha    = round(port_ret - spy_ret, 2) if (port_ret is not None and spy_ret is not None) else None
+        periods.append({
+            "period":        label,
+            "portfolio_ret": port_ret,
+            "spy_ret":       spy_ret,
+            "alpha":         alpha,
+            "outperforms":   (alpha is not None and alpha > 0),
+        })
+
+    total_ret = _ret(equities[0][0], equities[0][1]) if equities else 0.0
+
+    return {
+        "periods":          periods,
+        "current_equity":   round(latest_eq, 2),
+        "total_return_pct": total_ret,
+    }
+
+
+async def get_sector_exposure(session: AsyncSession) -> list[dict]:
+    """
+    Phase 64 — Map open paper positions to GICS sectors via yfinance.
+    Returns list of {symbol, qty, sector, weight_pct} sorted by weight desc.
+    """
+    positions = (await session.scalars(select(PaperPosition))).all()
+    open_pos = [p for p in positions if p.qty > 0]
+    if not open_pos:
+        return []
+
+    import yfinance as yf
+
+    rows = []
+    total_value = 0.0
+    for p in open_pos:
+        try:
+            t = yf.Ticker(p.symbol)
+            info = t.info or {}
+            sector = info.get("sector") or "Unknown"
+            price  = info.get("currentPrice") or info.get("regularMarketPrice") or p.avg_price
+            value  = float(p.qty) * float(price)
+        except Exception:
+            sector = "Unknown"
+            value  = float(p.qty) * float(p.avg_price)
+        rows.append({"symbol": p.symbol, "qty": p.qty, "sector": sector, "value": round(value, 2)})
+        total_value += value
+
+    for r in rows:
+        r["weight_pct"] = round(r["value"] / total_value * 100, 2) if total_value > 0 else 0.0
+
+    rows.sort(key=lambda x: -x["weight_pct"])
+    return rows

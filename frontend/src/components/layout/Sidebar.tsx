@@ -28,6 +28,20 @@ import {
   Receipt as TaxIcon,
   Build as StrategyBuilderIcon,
   EmojiEvents as TournamentIcon,
+  Event as EconomicsIcon,
+  GridView as SectorsIcon,
+  Calculate as SizingIcon,
+  Waves as VixIcon,
+  MultilineChart as BenchmarksIcon,
+  Bolt as EarningsVolIcon,
+  FolderSpecial as PortfoliosIcon,
+  Leaderboard as LeaderboardIcon,
+  CallMerge as OptionPayoffIcon,
+  WaterfallChart as OptionsFlowIcon,
+  Paid as DividendsIcon,
+  Troubleshoot as AnomalyIcon,
+  SignalWifi4Bar as BreadthIcon,
+  ManageAccounts as InsiderIcon,
 } from '@mui/icons-material'
 import { useLocation, useNavigate } from 'react-router-dom'
 import type { ReactNode } from 'react'
@@ -57,8 +71,11 @@ const NAV_SECTIONS: NavSection[] = [
       { label: 'Trading',    path: '/trading',    icon: <TradingIcon    sx={{ fontSize: 17 }} /> },
       { label: 'Watchlist',  path: '/watchlist',  icon: <WatchlistIcon  sx={{ fontSize: 17 }} /> },
       { label: 'Crypto',     path: '/crypto',     icon: <CryptoIcon     sx={{ fontSize: 17 }} /> },
-      { label: 'Options',    path: '/options',    icon: <OptionsIcon    sx={{ fontSize: 17 }} /> },
-      { label: 'News',       path: '/news',       icon: <NewsIcon       sx={{ fontSize: 17 }} /> },
+      { label: 'Options',       path: '/options',      icon: <OptionsIcon     sx={{ fontSize: 17 }} /> },
+      { label: 'Options Flow',  path: '/options-flow', icon: <OptionsFlowIcon sx={{ fontSize: 17 }} /> },
+      { label: 'Dividends',     path: '/dividends',    icon: <DividendsIcon   sx={{ fontSize: 17 }} /> },
+      { label: 'Insider',       path: '/insider',      icon: <InsiderIcon     sx={{ fontSize: 17 }} /> },
+      { label: 'News',          path: '/news',         icon: <NewsIcon        sx={{ fontSize: 17 }} /> },
     ],
   },
   {
@@ -71,10 +88,17 @@ const NAV_SECTIONS: NavSection[] = [
       { label: 'Analytics',  path: '/analytics',  icon: <AnalyticsIcon   sx={{ fontSize: 17 }} /> },
       { label: 'Signals',    path: '/signals',    icon: <SignalsIcon     sx={{ fontSize: 17 }} /> },
       { label: 'Earnings',      path: '/earnings',      icon: <EarningsIcon      sx={{ fontSize: 17 }} /> },
+      { label: 'Eco. Calendar', path: '/economics',     icon: <EconomicsIcon     sx={{ fontSize: 17 }} /> },
+      { label: 'Sectors',       path: '/sectors',       icon: <SectorsIcon       sx={{ fontSize: 17 }} /> },
+      { label: 'VIX & Sentiment', path: '/vix',         icon: <VixIcon           sx={{ fontSize: 17 }} /> },
+      { label: 'Benchmarks',    path: '/benchmarks',    icon: <BenchmarksIcon    sx={{ fontSize: 17 }} /> },
+      { label: 'Earnings Vol',  path: '/earnings-vol',  icon: <EarningsVolIcon   sx={{ fontSize: 17 }} /> },
       { label: 'Fundamentals', path: '/fundamentals', icon: <FundamentalsIcon  sx={{ fontSize: 17 }} /> },
       { label: 'Patterns',    path: '/patterns',    icon: <PatternIcon sx={{ fontSize: 17 }} /> },
       { label: 'RL Agent',   path: '/rl',          icon: <RLIcon      sx={{ fontSize: 17 }} /> },
-      { label: 'Compare',    path: '/compare',     icon: <CompareIcon sx={{ fontSize: 17 }} /> },
+      { label: 'Anomaly',    path: '/anomaly',     icon: <AnomalyIcon  sx={{ fontSize: 17 }} /> },
+      { label: 'Breadth',    path: '/breadth',     icon: <BreadthIcon  sx={{ fontSize: 17 }} /> },
+      { label: 'Compare',    path: '/compare',     icon: <CompareIcon  sx={{ fontSize: 17 }} /> },
     ],
   },
   {
@@ -89,6 +113,10 @@ const NAV_SECTIONS: NavSection[] = [
       { label: 'Journal',          path: '/journal',          icon: <JournalIcon         sx={{ fontSize: 17 }} /> },
       { label: 'Tax Report',       path: '/tax',              icon: <TaxIcon             sx={{ fontSize: 17 }} /> },
       { label: 'Tournaments',      path: '/tournament',       icon: <TournamentIcon      sx={{ fontSize: 17 }} /> },
+      { label: 'Position Sizing',  path: '/sizing',           icon: <SizingIcon          sx={{ fontSize: 17 }} /> },
+      { label: 'Option Payoff',    path: '/option-payoff',    icon: <OptionPayoffIcon    sx={{ fontSize: 17 }} /> },
+      { label: 'Portfolios',       path: '/portfolios',       icon: <PortfoliosIcon      sx={{ fontSize: 17 }} /> },
+      { label: 'Leaderboard',      path: '/leaderboard',      icon: <LeaderboardIcon     sx={{ fontSize: 17 }} /> },
     ],
   },
   {
@@ -166,7 +194,7 @@ function SidebarContent({ width, onNavigate }: { width: number; onNavigate?: () 
               mt: '2px',
             }}
           >
-            v0.54.0
+            v0.77.0
           </Typography>
         </Box>
       </Box>

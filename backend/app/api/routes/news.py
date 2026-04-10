@@ -8,8 +8,9 @@ Endpoints:
   GET /api/news/{symbol}/articles   → just the article list (max_articles param)
 """
 
+import asyncio
 from fastapi import APIRouter, Query
-from app.services.news_service import get_aggregate_sentiment, get_news
+from app.services.news_service import get_aggregate_sentiment, get_news, get_sentiment_trend
 
 router = APIRouter()
 
@@ -45,6 +46,15 @@ async def get_news_sentiment(
             for a in agg.articles
         ],
     }
+
+
+@router.get("/{symbol}/trend")
+async def sentiment_trend(
+    symbol:       str,
+    max_articles: int = Query(default=50, ge=10, le=100),
+) -> list[dict]:
+    """Phase 72 — Daily average VADER sentiment trend for a symbol."""
+    return await asyncio.to_thread(get_sentiment_trend, symbol.upper(), max_articles)
 
 
 @router.get("/{symbol}/articles")

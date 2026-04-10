@@ -49,6 +49,7 @@ async def create_snapshot(
     title: str | None,
     session: AsyncSession,
     ttl_days: int = 7,
+    public: bool = False,
 ) -> dict:
     """
     Snapshot the current paper portfolio state and return a public share token.
@@ -63,6 +64,8 @@ async def create_snapshot(
         k: v for k, v in stats.items()
         if isinstance(v, (int, float, str, bool, type(None)))
     }
+    if public:
+        safe_stats["is_public"] = True
 
     now     = datetime.now(tz=timezone.utc)
     token   = uuid.uuid4().hex

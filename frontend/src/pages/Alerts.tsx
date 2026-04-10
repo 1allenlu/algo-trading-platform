@@ -84,6 +84,7 @@ function AlertRulesPanel() {
   const [condition, setCondition] = useState<AlertCondition>('price_above')
   const [threshold, setThreshold] = useState('')
   const [cooldown,  setCooldown]  = useState('60')
+  const [webhook,   setWebhook]   = useState('')
 
   const load = async () => {
     try {
@@ -110,6 +111,7 @@ function AlertRulesPanel() {
         condition,
         threshold: thr,
         cooldown_seconds: parseInt(cooldown, 10) || 60,
+        webhook_url: webhook.trim() || undefined,
       })
       setThreshold('')
       await load()
@@ -223,6 +225,16 @@ function AlertRulesPanel() {
               Add
             </Button>
           </Box>
+
+          {/* Phase 66: optional webhook URL */}
+          <TextField
+            size="small" fullWidth
+            label="Webhook URL (optional — POSTed when alert fires)"
+            value={webhook}
+            onChange={(e) => setWebhook(e.target.value)}
+            placeholder="https://hooks.example.com/your-endpoint"
+            sx={{ mt: 1 }}
+          />
 
           {isCorrCondition && (
             <Typography variant="caption" color="text.secondary">

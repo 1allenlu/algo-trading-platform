@@ -41,6 +41,7 @@ import {
 } from '@mui/material'
 import {
   Add as AddIcon,
+  AutoAwesome as AIIcon,
   Delete as DeleteIcon,
   PlayArrow as RunIcon,
   Save as SaveIcon,
@@ -395,6 +396,70 @@ function SavedStrategies() {
   )
 }
 
+// ── Phase 69: NLP Strategy Parser ─────────────────────────────────────────────
+
+function NLPPanel({ onParsed }: { onParsed: (name: string, explanation: string) => void }) {
+  const [description, setDescription] = useState('')
+  const [loading, setLoading]         = useState(false)
+  const [result, setResult]           = useState<{ explanation: string } | null>(null)
+  const [error, setError]             = useState<string | null>(null)
+
+  const handleParse = async () => {
+    if (!description.trim()) return
+    setLoading(true); setError(null); setResult(null)
+    try {
+      const r = await api.nlp.parseStrategy(description)
+      setResult({ explanation: r.explanation })
+      onParsed(`NLP: ${description.slice(0, 40)}`, r.explanation)
+    } catch {
+      setError('Failed to parse — check ANTHROPIC_API_KEY is set on the backend.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Card sx={{ border: '1px solid', borderColor: 'divider' }}>
+      <CardContent>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+          <AIIcon sx={{ fontSize: 18, color: '#A78BFA' }} />
+          <Typography variant="subtitle2" fontWeight={700}>Natural Language Strategy Parser</Typography>
+          <Typography variant="caption" color="text.disabled">· powered by Claude</Typography>
+        </Box>
+
+        <Stack spacing={1.5}>
+          <TextField
+            multiline rows={3} fullWidth size="small"
+            placeholder='e.g. "Buy when RSI drops below 30 and price is above the 200-day SMA. Sell when RSI rises above 70."'
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+
+          <Button
+            variant="outlined" size="small"
+            startIcon={loading ? <CircularProgress size={14} color="inherit" /> : <AIIcon />}
+            onClick={handleParse}
+            disabled={loading || !description.trim()}
+            sx={{ alignSelf: 'flex-start', textTransform: 'none', borderColor: '#A78BFA', color: '#A78BFA',
+              '&:hover': { borderColor: '#A78BFA', bgcolor: '#A78BFA11' } }}
+          >
+            {loading ? 'Parsing…' : 'Parse with AI'}
+          </Button>
+
+          {error && <Alert severity="error" sx={{ py: 0, fontSize: '0.78rem' }}>{error}</Alert>}
+
+          {result && (
+            <Alert severity="success" sx={{ fontSize: '0.78rem' }}>
+              <Typography variant="caption" fontWeight={700} display="block" mb={0.5}>AI Interpretation:</Typography>
+              {result.explanation}
+            </Alert>
+          )}
+        </Stack>
+      </CardContent>
+    </Card>
+  )
+}
+
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function StrategyBuilderPage() {
@@ -405,12 +470,15 @@ export default function StrategyBuilderPage() {
       <Box sx={{ mb: 3 }}>
         <Typography variant="h5" fontWeight={700}>Strategy Builder</Typography>
         <Typography variant="body2" color="text.secondary">
-          Compose indicator-based buy/sell rules without writing code.
-          Evaluate against any symbol's historical data to see when signals would have fired.
+          Compose indicator-based buy/sell rules without writing code, or describe a strategy in plain English
+          and let Claude parse it into conditions automatically.
         </Typography>
       </Box>
 
       <Grid container spacing={3}>
+        <Grid item xs={12}>
+          <NLPPanel onParsed={() => { /* future: pre-fill builder from parsed rules */ }} />
+        </Grid>
         <Grid item xs={12}>
           <BuilderPanel onSaved={() => qc.invalidateQueries({ queryKey: ['custom-strategies'] })} />
         </Grid>

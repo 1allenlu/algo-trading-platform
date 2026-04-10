@@ -18,11 +18,12 @@ export default defineConfig({
       // During development, proxy /api + /ws calls to the FastAPI backend.
       // Inside Docker the backend is reached via its service name, not localhost.
       '/api': {
-        target: 'http://backend:8000',
+        // Docker: 'http://backend:8000' — local dev: 'http://localhost:8000'
+        target: process.env.VITE_BACKEND_URL ?? 'http://backend:8000',
         changeOrigin: true,
       },
       '/ws': {
-        target: 'ws://backend:8000',
+        target: (process.env.VITE_BACKEND_URL ?? 'http://backend:8000').replace('http', 'ws'),
         ws: true,
         changeOrigin: true,
       },

@@ -18,8 +18,10 @@ from app.models.database import AsyncSessionLocal
 from app.services.analytics_service import (
     get_daily_pnl,
     get_drawdown_analysis,
+    get_performance_scorecard,
     get_pnl_attribution,
     get_rolling_metrics,
+    get_sector_exposure,
     get_summary,
     get_trades_csv,
 )
@@ -97,6 +99,23 @@ async def analytics_drawdown(db: AsyncSession = Depends(get_db)) -> dict:
     recovery timeline based on the portfolio's historical average positive return.
     """
     return await get_drawdown_analysis(db)
+
+
+@router.get("/sector-exposure")
+async def analytics_sector_exposure(db: AsyncSession = Depends(get_db)) -> list[dict]:
+    """Phase 64: Open positions mapped to GICS sectors with portfolio weight %."""
+    return await get_sector_exposure(db)
+
+
+@router.get("/scorecard")
+async def analytics_scorecard(db: AsyncSession = Depends(get_db)) -> dict:
+    """
+    Phase 58: Multi-period performance scorecard.
+
+    Returns portfolio return vs SPY benchmark across 1W / 1M / 3M / 6M / YTD / 1Y / ALL
+    time horizons, with alpha (outperformance) for each period.
+    """
+    return await get_performance_scorecard(db)
 
 
 @router.get("/export")

@@ -134,6 +134,69 @@ def get_next_earnings(symbol: str) -> dict[str, Any]:
     return result
 
 
+def get_earnings_reaction(symbol: str) -> list[dict]:
+    """
+    Phase 77 — For each historical earnings date, compute the stock's
+    price reaction: +1d, +3d, +5d return after the announcement.
+
+    Uses the existing earnings history + yfinance price data.
+    Cached 6 hours per symbol.
+    """
+    sym = symbol.upper()
+    cache_key = f"{sym}::reaction"
+    now = time.time()
+
+    if cache_key in _cache and (now - _cache[cache_key][0]) < _TTL * 6:
+        return _cache[cache_key][1]
+
+    earnings = get_next_earnings(sym)
+    history  = earnings.get("earnings_history", [])
+    result: list[dict] = []
+
+    if not history:
+        _cache[cache_key] = (now, result)
+        return result
+
+    try:
+        import pandas as pd
+        ticker = yf.Ticker(sym)
+        prices = ticker.history(period="3y")["Close"]
+        prices.index = pd.to_datetime(prices.index).tz_localize(None).normalize()
+
+        for entry in history:
+            date_str = entry.get("date", "")
+            if not date_str:
+                continue
+            try:
+                earn_dt = pd.Timestamp(date_str)
+                # Find nearest trading day on or after earnings date
+                idx = prices.index.searchsorted(earn_dt)
+                if idx >= len(prices) - 5:
+                    continue
+
+                p0 = float(prices.iloc[idx])
+                p1 = float(prices.iloc[idx + 1]) if idx + 1 < len(prices) else None
+                p3 = float(prices.iloc[idx + 3]) if idx + 3 < len(prices) else None
+                p5 = float(prices.iloc[idx + 5]) if idx + 5 < len(prices) else None
+
+                result.append({
+                    "date":         date_str,
+                    "eps_estimate": entry.get("eps_estimate"),
+                    "eps_actual":   entry.get("eps_actual"),
+                    "surprise_pct": entry.get("surprise_pct"),
+                    "ret_1d":       round((p1 / p0 - 1) * 100, 2) if p1 else None,
+                    "ret_3d":       round((p3 / p0 - 1) * 100, 2) if p3 else None,
+                    "ret_5d":       round((p5 / p0 - 1) * 100, 2) if p5 else None,
+                })
+            except Exception:
+                continue
+    except Exception as exc:
+        logger.warning(f"[earnings_reaction] {sym} failed: {exc}")
+
+    _cache[cache_key] = (now, result)
+    return result
+
+
 def get_earnings_calendar(symbols: list[str]) -> list[dict]:
     """
     Return earnings data for multiple symbols, sorted by next_earnings_date ASC.

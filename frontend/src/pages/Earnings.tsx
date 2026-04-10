@@ -34,9 +34,13 @@ import {
   EventNote as EarningsIcon,
   Refresh as RefreshIcon,
 } from '@mui/icons-material'
+import {
+  Bar, BarChart, CartesianGrid, Cell,
+  ResponsiveContainer, Tooltip as RTooltip, XAxis, YAxis,
+} from 'recharts'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/services/api'
-import type { EarningsCalendarEntry } from '@/services/api'
+import type { EarningsCalendarEntry, EarningsReactionEntry } from '@/services/api'
 
 // ── Default watchlist ─────────────────────────────────────────────────────────
 const DEFAULT_SYMBOLS = ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'META', 'AMZN', 'TSLA', 'JPM', 'V', 'SPY']
@@ -100,6 +104,53 @@ function HistoryRow({ history }: { history: EarningsCalendarEntry['earnings_hist
         ))}
       </TableBody>
     </Table>
+  )
+}
+
+// ── Phase 77: Earnings Reaction Chart ────────────────────────────────────────
+
+function ReactionChart({ symbol }: { symbol: string }) {
+  const { data = [] } = useQuery<EarningsReactionEntry[]>({
+    queryKey:  ['earnings-reaction', symbol],
+    queryFn:   () => api.earningsReaction.get(symbol),
+    staleTime: 6 * 60 * 60_000,
+    retry: 1,
+  })
+
+  const chartData = data
+    .filter((r) => r.ret_1d != null)
+    .map((r) => ({
+      date:  r.date.slice(0, 7),   // YYYY-MM
+      ret1d: r.ret_1d,
+      ret3d: r.ret_3d,
+      ret5d: r.ret_5d,
+    }))
+    .reverse()   // oldest first for chart
+
+  if (chartData.length === 0) return null
+
+  return (
+    <Box sx={{ mt: 2 }}>
+      <Typography variant="caption" color="text.disabled" fontWeight={600} letterSpacing="0.08em">
+        POST-EARNINGS PRICE REACTION
+      </Typography>
+      <ResponsiveContainer width="100%" height={150}>
+        <BarChart data={chartData} margin={{ top: 6, right: 8, left: 0, bottom: 4 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+          <XAxis dataKey="date" tick={{ fontSize: 9 }} />
+          <YAxis tick={{ fontSize: 9 }} width={38} tickFormatter={(v) => `${v}%`} />
+          <RTooltip
+            formatter={(v: number, name: string) => [`${v?.toFixed(2)}%`, name]}
+            contentStyle={{ background: '#12161F', border: '1px solid #2D3548', fontSize: 11 }}
+          />
+          <Bar dataKey="ret1d" name="+1d" radius={[2, 2, 0, 0]}>
+            {chartData.map((d, i) => (
+              <Cell key={i} fill={(d.ret1d ?? 0) >= 0 ? '#00C896' : '#FF6B6B'} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </Box>
   )
 }
 
@@ -257,11 +308,12 @@ export default function EarningsPage() {
                       </TableCell>
                     </TableRow>
 
-                    {/* Expanded history */}
+                    {/* Expanded history + reaction chart */}
                     {isOpen && (
                       <TableRow key={`${row.symbol}-history`}>
                         <TableCell colSpan={7} sx={{ bgcolor: 'rgba(0,0,0,0.15)', px: 3, py: 1.5 }}>
                           <HistoryRow history={row.earnings_history} />
+                          <ReactionChart symbol={row.symbol} />
                         </TableCell>
                       </TableRow>
                     )}

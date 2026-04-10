@@ -28,6 +28,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableContainer,
   TableHead,
   TableRow,
   Tooltip,
@@ -48,6 +49,8 @@ import {
   Legend,
   Line,
   LineChart,
+  Pie,
+  PieChart,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip as RTooltip,
@@ -56,7 +59,7 @@ import {
 } from 'recharts'
 import { useEffect, useState } from 'react'
 import { api } from '@/services/api'
-import type { AnalyticsSummary, DailyPnlEntry, DrawdownAnalysis, FactorAttribution, PnlAttribution, RollingPoint } from '@/services/api'
+import type { AnalyticsSummary, DailyPnlEntry, DrawdownAnalysis, FactorAttribution, PerformanceScorecard, PnlAttribution, RollingPoint, SectorExposureRow } from '@/services/api'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import InfoTooltip from '@/components/common/InfoTooltip'
 import EmptyState from '@/components/common/EmptyState'
@@ -502,6 +505,20 @@ export default function AnalyticsPage() {
   const { data: drawdownData } = useQuery<DrawdownAnalysis>({
     queryKey:  ['analytics', 'drawdown'],
     queryFn:   () => api.drawdown.getAnalysis(),
+  })
+
+  // Phase 64: sector exposure of open positions
+  const { data: sectorExposure = [] } = useQuery<SectorExposureRow[]>({
+    queryKey:  ['analytics', 'sector-exposure'],
+    queryFn:   () => api.analytics.getSectorExposure(),
+    staleTime: 60_000,
+    retry:     false,
+  })
+
+  // Phase 58: multi-period performance scorecard
+  const { data: scorecard } = useQuery<PerformanceScorecard>({
+    queryKey:  ['analytics', 'scorecard'],
+    queryFn:   () => api.scorecard.get(),
     staleTime: 5 * 60_000,
     retry:     false,
   })
@@ -759,6 +776,133 @@ export default function AnalyticsPage() {
                     fill="url(#ddGrad)" dot={false} />
                 </AreaChart>
               </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </Box>
+      )}
+
+      {/* Phase 64: Sector Exposure donut chart */}
+      {sectorExposure.length > 0 && (() => {
+        const SECTOR_COLORS = ['#4A9EFF','#A78BFA','#00C896','#F59E0B','#FF6B6B','#34D399','#F97316','#EAB308','#60A5FA','#E879F9','#FB923C']
+        // Aggregate by sector
+        const bySector = sectorExposure.reduce<Record<string, number>>((acc, row) => {
+          acc[row.sector] = (acc[row.sector] ?? 0) + row.value
+          return acc
+        }, {})
+        const pieData = Object.entries(bySector).map(([name, value]) => ({ name, value }))
+        const total   = pieData.reduce((s, d) => s + d.value, 0)
+        return (
+          <Box mt={4}>
+            <Typography variant="subtitle1" fontWeight={700} mb={2}>Sector Exposure — Open Positions</Typography>
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={5}>
+                <Card sx={{ border: '1px solid', borderColor: 'divider' }}>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={220}>
+                      <PieChart>
+                        <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={55} outerRadius={90}>
+                          {pieData.map((_, i) => (
+                            <Cell key={i} fill={SECTOR_COLORS[i % SECTOR_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <RTooltip
+                          formatter={(v: number, name: string) => [`${((v / total) * 100).toFixed(1)}% ($${v.toFixed(0)})`, name]}
+                          contentStyle={{ background: '#12161F', border: '1px solid #2D3548', fontSize: 12 }}
+                        />
+                        <Legend wrapperStyle={{ fontSize: 11 }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} md={7}>
+                <Card sx={{ border: '1px solid', borderColor: 'divider' }}>
+                  <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          {['Symbol', 'Sector', 'Value', 'Weight'].map((h) => (
+                            <TableCell key={h} sx={{ fontWeight: 700, fontSize: '0.72rem', color: 'text.secondary' }}>{h}</TableCell>
+                          ))}
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {sectorExposure.map((row) => (
+                          <TableRow key={row.symbol} hover>
+                            <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontWeight: 700, color: 'primary.main', fontSize: '0.8rem' }}>{row.symbol}</TableCell>
+                            <TableCell sx={{ fontSize: '0.78rem', color: 'text.secondary' }}>{row.sector}</TableCell>
+                            <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem' }}>${row.value.toFixed(0)}</TableCell>
+                            <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem' }}>{row.weight_pct.toFixed(1)}%</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
+          </Box>
+        )
+      })()}
+
+      {/* Phase 58: Multi-period performance scorecard */}
+      {scorecard && scorecard.periods.length > 0 && (
+        <Box mt={4}>
+          <Typography variant="subtitle1" fontWeight={700} mb={2}>
+            Performance Scorecard — Portfolio vs SPY
+          </Typography>
+          <Card sx={{ border: '1px solid', borderColor: 'divider' }}>
+            <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    {['Period', 'Portfolio', 'SPY', 'Alpha', 'vs Benchmark'].map((h) => (
+                      <TableCell key={h} sx={{ fontWeight: 700, fontSize: '0.72rem', color: 'text.secondary' }}>{h}</TableCell>
+                    ))}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {scorecard.periods.map((p) => {
+                    const fmtRet = (v: number | null) =>
+                      v === null ? '—' : `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`
+                    return (
+                      <TableRow key={p.period} hover>
+                        <TableCell sx={{ fontWeight: 700 }}>{p.period}</TableCell>
+                        <TableCell sx={{
+                          fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem', fontWeight: 700,
+                          color: (p.portfolio_ret ?? 0) >= 0 ? '#00C896' : '#FF6B6B',
+                        }}>
+                          {fmtRet(p.portfolio_ret)}
+                        </TableCell>
+                        <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem', color: 'text.secondary' }}>
+                          {fmtRet(p.spy_ret)}
+                        </TableCell>
+                        <TableCell sx={{
+                          fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem', fontWeight: 700,
+                          color: (p.alpha ?? 0) >= 0 ? '#00C896' : '#FF6B6B',
+                        }}>
+                          {fmtRet(p.alpha)}
+                        </TableCell>
+                        <TableCell>
+                          <Tooltip title={p.outperforms ? 'Outperforms SPY' : 'Underperforms SPY'}>
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                px: 1, py: 0.25, borderRadius: 1,
+                                bgcolor: p.outperforms ? 'rgba(0,200,150,0.12)' : 'rgba(255,107,107,0.12)',
+                                color:   p.outperforms ? '#00C896' : '#FF6B6B',
+                                fontWeight: 700,
+                              }}
+                            >
+                              {p.outperforms ? '▲ Alpha' : '▼ Lag'}
+                            </Typography>
+                          </Tooltip>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         </Box>

@@ -39,8 +39,12 @@ import {
   TrendingFlat,
   TrendingUp,
 } from '@mui/icons-material'
+import {
+  Bar, BarChart, CartesianGrid, Cell,
+  ResponsiveContainer, Tooltip as RTooltip, XAxis, YAxis,
+} from 'recharts'
 import { useQuery } from '@tanstack/react-query'
-import { api, type NewsAggregateSentiment } from '@/services/api'
+import { api, type NewsAggregateSentiment, type SentimentTrendPoint } from '@/services/api'
 
 // ── Colour helpers ─────────────────────────────────────────────────────────────
 
@@ -238,6 +242,60 @@ function ArticleRow({ article, idx }: { article: NewsAggregateSentiment['article
   )
 }
 
+// ── Phase 72: Sentiment Trend Chart ───────────────────────────────────────────
+
+function SentimentTrendChart({ symbol }: { symbol: string }) {
+  const { data: trend = [], isLoading } = useQuery<SentimentTrendPoint[]>({
+    queryKey:  ['news-trend', symbol],
+    queryFn:   () => api.news.getTrend(symbol, 50),
+    staleTime: 10 * 60_000,
+    retry:     1,
+  })
+
+  if (isLoading || trend.length === 0) return null
+
+  return (
+    <Card sx={{ border: '1px solid', borderColor: 'divider', mb: 3 }}>
+      <CardContent sx={{ p: 2.5, '&:last-child': { pb: 2.5 } }}>
+        <Typography variant="subtitle2" fontWeight={700} mb={2}>
+          Daily Sentiment Trend
+        </Typography>
+        <ResponsiveContainer width="100%" height={160}>
+          <BarChart data={trend} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 9 }}
+              tickFormatter={(d: string) => d.slice(5)}
+            />
+            <YAxis
+              domain={[-1, 1]}
+              tick={{ fontSize: 9 }}
+              width={36}
+              tickFormatter={(v: number) => v.toFixed(1)}
+            />
+            <RTooltip
+              formatter={(v: number, _: string, p: { payload: SentimentTrendPoint }) => [
+                v.toFixed(3),
+                `VADER (${p.payload.article_count} articles)`,
+              ]}
+              contentStyle={{ background: '#12161F', border: '1px solid #2D3548', fontSize: 11 }}
+            />
+            <Bar dataKey="avg_compound" radius={[2, 2, 0, 0]}>
+              {trend.map((pt, i) => (
+                <Cell
+                  key={i}
+                  fill={pt.avg_compound >= 0.05 ? '#06d6a0' : pt.avg_compound <= -0.05 ? '#ff6b6b' : '#94a3b8'}
+                />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
+  )
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 const QUICK_SYMBOLS = ['SPY', 'QQQ', 'AAPL', 'MSFT', 'NVDA', 'AMZN', 'GOOGL', 'META', 'TSLA']
@@ -335,6 +393,9 @@ export default function NewsPage() {
 
       {/* Aggregate card */}
       {data && data.article_count > 0 && <AggregateCard data={data} />}
+
+      {/* Phase 72: Sentiment trend chart */}
+      <SentimentTrendChart symbol={symbol} />
 
       {/* Phase 53: LLM summary card */}
       {data?.llm_summary && (

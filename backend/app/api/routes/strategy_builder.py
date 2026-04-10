@@ -87,3 +87,62 @@ async def evaluate_strategy(
         return await svc.evaluate_strategy_for_symbol(db, strategy_id, symbol, limit)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+# ── Phase 69: Natural Language Strategy Parser ────────────────────────────────
+
+class NLPStrategyRequest(BaseModel):
+    description: str   # e.g. "buy when RSI < 30 and price above 50-day SMA"
+
+
+@router.post("/parse-nlp")
+async def parse_nlp_strategy(body: NLPStrategyRequest) -> dict:
+    """
+    Phase 69 — Use Anthropic Claude to parse a plain-English strategy description
+    into a CustomStrategy conditions JSON ready to save and run.
+
+    Requires ANTHROPIC_API_KEY to be configured. Returns conditions JSON
+    plus a human-readable explanation.
+    """
+    from app.core.config import settings
+
+    if not settings.ANTHROPIC_API_KEY:
+        raise HTTPException(400, "ANTHROPIC_API_KEY not configured — NLP parsing unavailable")
+
+    try:
+        import anthropic
+        import json as _json
+
+        SYSTEM = """You are a quantitative trading strategy assistant.
+Convert the user's plain-English strategy description into a JSON object with this exact schema:
+{
+  "buy_rules":  [{"indicator": "rsi"|"sma"|"ema"|"sma_cross"|"volume_ratio"|"change_pct", "period": int, "op": "gt"|"lt"|"gte"|"lte"|"cross_above"|"cross_below", "value": number}],
+  "sell_rules": [...same format...],
+  "logic": "AND"|"OR",
+  "explanation": "2-sentence plain-English summary of the strategy"
+}
+For sma_cross: use "fast" and "slow" instead of "period" and "value".
+Only output valid JSON. No markdown, no code blocks."""
+
+        client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+        msg = client.messages.create(
+            model      = "claude-haiku-4-5-20251001",
+            max_tokens = 500,
+            system     = SYSTEM,
+            messages   = [{"role": "user", "content": body.description}],
+        )
+        raw = msg.content[0].text.strip()
+        parsed = _json.loads(raw)
+
+        return {
+            "conditions": {
+                "buy_rules":  parsed.get("buy_rules", []),
+                "sell_rules": parsed.get("sell_rules", []),
+                "logic":      parsed.get("logic", "AND"),
+            },
+            "explanation": parsed.get("explanation", ""),
+            "raw_description": body.description,
+        }
+
+    except Exception as exc:
+        raise HTTPException(500, f"NLP parsing failed: {exc}")

@@ -8,8 +8,9 @@ IMPORTANT: /calendar must be defined BEFORE /{symbol} in this file so
 FastAPI doesn't try to match the literal string "calendar" as a symbol.
 """
 
+import asyncio
 from fastapi import APIRouter, Query
-from app.services.earnings_service import get_earnings_calendar, get_next_earnings
+from app.services.earnings_service import get_earnings_calendar, get_earnings_reaction, get_next_earnings
 
 router = APIRouter()
 
@@ -27,6 +28,12 @@ async def earnings_calendar(
     """
     sym_list = [s.strip().upper() for s in symbols.split(",") if s.strip()]
     return get_earnings_calendar(sym_list)
+
+
+@router.get("/{symbol}/reaction")
+async def earnings_reaction(symbol: str) -> list[dict]:
+    """Phase 77 — Post-earnings price reaction: +1d/+3d/+5d returns per quarter."""
+    return await asyncio.to_thread(get_earnings_reaction, symbol.upper())
 
 
 @router.get("/{symbol}")

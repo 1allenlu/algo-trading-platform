@@ -788,6 +788,47 @@ export default function Trading() {
             isResetting={isResetting}
           />
 
+          {/* Phase 63: Live portfolio-level P&L banner (WebSocket aggregate) */}
+          {state.positions.length > 0 && (() => {
+            const liveUnrealized = state.positions.reduce((sum, pos) => {
+              const price = livePrices[pos.symbol] ?? pos.current_price
+              return sum + (price - pos.avg_entry_price) * pos.qty
+            }, 0)
+            const liveMktValue = state.positions.reduce((sum, pos) => {
+              const price = livePrices[pos.symbol] ?? pos.current_price
+              return sum + price * pos.qty
+            }, 0)
+            const livePnlPct = liveMktValue > 0 ? liveUnrealized / (liveMktValue - liveUnrealized) : 0
+            const wsSyms = Object.keys(prices).filter((s) => state.positions.some((p) => p.symbol === s))
+            return (
+              <Box
+                sx={{
+                  mb: 2, px: 2, py: 1, borderRadius: 1.5,
+                  border: '1px solid', borderColor: 'divider',
+                  bgcolor: liveUnrealized >= 0 ? 'rgba(0,200,150,0.06)' : 'rgba(255,107,107,0.06)',
+                  display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap',
+                }}
+              >
+                <Box>
+                  <Typography variant="caption" color="text.disabled">LIVE UNREALIZED P&L</Typography>
+                  <Typography variant="h6" fontWeight={700} fontFamily="IBM Plex Mono, monospace"
+                    sx={{ color: liveUnrealized >= 0 ? '#00C896' : '#FF6B6B' }}>
+                    {fmt$(liveUnrealized)} ({fmtPct(livePnlPct)})
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.disabled">LIVE MKT VALUE</Typography>
+                  <Typography variant="body1" fontWeight={600} fontFamily="IBM Plex Mono, monospace">
+                    {fmt$(liveMktValue)}
+                  </Typography>
+                </Box>
+                <Typography variant="caption" color="text.disabled" sx={{ ml: 'auto' }}>
+                  {wsSyms.length}/{state.positions.length} symbols live via WebSocket · updates every ~1s
+                </Typography>
+              </Box>
+            )
+          })()}
+
           <Grid container spacing={2} mb={3}>
             <Grid item xs={12} md={7}>
               <PositionsTable positions={state.positions} livePrices={livePrices} />
