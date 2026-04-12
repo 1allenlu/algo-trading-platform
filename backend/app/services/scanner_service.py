@@ -64,6 +64,66 @@ def _sma(closes: list[float], period: int) -> float | None:
     return sum(closes[-period:]) / period
 
 
+def _ema(closes: list[float], period: int) -> list[float]:
+    """
+    Exponential moving average over the full closes list.
+    Returns a list the same length as closes (NaN-padded for first period-1 values
+    — we skip those by only seeding after the first full window).
+    """
+    if len(closes) < period:
+        return []
+    k = 2.0 / (period + 1)
+    result: list[float] = []
+    # Seed with SMA of first `period` bars
+    seed = sum(closes[:period]) / period
+    result.append(seed)
+    for c in closes[period:]:
+        result.append(c * k + result[-1] * (1 - k))
+    return result
+
+
+def _macd(closes: list[float], fast=12, slow=26, signal=9) -> tuple[float | None, float | None, float | None]:
+    """
+    MACD line, signal line, and histogram — all for the most-recent bar.
+    Returns (None, None, None) when not enough data.
+    """
+    if len(closes) < slow + signal:
+        return None, None, None
+    ema_fast = _ema(closes, fast)
+    ema_slow = _ema(closes, slow)
+    # Align by trimming the longer list (fast EMA is longer)
+    min_len = min(len(ema_fast), len(ema_slow))
+    macd_line = [ema_fast[-(min_len - i)] - ema_slow[-(min_len - i)] for i in range(min_len)]
+    if len(macd_line) < signal:
+        return None, None, None
+    sig_ema = _ema(macd_line, signal)
+    if not sig_ema:
+        return None, None, None
+    macd_val = macd_line[-1]
+    sig_val  = sig_ema[-1]
+    return round(macd_val, 4), round(sig_val, 4), round(macd_val - sig_val, 4)
+
+
+def _bollinger(closes: list[float], period=20, k=2.0) -> tuple[float | None, float | None, float | None]:
+    """
+    Bollinger Bands: (upper, lower, position).
+    position = (close - lower) / (upper - lower), 0 = at lower, 1 = at upper.
+    Returns (None, None, None) when not enough data.
+    """
+    if len(closes) < period:
+        return None, None, None
+    window = closes[-period:]
+    mid    = sum(window) / period
+    var    = sum((c - mid) ** 2 for c in window) / period
+    std    = math.sqrt(var)
+    upper  = mid + k * std
+    lower  = mid - k * std
+    price  = closes[-1]
+    width  = upper - lower
+    pos    = (price - lower) / width if width > 0 else 0.5
+    return round(upper, 4), round(lower, 4), round(pos, 4)
+
+
 # ── Snapshot dataclass ─────────────────────────────────────────────────────────
 
 @dataclass
@@ -85,6 +145,13 @@ class SymbolSnapshot:
     vs_52w_high:    float         # (high_52w - price) / high_52w  [0 = AT high]
     vs_52w_low:     float         # (price - low_52w)  / low_52w   [0 = AT low]
     bar_count:      int
+    # Phase 80: MACD + Bollinger Bands
+    macd_line:      float | None = None   # MACD(12,26,9) — positive = bullish momentum
+    macd_signal:    float | None = None   # 9-period EMA of MACD line
+    macd_hist:      float | None = None   # MACD - signal
+    bb_upper:       float | None = None   # Bollinger upper band (20,2)
+    bb_lower:       float | None = None   # Bollinger lower band (20,2)
+    bb_position:    float | None = None   # 0=at lower, 1=at upper
 
 
 def _compute_snapshot(symbol: str, bars: list[Any]) -> SymbolSnapshot | None:
@@ -123,6 +190,10 @@ def _compute_snapshot(symbol: str, bars: list[Any]) -> SymbolSnapshot | None:
     vs_52w_high = (high_52w - price) / high_52w if high_52w > 0 else 0.0
     vs_52w_low  = (price - low_52w)  / low_52w  if low_52w  > 0 else 0.0
 
+    # Phase 80: MACD + Bollinger Bands
+    macd_line, macd_signal, macd_hist = _macd(closes)
+    bb_upper, bb_lower, bb_position   = _bollinger(closes)
+
     return SymbolSnapshot(
         symbol=symbol,
         price=price,
@@ -141,6 +212,12 @@ def _compute_snapshot(symbol: str, bars: list[Any]) -> SymbolSnapshot | None:
         vs_52w_high=vs_52w_high,
         vs_52w_low=vs_52w_low,
         bar_count=len(bars),
+        macd_line=macd_line,
+        macd_signal=macd_signal,
+        macd_hist=macd_hist,
+        bb_upper=bb_upper,
+        bb_lower=bb_lower,
+        bb_position=bb_position,
     )
 
 
@@ -164,10 +241,15 @@ class ScanCriteria:
     # 52-week proximity (as %)
     near_52w_high_pct: float | None = None
     near_52w_low_pct:  float | None = None
+    # Phase 80: MACD + Bollinger Band presets
+    macd_bullish:      bool = False   # MACD line crossed above signal (hist > 0)
+    macd_bearish:      bool = False   # MACD line crossed below signal (hist < 0)
+    bb_oversold:       bool = False   # price near/below lower band (bb_position < 0.2)
+    bb_overbought:     bool = False   # price near/above upper band (bb_position > 0.8)
     # Scope
     symbols:           list[str] | None = None
     # Sort
-    sort_by:   str  = "symbol"  # symbol|rsi|change_pct|volume_ratio|vs_sma50|vs_sma200
+    sort_by:   str  = "symbol"  # symbol|rsi|change_pct|volume_ratio|vs_sma50|vs_sma200|macd_hist|bb_position
     sort_desc: bool = False
 
 
@@ -197,6 +279,15 @@ def _passes(snap: SymbolSnapshot, c: ScanCriteria) -> bool:
         return False
     if c.near_52w_low_pct  is not None and snap.vs_52w_low  * 100 > c.near_52w_low_pct:
         return False
+    # Phase 80: MACD + Bollinger Band filters
+    if c.macd_bullish and (snap.macd_hist is None or snap.macd_hist <= 0):
+        return False
+    if c.macd_bearish and (snap.macd_hist is None or snap.macd_hist >= 0):
+        return False
+    if c.bb_oversold  and (snap.bb_position is None or snap.bb_position >= 0.2):
+        return False
+    if c.bb_overbought and (snap.bb_position is None or snap.bb_position <= 0.8):
+        return False
     return True
 
 
@@ -207,6 +298,8 @@ _SORT_KEYS: dict[str, Any] = {
     "volume_ratio": lambda s: (s.volume_ratio or 0.0),
     "vs_sma50":     lambda s: (s.vs_sma50  or 0.0),
     "vs_sma200":    lambda s: (s.vs_sma200 or 0.0),
+    "macd_hist":    lambda s: (s.macd_hist    or 0.0),
+    "bb_position":  lambda s: (s.bb_position  or 0.0),
 }
 
 

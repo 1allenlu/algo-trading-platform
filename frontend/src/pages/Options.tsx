@@ -40,8 +40,12 @@ import {
   Typography,
 } from '@mui/material'
 import { Search as ScanIcon } from '@mui/icons-material'
+import {
+  LineChart, Line, CartesianGrid, XAxis, YAxis,
+  Tooltip as RTooltip, ResponsiveContainer, ReferenceLine,
+} from 'recharts'
 import { useQuery } from '@tanstack/react-query'
-import { api, type OptionContract, type OptionsChain, type ScreenedSymbol } from '@/services/api'
+import { api, type IVTermPoint, type OptionContract, type OptionsChain, type ScreenedSymbol } from '@/services/api'
 
 // ── Options Screener (Phase 50) ────────────────────────────────────────────────
 
@@ -307,6 +311,101 @@ function ContractTable({ contracts, type, currentPrice, showGreeks = false }: Co
   )
 }
 
+// ── IV Term Structure (Phase 81) ──────────────────────────────────────────────
+
+function IVTermStructure({ symbol }: { symbol: string }) {
+  const { data = [], isLoading, isError } = useQuery<IVTermPoint[]>({
+    queryKey:  ['iv-term', symbol],
+    queryFn:   () => api.ivTerm.get(symbol),
+    staleTime: 30 * 60_000,
+    retry: 1,
+  })
+
+  const chartData = data
+    .filter((p) => p.atm_iv != null)
+    .map((p) => ({
+      label:   p.expiry,
+      days:    p.days_to_exp,
+      atm_iv:  p.atm_iv != null ? +(p.atm_iv * 100).toFixed(2) : null,
+      call_iv: p.call_iv != null ? +(p.call_iv * 100).toFixed(2) : null,
+      put_iv:  p.put_iv  != null ? +(p.put_iv  * 100).toFixed(2) : null,
+    }))
+
+  if (isLoading) return <Box sx={{ textAlign: 'center', py: 6, color: 'text.secondary' }}>Loading IV curve…</Box>
+  if (isError)   return <Alert severity="warning">Failed to load IV data for {symbol}.</Alert>
+  if (chartData.length === 0) return (
+    <Alert severity="info">No options data available for {symbol}. Try a different symbol.</Alert>
+  )
+
+  return (
+    <Box>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        ATM implied volatility across expiries — upward slope = contango (normal), downward = backwardation.
+      </Typography>
+      <Card sx={{ border: '1px solid', borderColor: 'divider', mb: 3 }}>
+        <CardContent>
+          <Typography variant="caption" color="text.disabled" fontWeight={600} letterSpacing="0.08em">
+            IV TERM STRUCTURE — {symbol} (ATM)
+          </Typography>
+          <ResponsiveContainer width="100%" height={320} style={{ marginTop: 12 }}>
+            <LineChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 40 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <XAxis dataKey="label" tick={{ fontSize: 9 }} angle={-35} textAnchor="end" interval={0} />
+              <YAxis tick={{ fontSize: 10 }} width={46} tickFormatter={(v) => `${v}%`} />
+              <RTooltip
+                formatter={(v: number, name: string) => [`${v?.toFixed(2)}%`, name]}
+                contentStyle={{ background: '#12161F', border: '1px solid #2D3548', fontSize: 11 }}
+              />
+              <Line dataKey="atm_iv"  name="ATM IV"  stroke="#4A9EFF" strokeWidth={2} dot={{ r: 3 }} />
+              <Line dataKey="call_iv" name="Call IV"  stroke="#00C896" strokeWidth={1.5} dot={{ r: 2 }} strokeDasharray="4 2" />
+              <Line dataKey="put_iv"  name="Put IV"   stroke="#FF6B6B" strokeWidth={1.5} dot={{ r: 2 }} strokeDasharray="4 2" />
+            </LineChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* Data table */}
+      <Card sx={{ border: '1px solid', borderColor: 'divider' }}>
+        <Table size="small">
+          <TableHead>
+            <TableRow sx={{ bgcolor: 'rgba(255,255,255,0.02)' }}>
+              {['Expiry', 'Days', 'ATM IV', 'Call IV', 'Put IV', 'Skew (Put−Call)'].map((h) => (
+                <TableCell key={h} sx={{ fontWeight: 700, fontSize: '0.72rem', color: 'text.secondary' }}>{h}</TableCell>
+              ))}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {data.map((row) => {
+              const skew = (row.put_iv != null && row.call_iv != null)
+                ? +((row.put_iv - row.call_iv) * 100).toFixed(2)
+                : null
+              return (
+                <TableRow key={row.expiry} sx={{ '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' } }}>
+                  <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.78rem' }}>{row.expiry}</TableCell>
+                  <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.78rem', color: 'text.secondary' }}>{row.days_to_exp}d</TableCell>
+                  <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.78rem', color: '#4A9EFF', fontWeight: 700 }}>
+                    {row.atm_iv != null ? `${(row.atm_iv * 100).toFixed(2)}%` : '—'}
+                  </TableCell>
+                  <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.78rem', color: '#00C896' }}>
+                    {row.call_iv != null ? `${(row.call_iv * 100).toFixed(2)}%` : '—'}
+                  </TableCell>
+                  <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.78rem', color: '#FF6B6B' }}>
+                    {row.put_iv != null ? `${(row.put_iv * 100).toFixed(2)}%` : '—'}
+                  </TableCell>
+                  <TableCell sx={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.78rem',
+                    color: skew != null ? (skew > 0 ? '#FF6B6B' : '#00C896') : 'text.secondary' }}>
+                    {skew != null ? `${skew > 0 ? '+' : ''}${skew}%` : '—'}
+                  </TableCell>
+                </TableRow>
+              )
+            })}
+          </TableBody>
+        </Table>
+      </Card>
+    </Box>
+  )
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function OptionsPage() {
@@ -359,9 +458,11 @@ export default function OptionsPage() {
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
         <Tab label="Chain" sx={{ textTransform: 'none' }} />
         <Tab label="Screener" sx={{ textTransform: 'none' }} />
+        <Tab label="IV Term Structure" sx={{ textTransform: 'none' }} />
       </Tabs>
 
       {tab === 1 && <OptionsScreener />}
+      {tab === 2 && <IVTermStructure symbol={symbol} />}
 
       {tab === 0 && <>
       {/* Controls */}

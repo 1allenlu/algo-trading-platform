@@ -46,6 +46,8 @@ import DividendsPage from '@/pages/Dividends'
 import AnomalyPage from '@/pages/Anomaly'
 import BreadthPage from '@/pages/Breadth'
 import InsiderPage from '@/pages/Insider'
+import StressTestPage from '@/pages/StressTest'
+import HeatmapPage from '@/pages/Heatmap'
 import LoginPage from '@/pages/Login'
 import IntroPage from '@/pages/Intro'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
@@ -137,6 +139,8 @@ function AppLayout() {
             <Route path="/anomaly"          element={<AnomalyPage />} />
             <Route path="/breadth"          element={<BreadthPage />} />
             <Route path="/insider"          element={<InsiderPage />} />
+            <Route path="/stress-test"      element={<StressTestPage />} />
+            <Route path="/heatmap"          element={<HeatmapPage />} />
             <Route path="/settings"         element={<Settings />} />
           </Routes>
         </Box>

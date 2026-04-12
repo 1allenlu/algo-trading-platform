@@ -42,9 +42,14 @@ class ScanRequest(BaseModel):
     # 52-week proximity
     near_52w_high_pct: float | None = Field(None, ge=0, description="Within N% of 52-week high")
     near_52w_low_pct:  float | None = Field(None, ge=0, description="Within N% of 52-week low")
+    # Phase 80: MACD + Bollinger Band presets
+    macd_bullish:  bool | None = Field(None, description="MACD histogram > 0 (bullish momentum)")
+    macd_bearish:  bool | None = Field(None, description="MACD histogram < 0 (bearish momentum)")
+    bb_oversold:   bool | None = Field(None, description="BB position < 0.2 (near lower band)")
+    bb_overbought: bool | None = Field(None, description="BB position > 0.8 (near upper band)")
     # Scope + sorting
     symbols:  list[str] | None = Field(None, description="Symbols to scan; None = all in DB")
-    sort_by:  str  = Field("symbol", description="Sort field: symbol|rsi|change_pct|volume_ratio|vs_sma50|vs_sma200")
+    sort_by:  str  = Field("symbol", description="Sort field: symbol|rsi|change_pct|volume_ratio|vs_sma50|vs_sma200|macd_hist|bb_position")
     sort_desc: bool = Field(False, description="Descending sort")
 
     model_config = ConfigDict(json_schema_extra={
@@ -89,6 +94,10 @@ async def scan_symbols(
         change_pct_max    = body.change_pct_max,
         near_52w_high_pct = body.near_52w_high_pct,
         near_52w_low_pct  = body.near_52w_low_pct,
+        macd_bullish      = body.macd_bullish  or False,
+        macd_bearish      = body.macd_bearish  or False,
+        bb_oversold       = body.bb_oversold   or False,
+        bb_overbought     = body.bb_overbought or False,
         symbols           = body.symbols,
         sort_by           = body.sort_by,
         sort_desc         = body.sort_desc,

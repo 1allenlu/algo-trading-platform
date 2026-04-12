@@ -100,6 +100,23 @@ const PRESETS: Record<string, { label: string; req: ScanRequest }> = {
       sort_desc: false,
     },
   },
+  // Phase 80: MACD + Bollinger Band presets
+  macd_bullish: {
+    label: 'MACD Bullish',
+    req: { macd_bullish: true, sort_by: 'macd_hist', sort_desc: true },
+  },
+  macd_bearish: {
+    label: 'MACD Bearish',
+    req: { macd_bearish: true, sort_by: 'macd_hist', sort_desc: false },
+  },
+  bb_squeeze: {
+    label: 'BB Oversold',
+    req: { bb_oversold: true, sort_by: 'bb_position', sort_desc: false },
+  },
+  bb_overbought: {
+    label: 'BB Overbought',
+    req: { bb_overbought: true, sort_by: 'bb_position', sort_desc: true },
+  },
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -145,6 +162,7 @@ function ResultsTable({ rows }: { rows: SymbolSnapshot[] }) {
               'Symbol', 'Price', 'Chg %', 'RSI(14)',
               'vs SMA50', 'vs SMA200', 'Vol Ratio',
               '52w High', '52w Low',
+              'MACD Hist', 'BB Pos',
             ].map((h) => (
               <TableCell key={h} sx={{ fontWeight: 700, fontSize: '0.75rem' }}>
                 {h}
@@ -249,6 +267,33 @@ function ResultsTable({ rows }: { rows: SymbolSnapshot[] }) {
                   </Typography>
                 </Tooltip>
               </TableCell>
+
+              {/* Phase 80: MACD histogram */}
+              <TableCell>
+                <Typography variant="caption" sx={{
+                  fontFamily: 'IBM Plex Mono, monospace',
+                  color: r.macd_hist != null
+                    ? (r.macd_hist > 0 ? '#00C896' : '#FF6B6B')
+                    : 'text.disabled',
+                  fontWeight: r.macd_hist != null && Math.abs(r.macd_hist) > 0.5 ? 700 : 400,
+                }}>
+                  {r.macd_hist != null ? (r.macd_hist > 0 ? '+' : '') + r.macd_hist.toFixed(3) : '—'}
+                </Typography>
+              </TableCell>
+
+              {/* Phase 80: Bollinger Band position */}
+              <TableCell>
+                <Tooltip title={r.bb_position != null ? `BB Pos: ${(r.bb_position * 100).toFixed(0)}% (0=lower band, 100=upper band)` : ''}>
+                  <Typography variant="caption" sx={{
+                    fontFamily: 'IBM Plex Mono, monospace',
+                    color: r.bb_position != null
+                      ? r.bb_position > 0.8 ? '#FF6B6B' : r.bb_position < 0.2 ? '#00C896' : 'text.secondary'
+                      : 'text.disabled',
+                  }}>
+                    {r.bb_position != null ? `${(r.bb_position * 100).toFixed(0)}%` : '—'}
+                  </Typography>
+                </Tooltip>
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -272,6 +317,11 @@ export default function ScannerPage() {
   const [changePctMax,     setChangePctMax]     = useState<string>('')
   const [near52High,       setNear52High]       = useState<string>('')
   const [near52Low,        setNear52Low]        = useState<string>('')
+  // Phase 80: MACD + Bollinger Band filters
+  const [macdBullish,      setMacdBullish]      = useState(false)
+  const [macdBearish,      setMacdBearish]      = useState(false)
+  const [bbOversold,       setBbOversold]       = useState(false)
+  const [bbOverbought,     setBbOverbought]     = useState(false)
   const [sortBy,           setSortBy]           = useState<ScanRequest['sort_by']>('symbol')
   const [sortDesc,         setSortDesc]         = useState(false)
   const [activePreset,     setActivePreset]     = useState<string | null>(null)
@@ -296,6 +346,10 @@ export default function ScannerPage() {
     setChangePctMax('')
     setNear52High(req.near_52w_high_pct !== undefined ? String(req.near_52w_high_pct) : '')
     setNear52Low('')
+    setMacdBullish(req.macd_bullish ?? false)
+    setMacdBearish(req.macd_bearish ?? false)
+    setBbOversold(req.bb_oversold ?? false)
+    setBbOverbought(req.bb_overbought ?? false)
     setSortBy(req.sort_by ?? 'symbol')
     setSortDesc(req.sort_desc ?? false)
   }
@@ -314,8 +368,12 @@ export default function ScannerPage() {
         ...(volRatioMin ? { volume_ratio_min:   parseFloat(volRatioMin) } : {}),
         ...(changePctMin ? { change_pct_min:    parseFloat(changePctMin) } : {}),
         ...(changePctMax ? { change_pct_max:    parseFloat(changePctMax) } : {}),
-        ...(near52High  ? { near_52w_high_pct:  parseFloat(near52High)  } : {}),
-        ...(near52Low   ? { near_52w_low_pct:   parseFloat(near52Low)   } : {}),
+        ...(near52High    ? { near_52w_high_pct:  parseFloat(near52High)  } : {}),
+        ...(near52Low     ? { near_52w_low_pct:   parseFloat(near52Low)   } : {}),
+        ...(macdBullish   ? { macd_bullish: true  } : {}),
+        ...(macdBearish   ? { macd_bearish: true  } : {}),
+        ...(bbOversold    ? { bb_oversold:  true  } : {}),
+        ...(bbOverbought  ? { bb_overbought: true } : {}),
         sort_by:   sortBy,
         sort_desc: sortDesc,
       }
@@ -482,6 +540,28 @@ export default function ScannerPage() {
             </FormGroup>
           </Grid>
 
+          {/* Phase 80: MACD + Bollinger toggles */}
+          <Grid item xs={12}>
+            <FormGroup row sx={{ gap: 2 }}>
+              <FormControlLabel
+                control={<Switch size="small" checked={macdBullish} onChange={(e) => { setMacdBullish(e.target.checked); setActivePreset(null) }} />}
+                label={<Typography variant="caption" sx={{ color: '#00C896' }}>MACD Bullish (hist &gt; 0)</Typography>}
+              />
+              <FormControlLabel
+                control={<Switch size="small" checked={macdBearish} onChange={(e) => { setMacdBearish(e.target.checked); setActivePreset(null) }} />}
+                label={<Typography variant="caption" sx={{ color: '#FF6B6B' }}>MACD Bearish (hist &lt; 0)</Typography>}
+              />
+              <FormControlLabel
+                control={<Switch size="small" checked={bbOversold}  onChange={(e) => { setBbOversold(e.target.checked);  setActivePreset(null) }} />}
+                label={<Typography variant="caption" sx={{ color: '#4A9EFF' }}>BB Oversold (pos &lt; 20%)</Typography>}
+              />
+              <FormControlLabel
+                control={<Switch size="small" checked={bbOverbought} onChange={(e) => { setBbOverbought(e.target.checked); setActivePreset(null) }} />}
+                label={<Typography variant="caption" sx={{ color: '#F59E0B' }}>BB Overbought (pos &gt; 80%)</Typography>}
+              />
+            </FormGroup>
+          </Grid>
+
           {/* Sort */}
           <Grid item xs={6} sm={3}>
             <FormControl fullWidth size="small">
@@ -491,7 +571,7 @@ export default function ScannerPage() {
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as ScanRequest['sort_by'])}
               >
-                {(['symbol','rsi','change_pct','volume_ratio','vs_sma50','vs_sma200'] as const).map((v) => (
+                {(['symbol','rsi','change_pct','volume_ratio','vs_sma50','vs_sma200','macd_hist','bb_position'] as const).map((v) => (
                   <MenuItem key={v} value={v}>{v}</MenuItem>
                 ))}
               </Select>

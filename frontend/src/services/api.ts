@@ -663,6 +663,13 @@ export interface SymbolSnapshot {
   vs_52w_high:    number
   vs_52w_low:     number
   bar_count:      number
+  // Phase 80: MACD + Bollinger Bands
+  macd_line:      number | null
+  macd_signal:    number | null
+  macd_hist:      number | null
+  bb_upper:       number | null
+  bb_lower:       number | null
+  bb_position:    number | null
 }
 
 export interface ScanRequest {
@@ -677,8 +684,13 @@ export interface ScanRequest {
   change_pct_max?:     number
   near_52w_high_pct?:  number
   near_52w_low_pct?:   number
+  // Phase 80: MACD + Bollinger Band presets
+  macd_bullish?:       boolean
+  macd_bearish?:       boolean
+  bb_oversold?:        boolean
+  bb_overbought?:      boolean
   symbols?:            string[]
-  sort_by?:            'symbol' | 'rsi' | 'change_pct' | 'volume_ratio' | 'vs_sma50' | 'vs_sma200' | 'vs_52w_high' | 'vs_52w_low'
+  sort_by?:            'symbol' | 'rsi' | 'change_pct' | 'volume_ratio' | 'vs_sma50' | 'vs_sma200' | 'vs_52w_high' | 'vs_52w_low' | 'macd_hist' | 'bb_position'
   sort_desc?:          boolean
 }
 
@@ -1549,6 +1561,52 @@ export interface SentimentTrendPoint {
   label:         'bullish' | 'bearish' | 'neutral'
 }
 
+// ── Phase 79: Scenario Stress Test ───────────────────────────────────────────
+
+export interface StressScenario {
+  id:          string
+  name:        string
+  description: string
+  market_shock_pct: number
+}
+
+export interface StressPositionResult {
+  symbol:         string
+  qty:            number
+  current_price:  number
+  market_value:   number
+  sector:         string
+  applied_shock:  number   // percent
+  impact_dollar:  number
+  impact_pct:     number
+  stressed_value: number
+}
+
+export interface StressTestResult {
+  scenario_id:               string
+  scenario_name:             string
+  scenario_description:      string
+  market_shock_pct:          number
+  total_portfolio_value:     number
+  total_impact_dollar:       number
+  total_impact_pct:          number
+  stressed_portfolio_value:  number
+  positions:                 StressPositionResult[]
+}
+
+// ── Phase 80: MACD + Bollinger Bands (added to SymbolSnapshot) ───────────────
+// (fields added to existing SymbolSnapshot below)
+
+// ── Phase 81: IV Term Structure ───────────────────────────────────────────────
+
+export interface IVTermPoint {
+  expiry:      string
+  days_to_exp: number
+  atm_iv:      number | null
+  call_iv:     number | null
+  put_iv:      number | null
+}
+
 // ── Phase 73: Anomaly Detection ───────────────────────────────────────────────
 
 export interface AnomalyRow {
@@ -2257,5 +2315,26 @@ export const api = {
           },
         })
         .then((r) => r.data),
+  },
+
+  // ── Phase 79: Scenario Stress Test ───────────────────────────────────────────
+  stress: {
+    listScenarios: (): Promise<StressScenario[]> =>
+      apiClient.get<StressScenario[]>('/api/stress/scenarios').then((r) => r.data),
+
+    run: (
+      scenario_id: string,
+      positions: { symbol: string; qty: number; current_price: number; market_value?: number }[],
+      custom_shock?: number,
+    ): Promise<StressTestResult> =>
+      apiClient
+        .post<StressTestResult>('/api/stress/run', { scenario_id, positions, custom_shock })
+        .then((r) => r.data),
+  },
+
+  // ── Phase 81: IV Term Structure ────────────────────────────────────────────────
+  ivTerm: {
+    get: (symbol: string): Promise<IVTermPoint[]> =>
+      apiClient.get<IVTermPoint[]>(`/api/options/iv-term/${symbol}`).then((r) => r.data),
   },
 }

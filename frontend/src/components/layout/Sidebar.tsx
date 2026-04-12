@@ -42,6 +42,8 @@ import {
   Troubleshoot as AnomalyIcon,
   SignalWifi4Bar as BreadthIcon,
   ManageAccounts as InsiderIcon,
+  FlashOn as StressIcon,
+  HeatPump as HeatmapIcon,
 } from '@mui/icons-material'
 import { useLocation, useNavigate } from 'react-router-dom'
 import type { ReactNode } from 'react'
@@ -98,6 +100,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: 'RL Agent',   path: '/rl',          icon: <RLIcon      sx={{ fontSize: 17 }} /> },
       { label: 'Anomaly',    path: '/anomaly',     icon: <AnomalyIcon  sx={{ fontSize: 17 }} /> },
       { label: 'Breadth',    path: '/breadth',     icon: <BreadthIcon  sx={{ fontSize: 17 }} /> },
+      { label: 'Stress Test', path: '/stress-test', icon: <StressIcon   sx={{ fontSize: 17 }} /> },
       { label: 'Compare',    path: '/compare',     icon: <CompareIcon  sx={{ fontSize: 17 }} /> },
     ],
   },
@@ -116,6 +119,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: 'Position Sizing',  path: '/sizing',           icon: <SizingIcon          sx={{ fontSize: 17 }} /> },
       { label: 'Option Payoff',    path: '/option-payoff',    icon: <OptionPayoffIcon    sx={{ fontSize: 17 }} /> },
       { label: 'Portfolios',       path: '/portfolios',       icon: <PortfoliosIcon      sx={{ fontSize: 17 }} /> },
+      { label: 'Heatmap',          path: '/heatmap',          icon: <HeatmapIcon         sx={{ fontSize: 17 }} /> },
       { label: 'Leaderboard',      path: '/leaderboard',      icon: <LeaderboardIcon     sx={{ fontSize: 17 }} /> },
     ],
   },
@@ -194,7 +198,7 @@ function SidebarContent({ width, onNavigate }: { width: number; onNavigate?: () 
               mt: '2px',
             }}
           >
-            v0.77.0
+            v0.81.0
           </Typography>
         </Box>
       </Box>

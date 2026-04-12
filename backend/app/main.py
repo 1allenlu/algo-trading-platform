@@ -28,7 +28,7 @@ from app.api.routes import (
     dividends, earnings, earnings_vol, economics, fundamentals, health, insider, intraday, journal,
     live_orders, market_data, ml, news, notifications, options, options_flow, optimize,
     paper_trading, patterns, portfolios, rl, risk, scanner, scheduler, sectors, share,
-    signals, strategies, strategy_builder, tax, tournament, vix,
+    signals, strategies, strategy_builder, stress, tax, tournament, vix,
 )
 from app.api.routes import websocket as ws_routes
 from app.core.config import settings
@@ -49,7 +49,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     # ── Startup ───────────────────────────────────────────────────────────────
     setup_logging()
-    logger.info(f"Starting {settings.APP_NAME} v0.77.0")
+    logger.info(f"Starting {settings.APP_NAME} v0.81.0")
     logger.info(f"Database: {settings.DATABASE_URL.split('@')[-1]}")
     logger.info(f"Debug mode: {settings.DEBUG}")
 
@@ -135,7 +135,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 app = FastAPI(
     title=settings.APP_NAME,
     description="QuantStream — Quant + ML + Real-time Algorithmic Trading",
-    version="0.77.0",
+    version="0.81.0",
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan,
@@ -362,6 +362,11 @@ app.include_router(
     insider.router,
     prefix=f"{settings.API_V1_PREFIX}/insider",
     tags=["insider"],
+)
+app.include_router(
+    stress.router,
+    prefix=f"{settings.API_V1_PREFIX}/stress",
+    tags=["stress"],
 )
 
 # ── WebSocket routes (Phase 7 + 8) ───────────────────────────────────────────

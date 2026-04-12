@@ -10,6 +10,7 @@ import asyncio
 
 from fastapi import APIRouter, Query
 from app.services.options_service import get_expirations, get_options_chain, screen_options
+from app.services.iv_surface_service import get_iv_term_structure
 
 router = APIRouter()
 
@@ -32,6 +33,17 @@ async def options_chain(
     Set `expiry` to any date returned by .../expirations.
     """
     return get_options_chain(symbol, expiry)
+
+
+@router.get("/iv-term/{symbol}")
+async def iv_term_structure(symbol: str) -> list[dict]:
+    """
+    Phase 81: ATM implied volatility per expiry (term structure curve).
+
+    Returns [{expiry, days_to_exp, atm_iv, call_iv, put_iv}] sorted by days ascending.
+    Cached 30 minutes. Useful for visualizing the vol curve / contango / backwardation.
+    """
+    return await asyncio.to_thread(get_iv_term_structure, symbol.upper())
 
 
 @router.get("/screen/scan")
