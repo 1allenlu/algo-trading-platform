@@ -76,13 +76,19 @@ interface TreeNode {
   sector: string
 }
 
-function CustomContent(props: {
-  x?: number; y?: number; width?: number; height?: number;
-  name?: string; pnl?: number; pnlPct?: number
-}) {
-  const { x = 0, y = 0, width = 0, height = 0, name, pnl = 0, pnlPct = 0 } = props
-  if (width < 10 || height < 10) return null
-  const color = pnlColor(pnlPct)
+function CustomContent(props: Record<string, unknown>) {
+  const x      = (props.x      as number) ?? 0
+  const y      = (props.y      as number) ?? 0
+  const width  = (props.width  as number) ?? 0
+  const height = (props.height as number) ?? 0
+  const name   = props.name   as string | undefined
+  const pnlPct = (props.pnlPct as number) ?? 0
+
+  if (width < 4 || height < 4 || !name) return null
+
+  const color    = pnlColor(pnlPct)
+  const fontSize = name.length > 0 ? Math.min(14, width / name.length * 1.6) : 12
+
   return (
     <g>
       <rect
@@ -96,7 +102,7 @@ function CustomContent(props: {
           <text
             x={x + width / 2} y={y + height / 2 - (height > 50 ? 8 : 0)}
             textAnchor="middle" dominantBaseline="middle"
-            style={{ fill: '#fff', fontSize: Math.min(14, width / name!.length * 1.6), fontWeight: 700 }}
+            style={{ fill: '#fff', fontSize, fontWeight: 700 }}
           >
             {name}
           </text>
@@ -154,11 +160,12 @@ export default function HeatmapPage() {
           ;(byGroup[n.sector] ??= []).push(n)
         }
         return Object.entries(byGroup).map(([sector, items]) => ({
-          name: sector,
-          children: items.map((it) => ({ ...it, value: it.size })),
+          name:     sector,
+          // recharts Treemap sizes the parent by summing children's `size`
+          children: items.map((it) => ({ name: it.name, size: it.size, value: it.size, pnl: it.pnl, pnlPct: it.pnlPct, sector: it.sector })),
         }))
       })()
-    : nodes.map((n) => ({ ...n, value: n.size }))
+    : nodes.map((n) => ({ name: n.name, size: n.size, value: n.size, pnl: n.pnl, pnlPct: n.pnlPct, sector: n.sector }))
 
   // Stats
   const totalValue  = nodes.reduce((s, n) => s + n.size, 0)

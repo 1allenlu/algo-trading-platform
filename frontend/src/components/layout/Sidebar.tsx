@@ -1,4 +1,5 @@
-import { Box, Drawer, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material'
+import { Box, Collapse, Drawer, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material'
+import { ExpandLess, ExpandMore } from '@mui/icons-material'
 import {
   Assessment as BacktestIcon,
   AutoMode as AutoTradeIcon,
@@ -46,6 +47,7 @@ import {
   HeatPump as HeatmapIcon,
 } from '@mui/icons-material'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { useState } from 'react'
 import type { ReactNode } from 'react'
 
 interface SidebarProps {
@@ -61,13 +63,16 @@ interface NavItem {
 }
 
 interface NavSection {
-  heading: string
-  items:   NavItem[]
+  heading:     string
+  items:       NavItem[]
+  collapsible?: boolean   // if true, section can be toggled open/closed
+  defaultOpen?: boolean   // only meaningful when collapsible=true
 }
 
 const NAV_SECTIONS: NavSection[] = [
   {
     heading: 'Markets',
+    collapsible: false,
     items: [
       { label: 'Dashboard',  path: '/dashboard',  icon: <DashboardIcon  sx={{ fontSize: 17 }} /> },
       { label: 'Trading',    path: '/trading',    icon: <TradingIcon    sx={{ fontSize: 17 }} /> },
@@ -82,6 +87,8 @@ const NAV_SECTIONS: NavSection[] = [
   },
   {
     heading: 'Analytics',
+    collapsible: true,
+    defaultOpen: false,
     items: [
       { label: 'ML Models',  path: '/ml',         icon: <MLIcon          sx={{ fontSize: 17 }} /> },
       { label: 'Strategies', path: '/strategies', icon: <StrategiesIcon  sx={{ fontSize: 17 }} /> },
@@ -106,6 +113,8 @@ const NAV_SECTIONS: NavSection[] = [
   },
   {
     heading: 'Tools',
+    collapsible: true,
+    defaultOpen: false,
     items: [
       { label: 'Optimize',   path: '/optimize',   icon: <OptimizeIcon   sx={{ fontSize: 17 }} /> },
       { label: 'Scanner',    path: '/scanner',    icon: <ScannerIcon    sx={{ fontSize: 17 }} /> },
@@ -136,6 +145,75 @@ function SidebarContent({ width, onNavigate }: { width: number; onNavigate?: () 
   const navigate  = useNavigate()
   const theme     = useTheme()
   const isDark    = theme.palette.mode === 'dark'
+
+  // Track which collapsible sections are open.
+  // Auto-open the section containing the current route.
+  const initialOpen = () => {
+    const state: Record<string, boolean> = {}
+    for (const s of NAV_SECTIONS) {
+      if (!s.collapsible) continue
+      const hasActive = s.items.some(
+        (i) => location.pathname === i.path || location.pathname.startsWith(i.path + '/')
+      )
+      state[s.heading] = hasActive || (s.defaultOpen ?? false)
+    }
+    return state
+  }
+  const [open, setOpen] = useState<Record<string, boolean>>(initialOpen)
+
+  const toggle = (heading: string) =>
+    setOpen((prev) => ({ ...prev, [heading]: !prev[heading] }))
+
+  const NavRow = ({ label, path, icon }: { label: string; path: string; icon: React.ReactNode }) => {
+    const isActive = location.pathname === path || location.pathname.startsWith(path + '/')
+    return (
+      <Tooltip key={path} title="" placement="right">
+        <Box
+          onClick={() => { navigate(path); onNavigate?.() }}
+          sx={{
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.25,
+            mx: 1,
+            px: 1.5,
+            py: '7px',
+            borderRadius: '5px',
+            cursor: 'pointer',
+            transition: 'background 0.12s',
+            bgcolor: isActive ? 'rgba(74,158,255,0.08)' : 'transparent',
+            '&::before': isActive ? {
+              content: '""',
+              position: 'absolute',
+              left: 0, top: '20%', bottom: '20%',
+              width: '2px',
+              borderRadius: '2px',
+              bgcolor: '#4A9EFF',
+            } : {},
+            '&:hover': {
+              bgcolor: isActive
+                ? 'rgba(74,158,255,0.11)'
+                : isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
+            },
+          }}
+        >
+          <Box sx={{ color: isActive ? '#4A9EFF' : 'text.secondary', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+            {icon}
+          </Box>
+          <Typography sx={{
+            fontSize: '0.8125rem',
+            fontWeight: isActive ? 500 : 400,
+            color: isActive ? 'text.primary' : 'text.secondary',
+            letterSpacing: '0.01em',
+            lineHeight: 1,
+            userSelect: 'none',
+          }}>
+            {label}
+          </Typography>
+        </Box>
+      </Tooltip>
+    )
+  }
 
   return (
     <Box
@@ -205,96 +283,57 @@ function SidebarContent({ width, onNavigate }: { width: number; onNavigate?: () 
 
       {/* ── Nav sections ── */}
       <Box sx={{ flex: 1, overflowY: 'auto', py: 1.5 }}>
-        {NAV_SECTIONS.map((section) => (
-          <Box key={section.heading} sx={{ mb: 0.5 }}>
-            <Typography
-              sx={{
-                px: 2.5,
-                py: 0.75,
-                fontSize: '0.6rem',
-                fontWeight: 600,
-                letterSpacing: '0.12em',
-                color: 'text.disabled',
-                textTransform: 'uppercase',
-                fontFamily: '"IBM Plex Mono", monospace',
-              }}
-            >
-              {section.heading}
-            </Typography>
+        {NAV_SECTIONS.map((section) => {
+          const isOpen = !section.collapsible || open[section.heading]
 
-            {section.items.map(({ label, path, icon }) => {
-              const isActive =
-                location.pathname === path ||
-                location.pathname.startsWith(path + '/')
+          return (
+            <Box key={section.heading} sx={{ mb: 0.5 }}>
+              {/* Section heading — clickable if collapsible */}
+              <Box
+                onClick={section.collapsible ? () => toggle(section.heading) : undefined}
+                sx={{
+                  px: 2.5,
+                  py: 0.75,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  cursor: section.collapsible ? 'pointer' : 'default',
+                  userSelect: 'none',
+                  '&:hover': section.collapsible ? {
+                    '& .section-label': { color: 'text.secondary' },
+                  } : {},
+                }}
+              >
+                <Typography
+                  className="section-label"
+                  sx={{
+                    fontSize: '0.6rem',
+                    fontWeight: 600,
+                    letterSpacing: '0.12em',
+                    color: 'text.disabled',
+                    textTransform: 'uppercase',
+                    fontFamily: '"IBM Plex Mono", monospace',
+                    transition: 'color 0.1s',
+                  }}
+                >
+                  {section.heading}
+                </Typography>
+                {section.collapsible && (
+                  isOpen
+                    ? <ExpandLess sx={{ fontSize: 14, color: 'text.disabled' }} />
+                    : <ExpandMore sx={{ fontSize: 14, color: 'text.disabled' }} />
+                )}
+              </Box>
 
-              return (
-                <Tooltip key={path} title="" placement="right">
-                  <Box
-                    onClick={() => {
-                      navigate(path)
-                      onNavigate?.()   // close mobile drawer after nav
-                    }}
-                    sx={{
-                      position: 'relative',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 1.25,
-                      mx: 1,
-                      px: 1.5,
-                      py: '7px',
-                      borderRadius: '5px',
-                      cursor: 'pointer',
-                      transition: 'background 0.12s',
-                      bgcolor: isActive ? 'rgba(74,158,255,0.08)' : 'transparent',
-                      '&::before': isActive
-                        ? {
-                            content: '""',
-                            position: 'absolute',
-                            left: 0,
-                            top: '20%',
-                            bottom: '20%',
-                            width: '2px',
-                            borderRadius: '2px',
-                            bgcolor: '#4A9EFF',
-                          }
-                        : {},
-                      '&:hover': {
-                        bgcolor: isActive
-                          ? 'rgba(74,158,255,0.11)'
-                          : isDark
-                            ? 'rgba(255,255,255,0.04)'
-                            : 'rgba(0,0,0,0.04)',
-                      },
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        color: isActive ? '#4A9EFF' : 'text.secondary',
-                        display: 'flex',
-                        alignItems: 'center',
-                        flexShrink: 0,
-                      }}
-                    >
-                      {icon}
-                    </Box>
-                    <Typography
-                      sx={{
-                        fontSize: '0.8125rem',
-                        fontWeight: isActive ? 500 : 400,
-                        color: isActive ? 'text.primary' : 'text.secondary',
-                        letterSpacing: '0.01em',
-                        lineHeight: 1,
-                        userSelect: 'none',
-                      }}
-                    >
-                      {label}
-                    </Typography>
-                  </Box>
-                </Tooltip>
-              )
-            })}
-          </Box>
-        ))}
+              {/* Items — wrapped in Collapse when collapsible */}
+              <Collapse in={isOpen} timeout={160}>
+                {section.items.map(({ label, path, icon }) => (
+                  <NavRow key={path} label={label} path={path} icon={icon} />
+                ))}
+              </Collapse>
+            </Box>
+          )
+        })}
       </Box>
 
       {/* ── Footer ── */}
