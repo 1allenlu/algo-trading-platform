@@ -19,6 +19,7 @@ import {
   CardHeader,
   Chip,
   CircularProgress,
+  Collapse,
   Divider,
   FormControl,
   Grid,
@@ -45,6 +46,8 @@ import {
   AutoAwesome as SignalIcon,
   Waves as RegimeIcon,
   Layers as EnsembleIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
 } from '@mui/icons-material'
 import {
   Bar,
@@ -914,6 +917,64 @@ function EnsemblePanel({ symbol }: { symbol: string }) {
 }
 
 
+// ── Advanced analysis accordion ───────────────────────────────────────────────
+function MLAdvancedSection({ models, selectedSymbol }: { models: MLModelInfo[]; selectedSymbol: string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <Box sx={{ mt: 4 }}>
+      <Button
+        variant="outlined"
+        size="small"
+        onClick={() => setOpen((v) => !v)}
+        endIcon={open ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+        sx={{ textTransform: 'none', color: 'text.secondary', borderColor: 'divider', fontSize: '0.78rem' }}
+      >
+        {open ? 'Hide' : 'Show'} advanced analysis
+      </Button>
+      <Collapse in={open} timeout={200}>
+        {/* SHAP, Sentiment, Signal */}
+        <Box sx={{ mt: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+            <SignalIcon sx={{ color: 'primary.main', fontSize: 20 }} />
+            <Typography variant="subtitle1" fontWeight={700}>Why the AI Made This Call</Typography>
+          </Box>
+          <Grid container spacing={2.5}>
+            <Grid item xs={12} lg={5}><SHAPPanel symbol={selectedSymbol} /></Grid>
+            <Grid item xs={12} sm={6} lg={3}><SentimentPanel symbol={selectedSymbol} /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><SignalPanel symbol={selectedSymbol} /></Grid>
+          </Grid>
+        </Box>
+
+        {/* Model comparison */}
+        {models.length > 0 && (
+          <Box sx={{ mt: 3 }}>
+            <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.5 }}>XGBoost vs LSTM Comparison</Typography>
+            <ModelComparisonTable models={models} />
+          </Box>
+        )}
+
+        {/* Ensemble */}
+        <Box sx={{ mt: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+            <EnsembleIcon sx={{ color: '#a855f7', fontSize: 20 }} />
+            <Typography variant="subtitle1" fontWeight={700}>Ensemble Prediction</Typography>
+          </Box>
+          <EnsemblePanel symbol={selectedSymbol} />
+        </Box>
+
+        {/* Regime Detection */}
+        <Box sx={{ mt: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+            <RegimeIcon sx={{ color: 'primary.main', fontSize: 20 }} />
+            <Typography variant="subtitle1" fontWeight={700}>Market Regime Detection</Typography>
+          </Box>
+          <RegimePanel symbol={selectedSymbol} />
+        </Box>
+      </Collapse>
+    </Box>
+  )
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function MLModels() {
   const [selectedSymbol, setSelectedSymbol] = useState<Symbol>('SPY')
@@ -1033,84 +1094,8 @@ export default function MLModels() {
       <Typography variant="h6" fontWeight={700} sx={{ mb: 1.5 }}>Train New Model</Typography>
       <TrainPanel />
 
-      {/* ── Section 4: Advanced ML Signals (Phase 6) ──────────────────────── */}
-      <Box sx={{ mt: 4 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
-          <SignalIcon sx={{ color: 'primary.main', fontSize: 22 }} />
-          <Typography variant="h6" fontWeight={700}>Advanced ML Signals</Typography>
-          <Chip label="Phase 6" size="small" color="primary" sx={{ fontSize: '0.65rem' }} />
-        </Box>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          SHAP explainability · RSI+MA sentiment · Composite BUY/HOLD/SELL signal for{' '}
-          <strong>{selectedSymbol}</strong> (symbol selector above applies)
-        </Typography>
-
-        <Grid container spacing={2.5}>
-          {/* SHAP Waterfall */}
-          <Grid item xs={12} lg={5}>
-            <SHAPPanel symbol={selectedSymbol} />
-          </Grid>
-
-          {/* Sentiment Gauge */}
-          <Grid item xs={12} sm={6} lg={3}>
-            <SentimentPanel symbol={selectedSymbol} />
-          </Grid>
-
-          {/* Composite Signal */}
-          <Grid item xs={12} sm={6} lg={4}>
-            <SignalPanel symbol={selectedSymbol} />
-          </Grid>
-        </Grid>
-      </Box>
-
-      {/* ── Section 5: XGBoost vs LSTM Comparison (Phase 15) ─────────────── */}
-      {models.length > 0 && (
-        <Box sx={{ mt: 4 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
-            <Chip label="Phase 15" size="small" color="secondary" sx={{ fontSize: '0.65rem' }} />
-            <Typography variant="h6" fontWeight={700}>XGBoost vs LSTM Comparison</Typography>
-          </Box>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Side-by-side performance metrics for all trained models. Train both model types on the
-            same symbol to compare accuracy, F1-score, and AUC-ROC.
-          </Typography>
-          <ModelComparisonTable models={models} />
-        </Box>
-      )}
-
-      {/* ── Section 6: Ensemble Stacking (Phase 49) ─────────────────────── */}
-      <Box sx={{ mt: 4 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
-          <EnsembleIcon sx={{ color: '#a855f7', fontSize: 22 }} />
-          <Typography variant="h6" fontWeight={700}>Ensemble Prediction</Typography>
-          <Chip label="Phase 49" size="small" color="secondary" sx={{ fontSize: '0.65rem' }} />
-        </Box>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Accuracy-weighted meta-learner that stacks XGBoost + LSTM signals into a single vote.
-        </Typography>
-        <EnsemblePanel symbol={selectedSymbol} />
-      </Box>
-
-      {/* ── Section 7: Regime Detection (Phase 35) ──────────────────────── */}
-      <Box sx={{ mt: 4 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
-          <RegimeIcon sx={{ color: 'primary.main', fontSize: 22 }} />
-          <Typography variant="h6" fontWeight={700}>Market Regime Detection</Typography>
-          <Chip label="Phase 35" size="small" color="warning" sx={{ fontSize: '0.65rem' }} />
-        </Box>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Rule-based regime classifier using 20-day rolling return thresholds.
-          Background colors show Bull / Bear / Sideways periods on the price chart.
-        </Typography>
-        <RegimePanel symbol={selectedSymbol} />
-      </Box>
-
-      {/* Phase indicator */}
-      <Box sx={{ mt: 4, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
-        <Typography variant="caption" color="text.disabled">
-          Phase 35 — Regime Detection | Phase 15 — LSTM Comparison | Phase 6 — Advanced ML
-        </Typography>
-      </Box>
+      {/* ── Advanced Analysis — collapsed by default ──────────────────────── */}
+      <MLAdvancedSection models={models} selectedSymbol={selectedSymbol} />
     </Box>
   )
 }

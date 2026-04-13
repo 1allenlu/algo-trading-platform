@@ -21,6 +21,7 @@ import {
   CardContent,
   Chip,
   CircularProgress,
+  Collapse,
   Divider,
   Grid,
   LinearProgress,
@@ -35,7 +36,7 @@ import {
   ToggleButtonGroup,
   Typography,
 } from '@mui/material'
-import { BarChart as RiskIcon, Search as AnalyzeIcon } from '@mui/icons-material'
+import { BarChart as RiskIcon, Search as AnalyzeIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon } from '@mui/icons-material'
 import {
   Area,
   AreaChart,
@@ -375,6 +376,31 @@ function VarContributionPanel({ symbols, weights }: { symbols: string[]; weights
   )
 }
 
+// ── Advanced section toggle ───────────────────────────────────────────────────
+function RiskAdvancedSection({ mcData, selectedSymbols }: { mcData: MonteCarloResponse | null; selectedSymbols: string[] }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <Box sx={{ mt: 3 }}>
+      <Button
+        variant="outlined"
+        size="small"
+        onClick={() => setOpen((v) => !v)}
+        endIcon={open ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+        sx={{ textTransform: 'none', color: 'text.secondary', borderColor: 'divider', fontSize: '0.78rem' }}
+      >
+        {open ? 'Hide' : 'Show'} advanced analysis
+      </Button>
+      <Collapse in={open} timeout={200}>
+        {mcData && <MonteCarloChart data={mcData} />}
+        <VarContributionPanel
+          symbols={selectedSymbols}
+          weights={Array(selectedSymbols.length).fill(1 / selectedSymbols.length)}
+        />
+      </Collapse>
+    </Box>
+  )
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function Risk() {
   const [selectedSymbols, setSelectedSymbols] = useState(['SPY', 'QQQ', 'AAPL', 'MSFT'])
@@ -617,13 +643,9 @@ export default function Risk() {
 
           <AssetTable data={riskData} />
 
-          {/* Monte Carlo fan chart */}
-          {mcData && <MonteCarloChart data={mcData} />}
-
-          {/* VaR contribution breakdown */}
-          <VarContributionPanel
-            symbols={selectedSymbols}
-            weights={Array(selectedSymbols.length).fill(1 / selectedSymbols.length)}
+          <RiskAdvancedSection
+            mcData={mcData}
+            selectedSymbols={selectedSymbols}
           />
         </>
       )}

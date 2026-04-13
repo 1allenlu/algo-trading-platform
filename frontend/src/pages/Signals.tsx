@@ -478,6 +478,29 @@ function KellyPanel({ accountEquity }: { accountEquity: number }) {
   )
 }
 
+// ── Advanced analysis accordion ───────────────────────────────────────────────
+
+function AdvancedAnalysis({ accountEquity }: { accountEquity: number }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <Box sx={{ mt: 3 }}>
+      <Button
+        variant="outlined"
+        size="small"
+        onClick={() => setOpen((v) => !v)}
+        endIcon={open ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+        sx={{ textTransform: 'none', color: 'text.secondary', borderColor: 'divider', fontSize: '0.78rem' }}
+      >
+        {open ? 'Hide' : 'Show'} advanced analysis
+      </Button>
+      <Collapse in={open} timeout={200}>
+        <MultiTimeframePanel />
+        <KellyPanel accountEquity={accountEquity} />
+      </Collapse>
+    </Box>
+  )
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function SignalsPage() {
@@ -750,11 +773,8 @@ export default function SignalsPage() {
         Click ▾ on any row to see why the signal was generated. Signals require ≥ 210 OHLCV bars and a trained model.
       </Typography>
 
-      {/* Multi-timeframe alignment grid */}
-      <MultiTimeframePanel />
-
-      {/* Kelly position sizing */}
-      <KellyPanel accountEquity={accountEquity} />
+      {/* Advanced analysis — collapsed by default */}
+      <AdvancedAnalysis accountEquity={accountEquity} />
 
       {/* Trade dialog */}
       {tradeRow && (
