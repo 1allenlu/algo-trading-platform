@@ -6,6 +6,7 @@ Phase 23: multi-user JWT with PostgreSQL users table + user management API
 
 Endpoints:
   POST /api/auth/login              → {access_token, token_type, expires_in}
+  POST /api/auth/register           → open self-signup (viewer role)
   GET  /api/auth/me                 → {username, role, auth_enabled}
   POST /api/auth/hash               → {hash} (dev utility)
 
@@ -71,6 +72,12 @@ class CreateUserRequest(BaseModel):
     role:     str = "viewer"   # "admin" | "viewer"
 
 
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
+    email:    str | None = None
+
+
 class ChangePasswordRequest(BaseModel):
     new_password: str
 
@@ -95,6 +102,27 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)) -> Token
     return TokenResponse(
         access_token = token,
         expires_in   = settings.JWT_EXPIRE_MINUTES * 60,
+    )
+
+
+@router.post("/register", response_model=TokenResponse, status_code=201)
+async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
+    """
+    Open self-registration. Creates a new account with 'viewer' role and
+    immediately returns a JWT so the user is logged in after signing up.
+    """
+    if not auth_enabled():
+        raise HTTPException(status_code=400, detail="Auth is disabled on this server")
+
+    try:
+        await create_user(body.username, body.email, body.password, "viewer", db)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+
+    token = create_access_token(body.username)
+    return TokenResponse(
+        access_token=token,
+        expires_in=settings.JWT_EXPIRE_MINUTES * 60,
     )
 
 

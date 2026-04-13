@@ -114,9 +114,11 @@ export default function WatchlistPage() {
         </Box>
         <Box sx={{ display: 'flex', gap: 1 }}>
           <Tooltip title="Refresh signals">
-            <IconButton size="small" onClick={() => refetchSignals()} disabled={isFetching}>
-              <RefreshIcon fontSize="small" />
-            </IconButton>
+            <span>
+              <IconButton size="small" onClick={() => refetchSignals()} disabled={isFetching}>
+                <RefreshIcon fontSize="small" />
+              </IconButton>
+            </span>
           </Tooltip>
           {symbols.length > 0 && (
             <Button size="small" color="error" startIcon={<ClearIcon />} onClick={handleClear}

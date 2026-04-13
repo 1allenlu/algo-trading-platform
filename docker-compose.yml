@@ -104,6 +104,7 @@ services:
     container_name: trading_frontend
     environment:
       VITE_API_URL: http://localhost:8000
+      VITE_BACKEND_URL: http://backend:8000
     ports:
       - "5173:5173"
     volumes:
