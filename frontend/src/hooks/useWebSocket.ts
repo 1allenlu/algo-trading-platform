@@ -49,10 +49,12 @@ export function useWebSocket<T = unknown>(path: string): UseWebSocketResult<T> {
   const [lastMessage, setLastMessage] = useState<T | null>(null)
   const [status, setStatus]           = useState<WsStatus>('connecting')
 
-  const wsRef       = useRef<WebSocket | null>(null)
-  const delayRef    = useRef(BASE_DELAY_MS)
-  const timerRef    = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const mountedRef  = useRef(true)
+  const wsRef      = useRef<WebSocket | null>(null)
+  const delayRef   = useRef(BASE_DELAY_MS)
+  const timerRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const mountedRef = useRef(true)
+  // Incremented on every connect() call so stale socket callbacks are ignored
+  const genRef     = useRef(0)
 
   const connect = useCallback(() => {
     if (!mountedRef.current) return
@@ -60,17 +62,18 @@ export function useWebSocket<T = unknown>(path: string): UseWebSocketResult<T> {
     const url = buildWsUrl(path)
     setStatus('connecting')
 
-    const ws = new WebSocket(url)
+    const myGen = ++genRef.current
+    const ws    = new WebSocket(url)
     wsRef.current = ws
 
     ws.onopen = () => {
-      if (!mountedRef.current) return
+      if (!mountedRef.current || genRef.current !== myGen) return
       setStatus('open')
       delayRef.current = BASE_DELAY_MS   // Reset back-off on success
     }
 
     ws.onmessage = ({ data }: MessageEvent<string>) => {
-      if (!mountedRef.current) return
+      if (!mountedRef.current || genRef.current !== myGen) return
       try {
         setLastMessage(JSON.parse(data) as T)
       } catch {
@@ -79,12 +82,12 @@ export function useWebSocket<T = unknown>(path: string): UseWebSocketResult<T> {
     }
 
     ws.onerror = () => {
-      if (!mountedRef.current) return
+      if (!mountedRef.current || genRef.current !== myGen) return
       setStatus('error')
     }
 
     ws.onclose = () => {
-      if (!mountedRef.current) return
+      if (!mountedRef.current || genRef.current !== myGen) return
       setStatus('closed')
       const delay = delayRef.current
       delayRef.current = Math.min(delay * 2, MAX_DELAY_MS)
@@ -97,8 +100,15 @@ export function useWebSocket<T = unknown>(path: string): UseWebSocketResult<T> {
     connect()
     return () => {
       mountedRef.current = false
+      genRef.current++   // Invalidate any in-flight socket from this mount
       if (timerRef.current) clearTimeout(timerRef.current)
-      wsRef.current?.close()
+      // Only close if not still CONNECTING (avoids StrictMode "closed before established" error)
+      const ws = wsRef.current
+      if (ws && ws.readyState !== WebSocket.CONNECTING) {
+        ws.close()
+      } else if (ws) {
+        ws.onopen = ws.onmessage = ws.onerror = ws.onclose = null
+      }
     }
   }, [connect])
 

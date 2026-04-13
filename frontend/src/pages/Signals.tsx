@@ -10,7 +10,7 @@
  *   - "Trade This" button with confirmation dialog
  */
 
-import { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Box,
@@ -323,9 +323,11 @@ function MultiTimeframePanel() {
             </Typography>
           </Box>
           <Tooltip title="Refresh">
-            <IconButton size="small" onClick={() => refetch()} disabled={isLoading}>
-              {isLoading ? <CircularProgress size={16} /> : <RefreshIcon fontSize="small" />}
-            </IconButton>
+            <span>
+              <IconButton size="small" onClick={() => refetch()} disabled={isLoading}>
+                {isLoading ? <CircularProgress size={16} /> : <RefreshIcon fontSize="small" />}
+              </IconButton>
+            </span>
           </Tooltip>
         </Box>
 
@@ -572,9 +574,11 @@ export default function SignalsPage() {
             </Typography>
           )}
           <Tooltip title="Refresh now">
-            <IconButton size="small" onClick={fetchSignals} disabled={loading}>
-              {loading ? <CircularProgress size={18} /> : <RefreshIcon />}
-            </IconButton>
+            <span>
+              <IconButton size="small" onClick={fetchSignals} disabled={loading}>
+                {loading ? <CircularProgress size={18} /> : <RefreshIcon />}
+              </IconButton>
+            </span>
           </Tooltip>
         </Stack>
       </Stack>
@@ -620,9 +624,8 @@ export default function SignalsPage() {
                   rows.map((row) => {
                     const isExpanded = expanded.has(row.symbol)
                     return (
-                      <>
+                      <React.Fragment key={row.symbol}>
                         <TableRow
-                          key={row.symbol}
                           hover
                           sx={{ '&:hover': { bgcolor: 'rgba(74,158,255,0.05)' }, cursor: 'default' }}
                         >
@@ -752,14 +755,14 @@ export default function SignalsPage() {
                         </TableRow>
 
                         {/* Expandable "Why?" row */}
-                        <TableRow key={`${row.symbol}-why`}>
+                        <TableRow>
                           <TableCell colSpan={9} sx={{ p: 0, border: 0 }}>
                             <Collapse in={isExpanded} timeout="auto" unmountOnExit>
                               <WhyRow row={row} />
                             </Collapse>
                           </TableCell>
                         </TableRow>
-                      </>
+                      </React.Fragment>
                     )
                   })
                 )}

@@ -23,10 +23,15 @@ const apiClient = axios.create({
 apiClient.interceptors.response.use(
   (res) => res,
   (err) => {
-    const url     = err.config?.url ?? 'unknown'
-    const status  = err.response?.status ?? 'network error'
-    const detail  = err.response?.data?.detail ?? err.message
-    console.error(`[API] ${status} ${url} — ${detail}`)
+    const url    = err.config?.url ?? 'unknown'
+    const status = err.response?.status ?? 'network error'
+    const detail = err.response?.data?.detail ?? err.message
+    // 401 is expected when auth is disabled or token is absent — downgrade to warn
+    if (status === 401) {
+      console.warn(`[API] 401 ${url} — ${detail}`)
+    } else {
+      console.error(`[API] ${status} ${url} — ${detail}`)
+    }
     return Promise.reject(err)
   },
 )

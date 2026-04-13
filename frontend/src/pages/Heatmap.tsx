@@ -87,35 +87,49 @@ function CustomContent(props: Record<string, unknown>) {
   if (width < 4 || height < 4 || !name) return null
 
   const color    = pnlColor(pnlPct)
-  const fontSize = name.length > 0 ? Math.min(14, width / name.length * 1.6) : 12
+  // Cap font size by both width (per character) and tile height so it never overflows
+  const fontSize = name.length > 0
+    ? Math.min(14, (width - 8) / name.length * 1.5, height * 0.32)
+    : 12
+  const clipId = `hm-clip-${Math.round(x)}-${Math.round(y)}`
+
+  const showLabel  = width > 40 && height > 24 && fontSize >= 7
+  const showPnl    = showLabel && height > 46 && width > 48
 
   return (
     <g>
+      {/* Clip mask — text is strictly contained within this tile */}
+      <clipPath id={clipId}>
+        <rect x={x + 1} y={y + 1} width={width - 2} height={height - 2} rx={4} />
+      </clipPath>
+
       <rect
         x={x + 1} y={y + 1}
         width={width - 2} height={height - 2}
         style={{ fill: color, stroke: '#0A0E17', strokeWidth: 2, opacity: 0.92 }}
         rx={4}
       />
-      {width > 50 && height > 30 && (
-        <>
+
+      {showLabel && (
+        <g clipPath={`url(#${clipId})`}>
           <text
-            x={x + width / 2} y={y + height / 2 - (height > 50 ? 8 : 0)}
+            x={x + width / 2}
+            y={y + height / 2 - (showPnl ? 8 : 0)}
             textAnchor="middle" dominantBaseline="middle"
-            style={{ fill: '#fff', fontSize, fontWeight: 700 }}
+            style={{ fill: '#fff', fontSize, fontWeight: 700, pointerEvents: 'none' }}
           >
             {name}
           </text>
-          {height > 50 && (
+          {showPnl && (
             <text
               x={x + width / 2} y={y + height / 2 + 12}
               textAnchor="middle" dominantBaseline="middle"
-              style={{ fill: '#ffffffCC', fontSize: 11 }}
+              style={{ fill: '#ffffffCC', fontSize: Math.min(11, fontSize * 0.85), pointerEvents: 'none' }}
             >
               {pnlPct >= 0 ? '+' : ''}{pnlPct.toFixed(2)}%
             </text>
           )}
-        </>
+        </g>
       )}
     </g>
   )
